@@ -23,6 +23,7 @@
 | `docs/PRD.md` | 产品需求：功能分级、旅程、度量、里程碑 | Draft |
 | `docs/technical-design.md` | 技术选型与架构 | Draft |
 | `docs/wealth-lifestyle-framework.md` | 富豪生活方式内容框架（F5 富豪模拟的内容骨架） | Draft |
+| `docs/simulation-gameplay.md` | 模拟玩法设计草案（购物机制 / 对比闭环 / 名人原型合规） | Draft |
 
 ## 已做的决策
 
@@ -51,6 +52,7 @@
 3. **仓库结构**：单应用仓库 vs monorepo
 4. **框架终局**：Astro 是否够用到底，还是应用变重后迁 Next.js
 5. **首个付费场景**：买房 vs 租 / 辞职 / 生娃 / 退休
+6. **富豪模拟玩法设计**：购物机制、购物车一键成目标、名人原型合规路径——草案已沉淀，全部待拍板，见 `docs/simulation-gameplay.md` §6
 
 ## 相关
 
