@@ -1,5 +1,6 @@
 ---
 import DesignerShell from '../../components/DesignerShell';
+import { initialCatalogUSD } from '@rich-sim/core';
 import '../../styles/global.css';
 ---
 
@@ -12,7 +13,7 @@ import '../../styles/global.css';
   </head>
   <body class="min-h-dvh bg-canvas text-ink">
     <main class="mx-auto max-w-3xl px-4 py-8">
-      <DesignerShell client:load />
+      <DesignerShell catalog={initialCatalogUSD} client:load />
     </main>
   </body>
 </html>

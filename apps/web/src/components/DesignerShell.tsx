@@ -175,7 +175,7 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
         </p>
         <h1 className="mt-2 text-2xl font-semibold">设计你想过的生活</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          在每个维度里选一项，系统把它们的年成本加总。当前数字为占位示意（待校准），
+          在每个维度里选一项，系统把它们的年成本加总。当前数字为初步估算（多数标注「待校准」），
           仅用于财商教育，不代表真实报价。
         </p>
       </header>
