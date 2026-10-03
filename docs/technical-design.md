@@ -162,7 +162,7 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];  
 |---|---|
 | 实时汇率（M1） | Astro **SSR 代理端点**：服务端拉免费 API，前端调自己端点（规避 CORS/限流；宿主平台零额外成本） |
 | 离线 / API 失败 | 构建期生成的**静态汇率快照 JSON** 兜底（标注快照日期） |
-| 历史汇率（M2） | Frankfurter（ECB 参考汇率，免费、覆盖 1999 至今、含 CNY）——**实现前需实测 CNY 历史覆盖深度**（`待验证`） |
+| 历史汇率（M2） | Frankfurter（ECB 参考汇率，免费、覆盖 1999 至今、含 CNY）——**2026-10-03 已实测**：Frankfurter 已从 `api.frankfurter.app` 301 迁移至 **`api.frankfurter.dev/v1`**（实现直接用新域，勿依赖旧域重定向）；**base=CNY 完全可用**（6 币种齐全） |
 
 **产品场景**：历史汇率切换 → 按当日汇率重算全部金额 → 对比「现在值多少 / 当时值多少」→ 展示「汇率吃掉了你 Z%」。汇率波动是跨币种资产最真实的财富风险之一，归属「看见 / 感受」通道，可与失去模拟联动。
 

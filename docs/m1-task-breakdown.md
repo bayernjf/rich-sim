@@ -66,5 +66,11 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 - 已创建 `rich-sim-app` 仓库（/Users/jiangfeng/000mycodes/rich-sim-app，apps/web + packages/core）。
 - ✅ **T01**（2026-10-03）：骨架就位——Astro 5 + React 19 + TS 严格 + Tailwind v4 + Cloudflare adapter + Vitest；`npm run dev` / `npm run test` / `npm run check` / `npm run build` 实测通过。
 - ✅ **T02**（2026-10-03）：core 类型契约冻结于 `packages/core/src/types.ts`（含 Currency/FxSnapshot/convert、Catalog 类型、assumptionsVersion），TS 严格模式 0 错误；三线并行契约（localStorage draft schema、路由表）见 `rich-sim-app/CONVENTIONS.md`。
-- T03–T13 待执行。
+- ✅ **T03–T04**（2026-10-03）：core 6 函数实现 + 37 条测试全绿；手算样例独立复核一致（40 万@4%→1000 万、存 10 万年储 6 万@4%→12 年、r=0 退化、gap 年金反解）。
+- ✅ **T05**（2026-10-03）：Catalog 7 维度 × 23 选项（USD 年成本），3 个富豪档带公开 URL，21 个标「待校准」+ 校准意图；形状测试 9 条全绿。
+- ✅ **T06**（2026-10-03）：设计器 mobile-first（可点选、本地保存、实时年成本预览），已接真实 catalog。
+- ✅ **T07**（2026-10-03）：财务录入 ≤4 项 + 校验拦截 + localStorage 持久化。
+- ✅ **T09**（2026-10-03）：假设清单 + 免责声明 SSR 渲染（纯 Astro 组件，零客户端 JS）。
+- ✅ **T10**（2026-10-03）：币种切换 + `/api/fx` SSR 汇率代理（Frankfurter 实时 → static-fx.json 兜底，降级实测覆盖）；**实测结论：Frankfurter 已从 `api.frankfurter.app` 301 迁移至 `api.frankfurter.dev/v1`（实现已用新域），base=CNY 完全可用**（原「待验证」风险关闭）。
+- T08 / T11 / T12 / T13 待执行。
 - 每完成一任务：本表勾掉，并在 `handoff.md`「下一步」同步。
