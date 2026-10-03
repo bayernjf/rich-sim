@@ -72,5 +72,7 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 - ✅ **T07**（2026-10-03）：财务录入 ≤4 项 + 校验拦截 + localStorage 持久化。
 - ✅ **T09**（2026-10-03）：假设清单 + 免责声明 SSR 渲染（纯 Astro 组件，零客户端 JS）。
 - ✅ **T10**（2026-10-03）：币种切换 + `/api/fx` SSR 汇率代理（Frankfurter 实时 → static-fx.json 兜底，降级实测覆盖）；**实测结论：Frankfurter 已从 `api.frankfurter.app` 301 迁移至 `api.frankfurter.dev/v1`（实现已用新域），base=CNY 完全可用**（原「待验证」风险关闭）。
-- T08 / T11 / T12 / T13 待执行。
+- ✅ **T08**（2026-10-03）：测算输出页（够用线/三状态一等卡片/差距/阶梯目标 ≥3/空态 CTA），纯函数计算层 `apps/web/src/lib/results.ts` + 6 单测；根测试 43 条全绿；SSR 假设清单+免责声明命中。
+- ✅ **T11**（2026-10-04）：移动端达标——**生产口径实测**：LCP 0.85/1.37/1.06s、CLS 全 0、TBT 0ms（Lighthouse mobile 节流）、INP 56/48ms（Playwright Event Timing，<200ms）；dev 模式虚高已用真实生产包 harness 澄清；无产品侧修复。
+- T12 / T13 待执行（Wave 4，单 agent 串行）。
 - 每完成一任务：本表勾掉，并在 `handoff.md`「下一步」同步。
