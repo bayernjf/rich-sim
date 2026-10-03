@@ -2,7 +2,7 @@
 
 > 状态：Draft v0.1 · 2026-10-03
 > 方向已定（双主线，见 [product-concept.md](./product-concept.md) §7.1）。文中标注 `待定` 的项尚未决策，需与发起人确认。
-> 相关文档：[构想与评估](./product-concept.md) · [原始问答](./original-qa.md) · [技术架构](./technical-design.md) · 落地页代码：`rich-sim-landing`
+> 相关文档：[构想与评估](./product-concept.md) · [原始问答](./original-qa.md) · [技术架构](./technical-design.md) · [富豪生活方式框架](./wealth-lifestyle-framework.md) · 落地页代码：`rich-sim-landing`
 
 ---
 
@@ -185,6 +185,7 @@
 
 - 内容：资产看板（房产/股权/基金/现金…）、每年持有成本、现金流波动。
 - 目的：让用户产生"那我呢"的动机，并理解富人的**成本与风险**。
+- 内容骨架（身份来源 / 生活维度 / 风格光谱 / 成本数字来源）：见 [富豪生活方式框架](./wealth-lifestyle-framework.md)。
 
 **验收**：资产可查看；持有成本可见；不含 3D；不做多剧本。
 

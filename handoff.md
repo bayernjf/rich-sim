@@ -22,6 +22,7 @@
 | `docs/original-qa.md` | 发起时的完整问答存档 | 完成（存档，不再更新） |
 | `docs/PRD.md` | 产品需求：功能分级、旅程、度量、里程碑 | Draft |
 | `docs/technical-design.md` | 技术选型与架构 | Draft |
+| `docs/wealth-lifestyle-framework.md` | 富豪生活方式内容框架（F5 富豪模拟的内容骨架） | Draft |
 
 ## 已做的决策
 
@@ -54,4 +55,4 @@
 ## 相关
 
 - 落地页仓库：`rich-sim-landing`（同级目录，独立 git 仓库）
-- ⚠️ 本地 `dev` 领先 `origin/dev`，**有未推送的提交**（PRD、架构、托管决策等）。数量用 `git status` 查看。
+- git 状态：`dev` 与 `origin/dev` 已同步（2026-10-03 实测，工作区干净）
