@@ -9,7 +9,7 @@ const EXPECTED_DIMENSION_IDS = [
   'family',
   'travel',
   'health-insurance',
-  'social',
+  'dining-daily',
   'flexibility',
 ] as const;
 
