@@ -47,6 +47,15 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 - `convert(amount, from, to, fx)` = `amount * fx.rates[to] / fx.rates[from]`。
 - 假设默认值：`returnRate 0.04` / `withdrawalRate 0.04` / `inflation 0.03`（可调；UI 必须显式展示）。
 
+## 币种口径（T10 已定，2026-10-03 冻结）
+
+- `draft.currency` = **展示本位币**（默认 USD，海外市场优先）。所有展示金额换算到它。
+- `draft.profile.currency`（Profile 自带字段）= **录入币种**，恒等于 draft.currency：**切换币种时**，若已有 profile，将其各金额用 `convert` 换算到新币种并更新 `profile.currency`；未录入则置空。core 计算始终在 profile.currency 口径内（= draft.currency），引擎零重算、零改公式。
+- Catalog 以 **USD** 建模（T05）；展示层一律 `convert(annualCost, 'USD', draft.currency, fx)`。
+- 默认假设与兜底汇率：`apps/web/src/lib/defaults.ts`（`DEFAULT_ASSUMPTIONS` / `DEFAULT_CURRENCY` / `STATIC_FX_SNAPSHOT`），兜底快照 `apps/web/src/lib/static-fx.json`（source=static-snapshot + 日期，参与假设清单展示）。
+- `/api/fx?base=USD`：SSR 代理，Frankfurter 实时优先，失败降级 static-fx.json（m1 风险清单：实测 Frankfurter 的 CNY 覆盖）。
+- 假设清单必须显示汇率来源与日期。
+
 ## 测试与验证
 
 - core 单测：`packages/core/src/*.test.ts`（Vitest）；根目录 `npm run test`。
