@@ -1,10 +1,12 @@
-# 部署 — rich-sim-app（wrangler 直传）
+# 部署 — rich-sim-app（当前未部署）
 
 更新时间：2026-10-04
 
-## 站点信息
-- Pages 项目：`rich-sim-app`（**wrangler 直传模式**，未连 GitHub）
-- 域名：https://rich-sim-app.pages.dev（正式域名待定，绑定后 CNAME → pages.dev，Proxied）
+> **状态：暂不上线（2026-10-04 决定）**。产品本身不发版到 Cloudflare，仅本地开发。
+> 线上部署已撤销（Pages 项目 `rich-sim-app` 已删除）。以下流程仅在**决定上线时**使用。
+
+## 站点信息（备查）
+- Pages 项目：`rich-sim-app`（**wrangler 直传模式**；已删除，需要时重建）
 - 技术栈：Astro 5 SSR（`@astrojs/cloudflare` adapter）+ React 19 islands + `@rich-sim/core`（monorepo）
 - 包管理器：npm workspaces（`apps/web` + `packages/core`）
 
