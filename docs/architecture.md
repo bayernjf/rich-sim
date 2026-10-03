@@ -59,14 +59,15 @@
 | 客户端状态 | React 局部 state + 少量 Zustand | 避免过度设计 | URL query 承载可分享的方案 |
 | 校验 | **Zod** | 前后端共用 schema；输入边界校验 | — |
 | API | Astro 服务端端点（REST） | 与前端同仓，零额外服务 | **Hono on Workers**：若端点变多或要独立部署 |
-| 数据库 | **PostgreSQL（Neon）** | 关系型契合；且能从 Neon 平滑迁到国内云托管 PG | D1（SQLite）：**不推荐**，大陆无等价物，见 §9 |
-| ORM | **Drizzle** | 类型安全、轻、同时支持 PG 与 D1 | Prisma |
-| 认证 | MVP 免登录 → **Auth.js** | 先跑通闭环，再引入账号 | Clerk / Supabase Auth（要省事） |
+| 数据库 | **Supabase（PostgreSQL）** | Postgres + Auth + Storage + RLS 一体，省一套自建；底层是 Postgres，能平滑迁到国内云托管 PG | Neon（纯 PG，认证要另配） |
+| ORM | **Drizzle** | 类型安全、轻；连 Supabase 的 Postgres 直连串 | supabase-js（简单查询够用） |
+| 认证 | MVP 免登录 → **Supabase Auth** | 与数据库同源，免自建账号体系 | Auth.js / Clerk |
+| 存储 | **Supabase Storage**（P1 起） | 与数据库同源，少一个服务 | Cloudflare R2 |
 | 支付 | `待定` | 取决于市场：大陆微信/支付宝，海外 Stripe/Paddle | — |
 | 分析 | **Umami / PostHog** | 轻量，可自托管，验证三数够用 | Plausible |
 | 错误监控 | **Sentry** | 标准方案 | — |
 | 测试 | **Vitest**（引擎）+ **Playwright**（关键流程） | 计算引擎**必须**单测；主流程必须有 e2e | — |
-| 托管 | **Cloudflare Workers/Pages** | 全球边缘、成本低、集成好 | Vercel（见 §9） |
+| 托管 | **Vercel（应用）+ Cloudflare（营销 / 边缘）** | 应用要 SSR 与预览部署 → Vercel；营销页纯静态 → Cloudflare Pages；Cloudflare 兼作前置网络层 | 见 §9 |
 
 > 只引入当前需要的依赖。上表里 Drizzle / Auth.js / Sentry / Playwright 都属于 **P1 才装**，MVP 不装。
 
@@ -162,9 +163,11 @@ MVP 无后端。引入后：
 
 ### 阶段一 · 海外（现在）
 
-- **托管：Cloudflare Workers/Pages（推荐）。** 全球边缘、无需选区域、成本低，与 Neon/KV/R2 集成好。备选：Vercel（Astro DX 顺滑，价格更高）。
-- **数据库（P1 起）：Neon PostgreSQL**，通过 Cloudflare Hyperdrive 连接（连接池 + 加速）。
-- **区域**：边缘部署，全球访问，无需选单一区域——这正好匹配"海外用户分布不确定"的现状。
+- **应用主体 → Vercel**：SSR + 预览部署 + 边缘函数，Astro DX 最好。
+- **营销页 → Cloudflare Pages**：纯静态，便宜、快。
+- **Cloudflare 兼作前置网络层**：DNS / CDN / WAF / Turnstile（挡机器人刷测算）。
+- **数据与账号 → Supabase**：Postgres + Auth + Storage 一体，省一套自建。
+- **区域**：Vercel 与 Supabase 均就近全球边缘/区域，海外访问无碍。
 
 ### 阶段二 · 大陆（确认主攻后再做）
 
@@ -172,9 +175,9 @@ MVP 无后端。引入后：
 - **数据库**：托管 PostgreSQL（阿里云 RDS / 腾讯云 PostgreSQL）——与阶段一同构，迁移平滑。
 - **部署形态**：大陆部署与海外部署**并存**（各自域名），而不是替换，避免影响已有海外用户。
 
-### 为什么数据库选 PostgreSQL 而不是 D1
+### 为什么是 Supabase（Postgres）而不是 SQLite 系
 
-D1（SQLite）在 Cloudflare 上很省事，但**大陆没有等价物**，阶段二要换库、改 ORM 方言、迁数据。选 PostgreSQL 则能从 Neon 平滑迁到阿里云 RDS，Drizzle 几乎不动。**为将来的迁移省事，现在就选 Postgres。**
+Supabase 底层就是 PostgreSQL。大陆没有 Supabase / D1 的等价物，阶段二要用国内云托管 PG（阿里云 RDS / 腾讯云），但因为是同一个 Postgres，**表结构与 Drizzle 几乎不用动**，只需换连接串并迁移数据。这正是选 Postgres 系（Supabase）而不是 SQLite 系的原因。
 
 ### 迁移到大陆的成本清单（提前知道）
 
@@ -212,8 +215,9 @@ D1（SQLite）在 Cloudflare 上很省事，但**大陆没有等价物**，阶�
 
 ## 12. 待决问题
 
-1. ~~**目标市场与托管区域**~~ **已定（2026-10-03）**：先海外（Cloudflare 边缘 + Neon PG），后大陆（国内云 + ICP）。见 §9。
-2. **认证方案**：自建 Auth.js vs 托管（Clerk / Supabase）。
-3. **支付渠道**：阶段一海外优先（Stripe / Paddle），阶段二再加大陆（微信 / 支付宝）。具体待定。
-4. **仓库结构**：单应用仓库 vs monorepo（§11）。
-5. **框架终局**：Astro 是否够用到底，还是应用变重后迁 Next.js（§3）。
+1. ~~**目标市场与托管区域**~~ **已定（2026-10-03）**：先海外、后大陆。海外用 Vercel（应用）+ Cloudflare（营销/边缘）+ Supabase。见 §9。
+2. ~~**认证方案**~~ **已定**：Supabase Auth（与数据库同源，免自建）。
+3. **托管分工待确认**：应用 → Vercel、营销 → Cloudflare Pages（本文档的理解，若想对调请指出）。
+4. **支付渠道**：阶段一海外（Stripe / Paddle），阶段二再加大陆（微信 / 支付宝）。具体待定。
+5. **仓库结构**：单应用仓库 vs monorepo（§11）。
+6. **框架终局**：Astro 是否够用到底，还是应用变重后迁 Next.js（§3）。
