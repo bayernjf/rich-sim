@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Catalog, LifeChoice } from '@rich-sim/core';
+import {
+  convert,
+  type Catalog,
+  type Currency,
+  type FxSnapshot,
+  type LifeChoice,
+} from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
+import { STATIC_FX_SNAPSHOT } from '../lib/defaults';
+import CurrencySwitcher from './CurrencySwitcher';
 
 /**
  * T06 · 理想生活设计器（mobile-first, mock-first）。
@@ -121,18 +129,16 @@ function annualTotal(catalog: Catalog, choices: LifeChoice): number {
   return sum;
 }
 
-const usd = (n: number) =>
-  n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
-
 export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellProps) {
   // SSR 用默认选择渲染（确定性，SSR HTML 即含 7 维标题与选项）；
   // 客户端 mount 后再尝试从 localStorage 恢复。
   const [choices, setChoices] = useState<LifeChoice>(() => defaultChoices(catalog));
   const [persisted, setPersisted] = useState(false);
+
+  // T10 展示层状态：展示本位币 + 换算用 fx 快照（仅展示，不参与引擎计算）。
+  // Catalog 以 USD 建模，展示时一律 convert(usdAmount, 'USD', currency, fx)。
+  const [currency, setCurrency] = useState<Currency>('USD');
+  const [fx, setFx] = useState<FxSnapshot>(() => STATIC_FX_SNAPSHOT);
 
   // 仅在浏览器执行（localStorage 不可用于 SSR）。
   useEffect(() => {
@@ -144,6 +150,31 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
       setPersisted(false);
     }
   }, [catalog]);
+
+  // 仅展示层：从 draft 恢复展示币种与 fx 快照（不动 choices 的选择/持久化逻辑）。
+  useEffect(() => {
+    const draft = readDraft();
+    if (draft) {
+      setCurrency(draft.currency ?? 'USD');
+      if (draft.assumptions?.fx) setFx(draft.assumptions.fx);
+    }
+  }, [catalog]);
+
+  /** 切换器切换成功回调：更新展示态（持久化已由 CurrencySwitcher 经 writeDraft 完成）。 */
+  const handleCurrencyChanged = (next: Currency, nextFx: FxSnapshot) => {
+    setCurrency(next);
+    setFx(nextFx);
+  };
+
+  /** 把 Catalog 的 USD 年成本换算到展示本位币并格式化（等宽数字）。 */
+  const fmt = (usdAmount: number) => {
+    const v = convert(usdAmount, 'USD', currency, fx);
+    return v.toLocaleString('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    });
+  };
 
   const handleSelect = (dimensionId: string, optionId: string) => {
     const next = choices.map((c) =>
@@ -179,6 +210,15 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
           仅用于财商教育，不代表真实报价。
         </p>
       </header>
+
+      {/* T10 显示币种切换器（展示层；选择/持久化逻辑见组件内说明） */}
+      <div className="mt-6 rounded-2xl border border-line bg-panel p-4">
+        <CurrencySwitcher
+          currency={currency}
+          fx={fx}
+          onChanged={handleCurrencyChanged}
+        />
+      </div>
 
       <div className="mt-6 space-y-4">
         {catalog.dimensions.map((dim, idx) => (
@@ -220,7 +260,7 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
                       {opt.label}
                     </span>
                     <span className="shrink-0 font-mono text-sm tabular-nums text-muted">
-                      {usd(opt.annualCost)}
+                      {fmt(opt.annualCost)}
                       <span className="ml-1 text-xs">/年</span>
                     </span>
                   </button>
@@ -241,10 +281,10 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div>
             <div className="text-xs text-muted">
-              理想生活年成本（{catalog.currency}）
+              理想生活年成本（{currency}）
             </div>
             <div className="font-mono text-xl font-semibold tabular-nums text-accent">
-              {usd(total)}
+              {fmt(total)}
             </div>
           </div>
           <div className="text-right text-xs leading-relaxed text-muted">
