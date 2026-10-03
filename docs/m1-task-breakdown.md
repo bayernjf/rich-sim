@@ -3,14 +3,14 @@
 > 创建：2026-10-03
 > 范围：M1 核心闭环（理想生活设计器 + 轻量财务录入 + 计算引擎 + 测算输出 + 币种本位币选择）。
 > 规格出处：`technical-design.md` §4.1（引擎）、§4.2（币种汇率）、§10.1（形态）；`PRD.md` §7/§9/§12。
-> 执行原则：应用代码一律进 `rich-sim-app`（独立仓库，尚未创建）；本仓库只沉淀计划与验收标准。
+> 执行原则：应用代码在本仓库 `apps/` 与 `packages/`（2026-10-04 起，M1 代码已并入本仓库；此前暂存于独立目录 `rich-sim-app` 的历史已合并保留）。
 > 并行依据：`@rich-sim/core` 为纯函数引擎，与 UI 天然解耦——类型先行（接口契约），三条工作线即可并行。
 
 ## 任务清单
 
 | ID | 任务 | 依赖 | 验收标准 | 工作量 |
 |---|---|---|---|---|
-| T01 | 建仓与骨架：`rich-sim-app`（Astro 5 + React 19 + TS + Tailwind v4，单仓库 `packages/core`，Vitest 配置，CI 冒烟） | —（唯一全局前置） | `npm run dev` 可跑；`vitest run` 空跑通过；monorepo 结构就位 | M |
+| T01 | 建应用骨架：`apps/web`（Astro 5 + React 19 + TS + Tailwind v4）+ `packages/core`（Vitest 配置，CI 冒烟） | —（唯一全局前置） | `npm run dev` 可跑；`vitest run` 空跑通过；workspace 结构就位 | M |
 | T02 | core 类型定义：`LifeChoice` / `ScenarioCost` / `Projection` / `Profile` / `Assumptions`（含 `fx`）/ `Currency` / `FxSnapshot` | T01 | 类型文件导出，TS 严格模式通过 | S |
 | T03 | core 函数实现：`enoughLine` / `scenarioAnnualCost` / `project` / `gap` / `buildMilestones`（§4.1） | T02 | 5 函数签名与规格一致 | M |
 | T04 | core 测试：10 条用例 + 手算样例核对 + `convert` 往返/边界（§4.1/§4.2） | T03 | `vitest run` 全绿；手算样例（40 万@4%→1000 万等）独立复核一致 | M |
@@ -63,9 +63,9 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 
 ## 状态
 
-- 已创建 `rich-sim-app` 仓库（/Users/jiangfeng/000mycodes/rich-sim-app，apps/web + packages/core）。
+- 应用代码已并入本仓库：`apps/web` + `packages/core`（2026-10-04 merge，28 个 M1 提交历史保留；原独立目录 `rich-sim-app` 已删除）。
 - ✅ **T01**（2026-10-03）：骨架就位——Astro 5 + React 19 + TS 严格 + Tailwind v4 + Cloudflare adapter + Vitest；`npm run dev` / `npm run test` / `npm run check` / `npm run build` 实测通过。
-- ✅ **T02**（2026-10-03）：core 类型契约冻结于 `packages/core/src/types.ts`（含 Currency/FxSnapshot/convert、Catalog 类型、assumptionsVersion），TS 严格模式 0 错误；三线并行契约（localStorage draft schema、路由表）见 `rich-sim-app/CONVENTIONS.md`。
+- ✅ **T02**（2026-10-03）：core 类型契约冻结于 `packages/core/src/types.ts`（含 Currency/FxSnapshot/convert、Catalog 类型、assumptionsVersion），TS 严格模式 0 错误；三线并行契约（localStorage draft schema、路由表）见 `CONVENTIONS.md`。
 - ✅ **T03–T04**（2026-10-03）：core 6 函数实现 + 37 条测试全绿；手算样例独立复核一致（40 万@4%→1000 万、存 10 万年储 6 万@4%→12 年、r=0 退化、gap 年金反解）。
 - ✅ **T05**（2026-10-03）：Catalog 7 维度 × 23 选项（USD 年成本），3 个富豪档带公开 URL，21 个标「待校准」+ 校准意图；形状测试 9 条全绿。
 - ✅ **T06**（2026-10-03）：设计器 mobile-first（可点选、本地保存、实时年成本预览），已接真实 catalog。

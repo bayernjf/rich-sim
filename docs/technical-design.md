@@ -252,9 +252,9 @@ MVP 无后端。引入后：
 - **数据与账号 → Supabase**：Postgres + Auth + Storage 一体，省一套自建。
 - **区域**：Cloudflare 与 Supabase 均就近全球边缘/区域，海外访问无碍。
 
-**部署状态（2026-10-04，已上线冒烟通过）**
-- `rich-sim-landing` → https://rich-sim-landing.pages.dev（静态直传 `wrangler pages deploy`，production branch = main）
-- `rich-sim-app` → https://rich-sim-app.pages.dev（Astro SSR Worker；`/api/fx` 实测返回完整汇率快照、CNY base 可用；`/app/result` 假设清单+免责声明纯 SSR 源码可见）
+**部署状态（2026-10-04）**
+- `rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（wrangler 直传，已上线 200 可用）
+- 产品应用：**暂不上线**（曾部署冒烟全过——`/api/fx` 实测返回完整汇率快照、CNY base 可用；`/app/result` 假设清单+免责声明纯 SSR 源码可见——后撤销线上部署；代码在本仓库 `apps/`，需要时按 `docs/DEPLOYMENT.md` 重建）
 - 正式域名**待定**（deferred #2 英文名/域名；绑定方式参考 `agent-world-landing/docs/DEPLOYMENT.md`：CNAME → pages.dev，Proxied）
 
 ### 阶段二 · 大陆（确认主攻后再做）
@@ -314,15 +314,11 @@ Supabase 底层就是 PostgreSQL。大陆没有 Supabase / D1 的等价物，阶
 
 ## 11. 仓库结构
 
-**MVP 建议**：应用作为**单个 Astro 项目**（新仓库 `rich-sim-app`），计算引擎作为仓库内模块（`src/core` 或 `packages/core`）。**不要过早拆 monorepo。**
+**MVP 建议**：应用作为**单个 Astro 项目**（在本仓库 `apps/web`），计算引擎作为仓库内模块（`packages/core`）。**不要过早拆仓库。**
 
-当出现第二个消费者（落地页需要同一份引擎）时，再二选一：
-- 抽成 workspace 包（pnpm workspaces，或合并为 monorepo）；
-- 或引擎稳定前，落地页维持自己的简化版测算器（约百行，重复可接受）。
+当出现第二个消费者（小程序加入）时，升级为 **pnpm workspaces**（`apps/web` + `packages/core` + `apps/miniprogram`）。
 
-**现状**：`rich-sim`（文档，本仓库）、`rich-sim-landing`（营销页，Astro）已存在。应用仓库尚未创建。
-
-**渐进式结论（2026-10-03 建议）**：M1 建 `rich-sim-app` **单仓库**，core 放 `packages/core`（独立包结构，暂不强制 workspace 化）。产品形态已确认跨端（大陆微信小程序，见 §10.1），第二个消费者是确定事件——小程序加入时升级为 **pnpm workspaces**（`apps/web` + `packages/core` + `apps/miniprogram`）。落地页维持简化测算器直至引擎稳定。
+**现状（2026-10-04）**：本仓库 = 产品仓库（文档 `docs/` + 应用 `apps/web` + 引擎 `packages/core` 一体）；`rich-sim-landing`（营销页）独立仓库。已按 npm workspaces 组织（`apps/*` + `packages/*`）。
 
 ---
 
