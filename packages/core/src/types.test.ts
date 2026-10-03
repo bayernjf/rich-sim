@@ -14,7 +14,7 @@ describe('@rich-sim/core module contract (T02)', () => {
   it('shapes an FxSnapshot', () => {
     const fx: FxSnapshot = {
       base: 'USD',
-      rates: { USD: 1 },
+      rates: { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149.5, CNY: 7.12, HKD: 7.8 },
       date: '2026-10-03',
       source: 'static-snapshot',
       version: '1',
