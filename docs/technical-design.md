@@ -67,7 +67,7 @@
 | 分析 | **Umami / PostHog** | 轻量，可自托管，验证三数够用 | Plausible |
 | 错误监控 | **Sentry** | 标准方案 | — |
 | 测试 | **Vitest**（引擎）+ **Playwright**（关键流程） | 计算引擎**必须**单测；主流程必须有 e2e | — |
-| 托管 | **Vercel（应用）+ Cloudflare（营销 / 边缘）** | 应用要 SSR 与预览部署 → Vercel；营销页纯静态 → Cloudflare Pages；Cloudflare 兼作前置网络层 | 见 §9 |
+| 托管 | **Cloudflare（应用 SSR + 营销 / 边缘一体）**；Vercel 作为服务端变重时的触发选项 | 见 §9 |
 
 > 只引入当前需要的依赖。上表里 Drizzle / Auth.js / Sentry / Playwright 都属于 **P1 才装**，MVP 不装。
 
@@ -160,7 +160,7 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];  
 
 | 场景 | 方案 |
 |---|---|
-| 实时汇率（M1） | Astro **SSR 代理端点**：服务端拉免费 API，前端调自己端点（规避 CORS/限流；Vercel 零额外成本） |
+| 实时汇率（M1） | Astro **SSR 代理端点**：服务端拉免费 API，前端调自己端点（规避 CORS/限流；宿主平台零额外成本） |
 | 离线 / API 失败 | 构建期生成的**静态汇率快照 JSON** 兜底（标注快照日期） |
 | 历史汇率（M2） | Frankfurter（ECB 参考汇率，免费、覆盖 1999 至今、含 CNY）——**实现前需实测 CNY 历史覆盖深度**（`待验证`） |
 
@@ -244,11 +244,13 @@ MVP 无后端。引入后：
 
 ### 阶段一 · 海外（现在）
 
-- **应用主体 → Vercel**：SSR + 预览部署 + 边缘函数，Astro DX 最好。
-- **营销页 → Cloudflare Pages**：纯静态，便宜、快。
-- **Cloudflare 兼作前置网络层**：DNS / CDN / WAF / Turnstile（挡机器人刷测算）。
+**托管决策（2026-10-03 拍板：Cloudflare 全包，Vercel 后置为触发选项）**
+
+- **应用主体 + 营销页 → Cloudflare Pages**：应用用官方 `@astrojs/cloudflare` adapter 跑 Astro SSR（Functions/Workers 承载 SSR 与汇率代理端点），营销页纯静态——**一个平台管 DNS / CDN / WAF / Turnstile / 部署**，运维面最小，免费额度对 MVP 足够。
+- **注意点**：Workers 运行时需启用 `nodejs_compat`，少数 Node API 需适配；Astro SSR 在该环境的兼容性在落地时实测一次。
+- **Vercel 不再部署**；保留为**触发选项**：M2/M3 后若服务端变重（服务端报告生成、支付 webhook、复杂 SSR），评估迁 Vercel（Node 运行时 + 预览部署 DX 更顺）——一次 adapter 切换即可，成本可控。
 - **数据与账号 → Supabase**：Postgres + Auth + Storage 一体，省一套自建。
-- **区域**：Vercel 与 Supabase 均就近全球边缘/区域，海外访问无碍。
+- **区域**：Cloudflare 与 Supabase 均就近全球边缘/区域，海外访问无碍。
 
 ### 阶段二 · 大陆（确认主攻后再做）
 
