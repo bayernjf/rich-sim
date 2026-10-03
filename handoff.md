@@ -12,7 +12,7 @@
 ## 当前状态
 
 - **文档**：4 份，见 `docs/`（下表）
-- **分支**：`dev`，**领先 `origin/dev` 5 个提交，未推送**
+- **分支**：`dev`，**领先 `origin/dev`（有未推送的提交）**
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
 
@@ -54,4 +54,4 @@
 ## 相关
 
 - 落地页仓库：`rich-sim-landing`（同级目录，独立 git 仓库）
-- ⚠️ 本地 `dev` 有 **5 个提交未推送**（PRD、架构、托管决策等）
+- ⚠️ 本地 `dev` 领先 `origin/dev`，**有未推送的提交**（PRD、架构、托管决策等）。数量用 `git status` 查看。
