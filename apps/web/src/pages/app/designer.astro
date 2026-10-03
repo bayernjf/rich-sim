@@ -1,5 +1,6 @@
 ---
 import DesignerShell from '../../components/DesignerShell';
+import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
 import '../../styles/global.css';
 ---
@@ -14,6 +15,18 @@ import '../../styles/global.css';
   <body class="min-h-dvh bg-canvas text-ink">
     <main class="mx-auto max-w-3xl px-4 py-8">
       <DesignerShell catalog={initialCatalogUSD} client:load />
+
+      <div class="mt-8">
+        <a
+          href="/app/finance"
+          class="inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 focus-visible:outline-2"
+        >
+          下一步：录入财务 →
+        </a>
+      </div>
+
+      <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
+      <AssumptionsPanel />
     </main>
   </body>
 </html>
