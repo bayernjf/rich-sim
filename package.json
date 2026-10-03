@@ -11,7 +11,7 @@
     "dev": "npm run dev -w @rich-sim/web",
     "build": "npm run build -w @rich-sim/web",
     "preview": "npm run preview -w @rich-sim/web",
-    "test": "npm run test -w @rich-sim/core",
+    "test": "npm run test -w @rich-sim/core && npm run test -w @rich-sim/web",
     "typecheck": "npm run typecheck -w @rich-sim/core && npm run check -w @rich-sim/web",
     "check": "npm run typecheck"
   }
