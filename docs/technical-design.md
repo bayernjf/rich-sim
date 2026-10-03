@@ -105,6 +105,48 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];
 
 **复用**：落地页的测算器 → 应用 → 未来的服务端报告，全部调用同一份引擎。
 
+### 4.1 接口细化与测试清单（2026-10-03，M1 实施规格）
+
+承接 §4 接口草案。所有假设显式传入；公式与假设带版本号（`assumptionsVersion`），保证历史结果可复现。
+
+**类型与函数**
+
+```ts
+type Profile = { income: number; expense: number; savings: number; debt: number };   // 月口径
+type Assumptions = { returnRate: number; withdrawalRate: number; inflation: number }; // 年化小数（0.04）
+type Goal = { kind: 'enough-line' | 'net-worth'; value: number };
+type Projection =
+  | { status: 'reachable'; years: number; savingsRate: number }
+  | { status: 'unreachable'; savingsRate: number }
+  | { status: 'no-net-savings' };
+type LifeChoice = { dimension: string; optionId: string }[];   // 理想生活设计器选择
+type ScenarioCost = { annualCost: number; breakdown: Record<string, number> };
+type Milestone = { stage: number; goalValue: number; years: number; action: string };
+
+function enoughLine(annualCost: number, a: Assumptions): number;                              // annualCost / withdrawalRate
+function scenarioAnnualCost(choices: LifeChoice, catalog: Catalog, a: Assumptions): ScenarioCost; // 维度选项 → 年成本（含通胀换算）
+function project(p: Profile, goal: Goal, a: Assumptions): Projection;                        // 复利反解 + 三状态
+function gap(p: Profile, goal: Goal, a: Assumptions): { annualGap: number; yearsAtCurrentPace: number }; // 差距
+function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];                // ≥3 阶段，数值来自 profile
+```
+
+**测试清单（Vitest，M1 上线前全绿）**
+
+| 用例 | 输入 | 期望 |
+|---|---|---|
+| enoughLine 基准 | 年成本 40 万，提取率 4% | 1000 万 |
+| enoughLine 提取率 5% | 年成本 40 万，提取率 5% | 800 万 |
+| project 可达（手算核对） | 存款 10 万、月储蓄 5 千（年 6 万）、目标 100 万、r=4% | status reachable，years ≈ 12–13 |
+| project 不可达 | 年储蓄过低，60 年内达不到 | status unreachable |
+| project 无净储蓄 | 月支出 ≥ 月收入 | status no-net-savings |
+| 边界：目标 ≤ 存款 | 存款 ≥ 目标 | reachable，years = 0 |
+| 边界：r = 0 | 收益率为 0 | 退化线性增长 |
+| 边界：savings = 0 | 年储蓄 0 | 仅存款按 r 增长 |
+| buildMilestones | 任意达标 profile | 3 阶段：提储蓄率 → 攒首笔本金 → 抬收入，数值来自输入 |
+| 版本化 | 修改公式后跑历史样例 | 结果带 assumptionsVersion，可复现旧结果 |
+
+> 注：手算核对样例在实现时用独立计算复核一遍，不直接信任实现输出。
+
 ---
 
 ## 5. 数据模型（P1 起）
@@ -234,14 +276,16 @@ Supabase 底层就是 PostgreSQL。大陆没有 Supabase / D1 的等价物，阶
 
 **现状**：`rich-sim`（文档，本仓库）、`rich-sim-landing`（营销页，Astro）已存在。应用仓库尚未创建。
 
+**渐进式结论（2026-10-03 建议）**：M1 建 `rich-sim-app` **单仓库**，core 放 `packages/core`（独立包结构，暂不强制 workspace 化）。产品形态已确认跨端（大陆微信小程序，见 §10.1），第二个消费者是确定事件——小程序加入时升级为 **pnpm workspaces**（`apps/web` + `packages/core` + `apps/miniprogram`）。落地页维持简化测算器直至引擎稳定。
+
 ---
 
 ## 12. 待决问题
 
 1. ~~**目标市场与托管区域**~~ **已定（2026-10-03）**：先海外、后大陆。海外用 Vercel（应用）+ Cloudflare（营销/边缘）+ Supabase。见 §9。
 2. ~~**认证方案**~~ **已定**：Supabase Auth（与数据库同源，免自建）。
-3. **托管分工待确认**：应用 → Vercel、营销 → Cloudflare Pages（本文档的理解，若想对调请指出）。
-4. **支付渠道**：阶段一海外（Stripe / Paddle），阶段二再加大陆（微信 / 支付宝）。具体待定。
-5. **仓库结构**：单应用仓库 vs monorepo（§11；跨端后 core 需抽共享包，见 §10.1）。
-6. **框架终局**：Astro 是否够用到底，还是应用变重后迁 Next.js（§3）。
+3. **托管分工**：维持「应用 → Vercel、营销 → Cloudflare」（2026-10-03 建议确认，无异议即定）。
+4. **支付渠道**：阶段一海外（Stripe / Paddle），阶段二再加大陆（微信 / 支付宝）。M4 才需要；倾向海外 **Stripe**（`待定`）。
+5. **仓库结构**：渐进式——M1 单仓库 + `packages/core`，小程序加入时转 pnpm workspaces（2026-10-03 建议，见 §11）。
+6. **框架终局**：维持 Astro；应用状态变重、需要大量客户端路由时再评估 Next.js（2026-10-03 建议，见 §3）。
 7. **产品形态**：海外 PWA / 大陆小程序（Taro）/ 原生 App 时机——草案见 §10.1。
