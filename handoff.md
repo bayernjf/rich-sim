@@ -50,14 +50,17 @@
 落地页里已有一个可复用的测算器雏形，见 `rich-sim-landing/src/components/Calculator.astro`。
 
 实施拆解（2026-10-03 规划）：
-1. 建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）—— T01
-2. `@rich-sim/core`：类型 + 纯函数（规格见 `technical-design.md` §4.1）+ Vitest 单测全绿 —— T02–T04
-3. 理想生活设计器（7 维度 × 3–5 选项，合理默认值）—— T05–T06
-4. 轻量财务录入（≤4 项）—— T07
-5. 测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）—— T08–T09
-6. 币种：本位币选择 + 实时汇率（SSR 代理）—— T10
-7. 移动端响应式达标 —— T11
-8. 参照落地页 Calculator.astro 校验口径一致 —— T12–T13
+1. ~~建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）~~ ✅ 已完成（T01，2026-10-03，`npm run dev`/`test`/`check`/`build` 实测通过）
+2. ~~`@rich-sim/core` 类型契约~~ ✅ 已冻结（T02，`packages/core/src/types.ts`，TS 严格 0 错误）；函数实现与测试（T03–T04）✅ 37 条全绿，手算样例独立复核一致
+3. ~~理想生活设计器（7 维度 × 3–5 选项，合理默认值）~~ ✅ T05 Catalog（7 维 × 23 选项，3 富豪档带来源 URL，其余「待校准」）✅ T06 设计器（2026-10-03）
+4. ~~轻量财务录入（≤4 项）~~ ✅ T07（2026-10-03）
+5. ~~测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）~~ ✅ T08（三状态/阶梯目标，43 测试全绿）+ ✅ T09（纯 SSR 面板，2026-10-03）
+6. ~~币种：本位币选择 + 实时汇率（SSR 代理）~~ ✅ T10（2026-10-03；实测 Frankfurter 已迁移至 api.frankfurter.dev/v1，base=CNY 可用）
+7. ~~移动端响应式达标~~ ✅ T11（2026-10-04；生产口径 LCP<2.5s / INP<200ms / CLS<0.1 全达标）
+8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
+9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
+
+**M1 状态：核心闭环完成（2026-10-04）**。下一步：M1 收尾（真实 Cloudflare 环境部署冒烟一次验证 `/api/fx` 与 Workers `nodejs_compat`；决定是否上线）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
 
 ## 待决问题
 
