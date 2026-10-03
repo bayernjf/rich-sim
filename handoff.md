@@ -60,7 +60,7 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。下一步：M1 收尾（真实 Cloudflare 环境部署冒烟一次验证 `/api/fx` 与 Workers `nodejs_compat`；决定是否上线）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署完成（2026-10-04）**：`rich-sim-landing` → https://rich-sim-landing.pages.dev（静态直传）；`rich-sim-app` → https://rich-sim-app.pages.dev（SSR Worker）。上线冒烟全部通过：首页 200、`/api/fx` 真实 Workers 环境返回完整汇率快照（CNY base，Frankfurter ECB，2026-10-02）、`/app/result` 假设清单+免责声明纯 SSR 源码可见。**M1 遗留风险（Cloudflare 环境冒烟）关闭**。下一步：正式域名绑定（需先定英文名/域名，deferred #2；方式参考 agent-world-landing：CNAME → pages.dev，Proxied）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
 
 ## 待决问题
 

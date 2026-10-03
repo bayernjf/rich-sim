@@ -252,6 +252,11 @@ MVP 无后端。引入后：
 - **数据与账号 → Supabase**：Postgres + Auth + Storage 一体，省一套自建。
 - **区域**：Cloudflare 与 Supabase 均就近全球边缘/区域，海外访问无碍。
 
+**部署状态（2026-10-04，已上线冒烟通过）**
+- `rich-sim-landing` → https://rich-sim-landing.pages.dev（静态直传 `wrangler pages deploy`，production branch = main）
+- `rich-sim-app` → https://rich-sim-app.pages.dev（Astro SSR Worker；`/api/fx` 实测返回完整汇率快照、CNY base 可用；`/app/result` 假设清单+免责声明纯 SSR 源码可见）
+- 正式域名**待定**（deferred #2 英文名/域名；绑定方式参考 `agent-world-landing/docs/DEPLOYMENT.md`：CNAME → pages.dev，Proxied）
+
 ### 阶段二 · 大陆（确认主攻后再做）
 
 - **国内云（阿里云 / 腾讯云）+ ICP 备案。**
