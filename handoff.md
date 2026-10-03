@@ -25,6 +25,7 @@
 | `docs/wealth-lifestyle-framework.md` | 富豪生活方式内容框架（F5 富豪模拟的内容骨架） | Draft |
 | `docs/simulation-gameplay.md` | 模拟玩法设计草案（购物 / 六通道体验 / 对比闭环 / 名人原型合规） | Draft |
 | `docs/deferred-items.md` | 可边迭代边讨论的待决事项（每条带触发条件与阻塞性） | 活跃 |
+| `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
 
 ## 已做的决策
 
@@ -44,16 +45,19 @@
 
 **M1：核心闭环** —— 理想生活设计器 + 轻量财务录入 + 计算引擎。无后端、无账号。移动端响应式达标（PRD §12）。
 
+任务分解与并行排期见 `docs/m1-task-breakdown.md`（13 任务 × 4 Wave：T01 建仓 → Wave1 三线并行 [core 链 / Catalog 内容 / UI 骨架] → Wave2 组装 → Wave3 达标 → Wave4 验收）。
+
 落地页里已有一个可复用的测算器雏形，见 `rich-sim-landing/src/components/Calculator.astro`。
 
 实施拆解（2026-10-03 规划）：
-1. 建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）
-2. `@rich-sim/core`：类型 + 纯函数（规格见 `technical-design.md` §4.1）+ Vitest 单测全绿
-3. 理想生活设计器（7 维度 × 3–5 选项，合理默认值）
-4. 轻量财务录入（≤4 项）
-5. 测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）
-6. 移动端响应式达标
-7. 参照落地页 Calculator.astro 校验口径一致
+1. 建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）—— T01
+2. `@rich-sim/core`：类型 + 纯函数（规格见 `technical-design.md` §4.1）+ Vitest 单测全绿 —— T02–T04
+3. 理想生活设计器（7 维度 × 3–5 选项，合理默认值）—— T05–T06
+4. 轻量财务录入（≤4 项）—— T07
+5. 测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）—— T08–T09
+6. 币种：本位币选择 + 实时汇率（SSR 代理）—— T10
+7. 移动端响应式达标 —— T11
+8. 参照落地页 Calculator.astro 校验口径一致 —— T12–T13
 
 ## 待决问题
 
