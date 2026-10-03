@@ -36,6 +36,7 @@
 | 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
 | 托管 | Vercel（应用）+ Cloudflare（营销 / 边缘） | `technical-design.md` §9 |
 | MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
+| 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
 
 ## 下一步
 
@@ -53,7 +54,7 @@
 4. **框架终局**：Astro 是否够用到底，还是应用变重后迁 Next.js
 5. **首个付费场景**：买房 vs 租 / 辞职 / 生娃 / 退休
 6. **富豪模拟玩法设计**：购物机制、购物车一键成目标、名人原型合规路径——草案已沉淀，全部待拍板，见 `docs/simulation-gameplay.md` §6
-7. **产品形态**：海外 PWA / 大陆小程序（Taro）/ 原生 App 时机——草案见 `docs/technical-design.md` §10.1
+7. ~~**产品形态**~~ **已定（2026-10-03）**：M1 响应式 Web → M2 PWA → 大陆微信小程序（Taro），原生 App 以触发门驱动，见 `docs/technical-design.md` §10.1
 
 ## 相关
 
