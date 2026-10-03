@@ -38,6 +38,7 @@
 | 托管 | Vercel（应用）+ Cloudflare（营销 / 边缘） | `technical-design.md` §9 |
 | MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
 | 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
+| 币种与汇率 | 计算在本位币、换算只在展示层；汇率 = 假设的一部分（快照进 Assumptions 并参与版本化）；M1 实时汇率（SSR 代理），M2 历史汇率 | `technical-design.md` §4.2 |
 
 ## 下一步
 

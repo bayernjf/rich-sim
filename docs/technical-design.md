@@ -147,6 +147,45 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];  
 
 > 注：手算核对样例在实现时用独立计算复核一遍，不直接信任实现输出。
 
+### 4.2 币种与汇率设计（2026-10-03 已确认方案）
+
+**核心决策**
+
+1. **计算永远在本位币，换算只在展示层**——用户输入与 Catalog 年成本均以本位币建模；`@rich-sim/core` 全部在本位币内计算，结果出来后按汇率换算成显示币种。切换币种只改展示、零重算（延续「计算与存储分离」）。
+2. **汇率是假设的一部分，不是功能**——`FxSnapshot` 进 `Assumptions`，参与 `assumptionsVersion`；假设清单必显示「按 X 汇率（来源、日期）换算」，历史模式显示「按 YYYY-MM-DD 汇率」。只存快照，不存换算结果。
+
+**换算模型**：方案 A（本位币内部计算 + 展示层换算）。跨币种资产场景（富豪模拟）以 Catalog 按本位币建模解决，不做原币存储汇总（方案 B 后置，MVP 不需要）。
+
+**数据源与降级**
+
+| 场景 | 方案 |
+|---|---|
+| 实时汇率（M1） | Astro **SSR 代理端点**：服务端拉免费 API，前端调自己端点（规避 CORS/限流；Vercel 零额外成本） |
+| 离线 / API 失败 | 构建期生成的**静态汇率快照 JSON** 兜底（标注快照日期） |
+| 历史汇率（M2） | Frankfurter（ECB 参考汇率，免费、覆盖 1999 至今、含 CNY）——**实现前需实测 CNY 历史覆盖深度**（`待验证`） |
+
+**产品场景**：历史汇率切换 → 按当日汇率重算全部金额 → 对比「现在值多少 / 当时值多少」→ 展示「汇率吃掉了你 Z%」。汇率波动是跨币种资产最真实的财富风险之一，归属「看见 / 感受」通道，可与失去模拟联动。
+
+**币种范围与分期**
+
+- 币种：USD / EUR / GBP / JPY / CNY / HKD（6 种）
+- M1：本位币选择器（默认按市场：海外 USD、大陆 CNY）+ 实时汇率换算 + 假设清单显示汇率来源与日期
+- M2：历史汇率切换（选日期）+ 汇率波动教育点
+- 大陆阶段：切换人民币中间价数据源
+
+**类型与函数**
+
+```ts
+type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'HKD';
+type FxSnapshot = { base: Currency; rates: Record<Currency, number>; date: string; source: string; version: string };
+// Assumptions 增加 fx: FxSnapshot；Profile 增加 currency: Currency
+function convert(amount: number, from: Currency, to: Currency, fx: FxSnapshot): number;
+```
+
+**测试要点**：换算基准（用快照核对）；**往返误差 < 0.01%**（base→display→base）；边界（快照缺币种、汇率 0 / 负数拒绝、无效日期）；快照版本化可复现。
+
+**合规**：汇率进假设清单与免责声明（仅供参考，不构成建议）；历史汇率必须显式标注日期。
+
 ---
 
 ## 5. 数据模型（P1 起）
