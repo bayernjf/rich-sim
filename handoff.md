@@ -20,8 +20,8 @@
 |---|---|---|
 | `docs/product-concept.md` | 原始构想 + 独立评估 + 验证计划 | 完成 |
 | `docs/original-qa.md` | 发起时的完整问答存档 | 完成（存档，不再更新） |
-| `docs/prd.md` | 产品需求：功能分级、旅程、度量、里程碑 | Draft |
-| `docs/architecture.md` | 技术选型与架构 | Draft |
+| `docs/PRD.md` | 产品需求：功能分级、旅程、度量、里程碑 | Draft |
+| `docs/technical-design.md` | 技术选型与架构 | Draft |
 
 ## 已做的决策
 
@@ -29,11 +29,11 @@
 |---|---|---|
 | **产品名** | **rich-sim**，中文名「财富模拟」（2026-10-03 拍板） | `product-concept.md` §7.2 |
 | 产品方向 | 双主线：富豪模拟做钩子，现实测算做落点 | `product-concept.md` §7.1 |
-| 目标市场 | 先海外，后大陆 | `architecture.md` §9 |
-| 技术栈 | Astro + React 岛 + 独立纯函数计算引擎 | `architecture.md` §3 |
-| 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `architecture.md` §3 |
-| 托管 | Vercel（应用）+ Cloudflare（营销 / 边缘） | `architecture.md` §9 |
-| MVP 形态 | **无后端**，方案存 `localStorage` | `architecture.md` §10 |
+| 目标市场 | 先海外，后大陆 | `technical-design.md` §9 |
+| 技术栈 | Astro + React 岛 + 独立纯函数计算引擎 | `technical-design.md` §3 |
+| 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
+| 托管 | Vercel（应用）+ Cloudflare（营销 / 边缘） | `technical-design.md` §9 |
+| MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
 
 ## 下一步
 
@@ -43,7 +43,7 @@
 
 ## 待决问题
 
-详见 `docs/architecture.md` §12 与 `docs/prd.md` §13。关键几条：
+详见 `docs/technical-design.md` §12 与 `docs/PRD.md` §13。关键几条：
 
 1. **托管分工确认**：应用 → Vercel、营销 → Cloudflare（文档里的理解，若想对调请指出）
 2. **支付渠道**：阶段一海外（Stripe / Paddle），阶段二大陆（微信 / 支付宝）
