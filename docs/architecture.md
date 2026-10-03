@@ -1,4 +1,4 @@
-# 财富沙盘 · 技术架构与选型
+# 财富模拟（rich-sim）· 技术架构与选型
 
 > 状态：Draft v0.1 · 2026-10-03
 > 关联：[PRD](./prd.md) · [构想与评估](./product-concept.md) · 落地页 `rich-sim-landing`
