@@ -74,5 +74,7 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 - ✅ **T10**（2026-10-03）：币种切换 + `/api/fx` SSR 汇率代理（Frankfurter 实时 → static-fx.json 兜底，降级实测覆盖）；**实测结论：Frankfurter 已从 `api.frankfurter.app` 301 迁移至 `api.frankfurter.dev/v1`（实现已用新域），base=CNY 完全可用**（原「待验证」风险关闭）。
 - ✅ **T08**（2026-10-03）：测算输出页（够用线/三状态一等卡片/差距/阶梯目标 ≥3/空态 CTA），纯函数计算层 `apps/web/src/lib/results.ts` + 6 单测；根测试 43 条全绿；SSR 假设清单+免责声明命中。
 - ✅ **T11**（2026-10-04）：移动端达标——**生产口径实测**：LCP 0.85/1.37/1.06s、CLS 全 0、TBT 0ms（Lighthouse mobile 节流）、INP 56/48ms（Playwright Event Timing，<200ms）；dev 模式虚高已用真实生产包 harness 澄清；无产品侧修复。
-- T12 / T13 待执行（Wave 4，单 agent 串行）。
+- ✅ **T12**（2026-10-04）：口径校验——落地页 Calculator.astro vs core 五组样例（默认值/够用线 1000 万等价/低储蓄高目标/支出≥收入等）双侧逐项一致；差异均为非公式项（币种符号、done↔years=0、储蓄率展示），**无需回写落地页**。
+- ✅ **T13**（2026-10-04）：集成验收——E2E 冒烟 15/15（设计器→录入→测算→切币种 USD→CNY 全流程，够用线 $2,715,000→¥18,203,151）；完成率埋点接入（designer:select / finance:update / results:view / currency:switch，localStorage 队列 `rich-sim:events:v1` 可观测）。
+- **M1 核心闭环完成（2026-10-04）**。遗留：Workers 运行时 `nodejs_compat` 需在真实 Cloudflare 环境验证一次（部署不在 M1 范围）；埋点 M1 仅本地日志，M2 接真实上报。
 - 每完成一任务：本表勾掉，并在 `handoff.md`「下一步」同步。
