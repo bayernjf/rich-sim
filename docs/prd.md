@@ -2,7 +2,7 @@
 
 > 状态：Draft v0.1 · 2026-10-03
 > 方向已定（双主线，见 [product-concept.md](./product-concept.md) §7.1）。文中标注 `待定` 的项尚未决策，需与发起人确认。
-> 相关文档：[构想与评估](./product-concept.md) · [原始问答](./original-qa.md) · 落地页代码：`rich-sim-landing`
+> 相关文档：[构想与评估](./product-concept.md) · [原始问答](./original-qa.md) · [技术架构](./architecture.md) · 落地页代码：`rich-sim-landing`
 
 ---
 
