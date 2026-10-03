@@ -3,3 +3,14 @@
 
 # macOS
 .DS_Store
+
+# node / build
+node_modules/
+dist/
+.astro/
+.dev-dist/
+.wrangler/
+.vercel/
+*.log
+.env
+.env.*

@@ -1,0 +1,14 @@
+{
+  "base": "USD",
+  "rates": {
+    "USD": 1,
+    "EUR": 0.89087,
+    "GBP": 0.75753,
+    "JPY": 157.67,
+    "CNY": 6.7046,
+    "HKD": 7.8471
+  },
+  "date": "2026-10-04",
+  "source": "static-snapshot",
+  "version": "2026-10-04"
+}
