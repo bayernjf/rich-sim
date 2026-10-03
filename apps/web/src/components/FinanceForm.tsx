@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Currency, LifeChoice, Profile } from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
 import { DEFAULT_ASSUMPTIONS, DEFAULT_CURRENCY } from '../lib/defaults';
+import { track } from '../lib/analytics';
 
 /**
  * T07 · 轻量财务录入（mobile-first）。
@@ -135,6 +136,13 @@ export default function FinanceForm() {
       updatedAt: new Date().toISOString(),
     });
     setSaved(true);
+    track('finance:update', {
+      field: key,
+      income: profile.income,
+      expense: profile.expense,
+      savings: profile.savings,
+      debt: profile.debt,
+    });
   };
 
   return (

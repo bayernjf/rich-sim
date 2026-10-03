@@ -3,6 +3,7 @@ import type { Catalog, Currency } from '@rich-sim/core';
 import { readDraft } from '../lib/draft';
 import { computeResults } from '../lib/results';
 import type { Results } from '../lib/results';
+import { track } from '../lib/analytics';
 
 /**
  * T08 · 测算输出视图（React 岛，client:load）。
@@ -39,10 +40,17 @@ export default function ResultsView({ catalog }: { catalog: Catalog }) {
       return;
     }
     try {
-      setView(computeResults(draft, catalog));
+      const res = computeResults(draft, catalog);
+      setView(res);
+      track('results:view', {
+        status: res.status === 'ok' ? res.projection.status : res.status,
+        currency: res.status === 'ok' ? res.currency : undefined,
+      });
     } catch {
       // choices 与 Catalog 失配（旧本机方案）-> 退回默认选择重算。
-      setView(computeResults({ ...draft, choices: [] }, catalog));
+      const res = computeResults({ ...draft, choices: [] }, catalog);
+      setView(res);
+      track('results:view', { status: res.status === 'ok' ? res.projection.status : res.status });
     }
   }, [catalog]);
 

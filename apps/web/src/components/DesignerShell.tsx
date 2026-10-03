@@ -8,6 +8,7 @@ import {
 } from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
 import { STATIC_FX_SNAPSHOT } from '../lib/defaults';
+import { track } from '../lib/analytics';
 import CurrencySwitcher from './CurrencySwitcher';
 
 /**
@@ -192,6 +193,7 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
       updatedAt: new Date().toISOString(),
     });
     setPersisted(true);
+    track('designer:select', { dimension: dimensionId, option: optionId });
   };
 
   const total = useMemo(() => annualTotal(catalog, choices), [catalog, choices]);

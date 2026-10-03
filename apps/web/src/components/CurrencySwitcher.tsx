@@ -3,6 +3,7 @@ import { convert, type Currency, type FxSnapshot, type Profile } from '@rich-sim
 import { readDraft, writeDraft } from '../lib/draft';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
 import { SUPPORTED_CURRENCIES } from '../lib/fx';
+import { track } from '../lib/analytics';
 
 /**
  * T10 · 显示币种切换器（React 岛）。
@@ -74,6 +75,7 @@ export default function CurrencySwitcher({
       });
 
       onChanged(next, nextFx);
+      track('currency:switch', { from: currency, to: next });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
