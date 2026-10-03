@@ -63,5 +63,8 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 
 ## 状态
 
-- 全部待执行；T01 未开工（`rich-sim-app` 仓库未创建）。
+- 已创建 `rich-sim-app` 仓库（/Users/jiangfeng/000mycodes/rich-sim-app，apps/web + packages/core）。
+- ✅ **T01**（2026-10-03）：骨架就位——Astro 5 + React 19 + TS 严格 + Tailwind v4 + Cloudflare adapter + Vitest；`npm run dev` / `npm run test` / `npm run check` / `npm run build` 实测通过。
+- ✅ **T02**（2026-10-03）：core 类型契约冻结于 `packages/core/src/types.ts`（含 Currency/FxSnapshot/convert、Catalog 类型、assumptionsVersion），TS 严格模式 0 错误；三线并行契约（localStorage draft schema、路由表）见 `rich-sim-app/CONVENTIONS.md`。
+- T03–T13 待执行。
 - 每完成一任务：本表勾掉，并在 `handoff.md`「下一步」同步。

@@ -50,9 +50,9 @@
 落地页里已有一个可复用的测算器雏形，见 `rich-sim-landing/src/components/Calculator.astro`。
 
 实施拆解（2026-10-03 规划）：
-1. 建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）—— T01
-2. `@rich-sim/core`：类型 + 纯函数（规格见 `technical-design.md` §4.1）+ Vitest 单测全绿 —— T02–T04
-3. 理想生活设计器（7 维度 × 3–5 选项，合理默认值）—— T05–T06
+1. ~~建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）~~ ✅ 已完成（T01，2026-10-03，`npm run dev`/`test`/`check`/`build` 实测通过）
+2. ~~`@rich-sim/core` 类型契约~~ ✅ 已冻结（T02，`packages/core/src/types.ts`，TS 严格 0 错误）；函数实现与测试（T03–T04）进行中
+3. 理想生活设计器（7 维度 × 3–5 选项，合理默认值）—— T05–T06（Wave 1 进行中）
 4. 轻量财务录入（≤4 项）—— T07
 5. 测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）—— T08–T09
 6. 币种：本位币选择 + 实时汇率（SSR 代理）—— T10
