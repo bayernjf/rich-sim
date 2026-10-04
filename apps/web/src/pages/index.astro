@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ContinueDraft from '../components/ContinueDraft.tsx';
 ---
 
 <BaseLayout title="财富模拟 · rich-sim">
@@ -15,5 +16,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     >
       开始设计理想生活 →
     </a>
+    <ContinueDraft client:load />
   </main>
 </BaseLayout>

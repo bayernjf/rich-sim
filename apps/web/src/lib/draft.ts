@@ -42,3 +42,22 @@ export function writeDraft(draft: Draft): void {
 export function clearDraft(): void {
   localStorage.removeItem(DRAFT_KEY);
 }
+
+/** Where the home-page "continue" entry should send the user. */
+export type DraftStep = '/app/designer' | '/app/finance' | '/app/result';
+
+const PROFILE_FIELDS = ['income', 'expense', 'savings', 'debt'] as const;
+
+/**
+ * Resume target from a saved draft:
+ * - complete finance profile → results
+ * - designer choices present, profile incomplete → finance form
+ * - otherwise → designer
+ */
+export function nextDraftStep(draft: Draft): DraftStep {
+  const profile = draft.profile;
+  const financeDone =
+    !!profile && PROFILE_FIELDS.every((k) => typeof profile[k] === 'number');
+  if (financeDone) return '/app/result';
+  return draft.choices.length > 0 ? '/app/finance' : '/app/designer';
+}
