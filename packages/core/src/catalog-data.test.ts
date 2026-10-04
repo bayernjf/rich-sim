@@ -16,7 +16,7 @@ const EXPECTED_DIMENSION_IDS = [
 /**
  * 富豪档（top option）中，必须能追溯到 wealth-lifestyle-framework §4
  * 公开 URL 的选项。key = optionId，value = 必须匹配的来源 URL。
- * 其他维度的 top option 在 §4 中没有公开 URL 覆盖，按「待校准」处理。
+ * 2026-10 起其余选项也均已用公开来源（BLS CE/AAA/KFF/NAIS 等）校准。
  */
 const FRAMEWORK_SOURCED_LUXURY_OPTIONS: Record<string, string> = {
   'living/luxury-mansion':
@@ -62,15 +62,29 @@ describe('initialCatalogUSD (T05) · 形状校验', () => {
     }
   });
 
-  it('每个选项要么 source 非空，要么 note 含「待校准」', () => {
+  it('每个选项的 source 都是可查证的 http(s) URL', () => {
     for (const dim of initialCatalogUSD.dimensions) {
       for (const opt of dim.options) {
-        const hasSource = typeof opt.source === 'string' && opt.source.length > 0;
-        const noteMentionsCalibration =
-          typeof opt.note === 'string' && opt.note.includes('待校准');
         expect(
-          hasSource || noteMentionsCalibration,
-          `${dim.id}/${opt.id} 既无 source，note 也未标注「待校准」`,
+          typeof opt.source === 'string' && /^https?:\/\//.test(opt.source),
+          `${dim.id}/${opt.id} source 不是 http(s) URL：${opt.source}`,
+        ).toBe(true);
+        expect(
+          typeof opt.note === 'string' && opt.note.length > 0,
+          `${dim.id}/${opt.id} 缺少口径说明 note`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('每个维度内选项 annualCost 严格递增（成本梯度）', () => {
+    for (const dim of initialCatalogUSD.dimensions) {
+      for (let i = 1; i < dim.options.length; i += 1) {
+        const prev = dim.options[i - 1]?.annualCost;
+        const cur = dim.options[i]?.annualCost;
+        expect(
+          prev !== undefined && cur !== undefined && cur > prev,
+          `${dim.id} 第 ${i} 项金额未递增：${prev} -> ${cur}`,
         ).toBe(true);
       }
     }
