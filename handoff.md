@@ -63,7 +63,7 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → Pages 项目 `rich-sim`（**Git 集成**：GitHub `bayernjf/rich-sim`，monorepo 根部署，详见 `docs/DEPLOYMENT.md`）。部署冒烟曾全部通过（首页 200、`/api/fx` Workers 环境实测返回完整汇率快照、假设清单+免责声明纯 SSR 源码可见）——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：① Cloudflare 绑定 `app.rich-sim.bayjf.com`（域名已于 2026-10-04 拍板，代码侧三处已改（`sitemap.xml` / `robots.txt` / 落地页 `APP_URL`），见 `docs/DEPLOYMENT.md`；**实测该子域当前不解析**，绑定前不 push）；② 配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（埋点代码已上线，线上实测零采集）；③ M2 只剩「账号体系」未立项——PWA / 埋点上报 / 草稿恢复已提前落地。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：① Cloudflare 绑定 `app.rich-sim.bayjf.com`（域名已于 2026-10-04 拍板；代码侧 `sitemap.xml` / `robots.txt` / 落地页 `APP_URL` 与全站 canonical 均已指向它，见 `docs/DEPLOYMENT.md`；**实测该子域当前不解析**）；② 配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（埋点代码已上线，线上实测零采集）；③ M2 只剩「账号体系」未立项——PWA / 埋点上报 / 草稿恢复已提前落地。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 
