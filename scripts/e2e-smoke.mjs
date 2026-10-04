@@ -44,7 +44,7 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
 
   // ── 步骤 1：设计器改 2 个选项，断言 sticky 年成本随之变化（再改回默认）──
-  // sticky 条结构：理想生活年成本（USD）/ $108,600 / 已保存… / 选择已…
+  // sticky 条结构：理想生活年成本（USD）/ $101,600 / 已保存… / 选择已…
   const stickyAmount = async () => {
     const t = await page.locator('.fixed.bottom-0').innerText();
     const line = t.split('\n').map((s) => s.trim()).find((s) => /[€£¥$]/.test(s) && /\d/.test(s));
@@ -93,7 +93,15 @@ try {
 
   const enoughText = await page.locator('[data-results-root] .font-mono.text-4xl').innerText();
   const enoughUsd = parseAmount(enoughText);
-  check(Math.abs(enoughUsd - 2715000) < 5000, '结果页：够用线 ≈ $2,715,000（USD）', `enough=${enoughUsd} text="${enoughText.trim()}"`);
+  // 够用线 = 年成本 / 安全提取率（core enoughLine）。两个操作数都从页面上读，
+  // 不再钉死数：目录内容校准会改年成本，公式没变就不该红。
+  const rateText = await page.locator('dt:text-is("安全提取率") + dd').innerText();
+  const withdrawalRate = Number.parseFloat(rateText) / 100;
+  check(
+    Number.isFinite(withdrawalRate) && withdrawalRate > 0 && Math.abs(enoughUsd - v0 / withdrawalRate) < 1,
+    '结果页：够用线 = sticky 年成本 / 页面所示安全提取率',
+    `enough=${enoughUsd} v0=${v0} rate=${rateText.trim()}`,
+  );
 
   const milestoneCount = await page.locator('text=阶段 ').count();
   check(milestoneCount >= 3, '结果页：阶梯目标 ≥3 级', `count=${milestoneCount}`);
