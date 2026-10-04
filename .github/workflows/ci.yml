@@ -1,0 +1,38 @@
+name: CI
+
+# 与 pr-helper 的自动发布门禁有耦合，改这个文件前先读下面两条：
+#   1) 这个 check 会出现在 PR 的 statusCheckRollup 里，pr-helper 据此判定
+#      checks_state；一旦红，自动合并会 pause，合并后红还会让下一步的自动
+#      创建停摆（见 pr-helper/docs/auto-create-pr-remediation.md 第十八节）。
+#      所以：宁可慢，不要 flaky。
+#   2) main 目前无分支保护，因此这个 check 不是 required check——它是靠
+#      pr-helper 读 check 结论来拦，而不是靠 GitHub 的合并按钮拦。
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Unit tests and typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 与 .nvmrc 一致；Cloudflare Pages 构建也靠 .nvmrc 选 Node，
+          # 两边不同版本会让"CI 绿但 Pages 构建红"这类分裂反复出现。
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # 构建不在这里跑：每个 PR 都有 Cloudflare Pages 的 preview 构建覆盖，
+      # 在这里再跑一次只会把门禁的反馈时间翻倍。
+      - run: npm test
+      - run: npm run check
