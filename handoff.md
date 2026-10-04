@@ -29,7 +29,7 @@
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
 | `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
-| `docs/homepage-claim-experience.md` | 首页「领一百万」方案：两态爽→痛特效、示例 profile 走路由态不落 draft、逐条红线对照、开关与埋点 | **草案 v1，未拍板未排期**（含两个 `待定` 数据缺口） |
+| `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **草案 v2，未拍板未排期**（§9 五项待拍） |
 
 ## 已做的决策
 
