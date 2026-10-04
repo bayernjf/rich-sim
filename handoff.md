@@ -12,7 +12,8 @@
 ## 当前状态
 
 - **文档**：9 份，见 `docs/`（下表）
-- **分支**：`dev`，**领先 `origin/dev`（有未推送的提交）**
+- **分支**：`dev`。**同步与领先/落后状态不写死在此**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推送）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
+- **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
 
@@ -53,7 +54,7 @@
 实施拆解（2026-10-03 规划）：
 1. ~~建 `rich-sim-app` 仓库（Astro 5 + React 19 + TS + Tailwind v4，单仓库 + `packages/core`）~~ ✅ 已完成（T01，2026-10-03，`npm run dev`/`test`/`check`/`build` 实测通过）
 2. ~~`@rich-sim/core` 类型契约~~ ✅ 已冻结（T02，`packages/core/src/types.ts`，TS 严格 0 错误）；函数实现与测试（T03–T04）✅ 37 条全绿，手算样例独立复核一致
-3. ~~理想生活设计器（7 维度 × 3–5 选项，合理默认值）~~ ✅ T05 Catalog（7 维 × 23 选项，3 富豪档带来源 URL，其余「待校准」）✅ T06 设计器（2026-10-03）
+3. ~~理想生活设计器（7 维度 × 3–5 选项，合理默认值）~~ ✅ T05 Catalog（7 维 × 23 选项，**23 项全部带可查证公开来源**，2026-10 校准，见 `26b4f4b`）✅ T06 设计器（2026-10-03）
 4. ~~轻量财务录入（≤4 项）~~ ✅ T07（2026-10-03）
 5. ~~测算输出：三状态 + 假设清单 + 免责声明（服务端渲染，不被 JS 关掉）~~ ✅ T08（三状态/阶梯目标，43 测试全绿）+ ✅ T09（纯 SSR 面板，2026-10-03）
 6. ~~币种：本位币选择 + 实时汇率（SSR 代理）~~ ✅ T10（2026-10-03；实测 Frankfurter 已迁移至 api.frankfurter.dev/v1，base=CNY 可用）
@@ -68,7 +69,7 @@
 - **A 文档同步**（纯体力，各 ≤S）：~~① README 部署段过时~~ ✅ 4ca1bcd；~~② PRD §12 里程碑表 M1 仍标「待开发」~~ ✅ 2035316；~~③ 本表文档索引缺 DEPLOYMENT.md、文档计数过时~~ ✅ 462c23a；~~④ tech §12 残留旧托管决策（Vercel）~~ ✅ 5ea6abc；~~⑤ deferred #2 触发条件「M1 发布前」过期~~ ✅ 6c27880；~~⑥ 本表「相关」区 git 同步描述过时~~ ✅ fc2781b。
 - **B 代码小功能**（各 S–M）：~~① PWA 增强（manifest + service worker，tech §10.1 定案「半天成本」）~~ ✅ 32ddb25；~~② 埋点接真实上报（现为 localStorage 队列，T13 遗留）~~ ✅ 629d53c（CF Web Analytics beacon + sendBeacon 自定义事件，均由环境变量开启，未配置零行为）；~~③ sitemap.xml + robots.txt（DEPLOYMENT.md 验证清单 #5 提到，疑未配置）~~ ✅ 584b53b；~~④ WCAG AA / 键盘可达 / 对比度检查修复（PRD §9 硬要求，M1 验收未实测）~~ ✅ 61610ad（danger token、skip link、radiogroup 语义、aria-live、44px 触摸目标、固定底条遮挡）；~~⑤ 深浅色自适应核对（PRD §9，tech §7 说沿用落地页策略，需核实）~~ ✅ 6a4115c（机制已具备：prefers-color-scheme + color-scheme + 全量 light token；仅浅色 accent 对比度 4.36→5.23 加深，双主题全部文本 token 按 WCAG 公式实测 ≥4.5:1）；~~⑥ 草稿恢复入口（方案已存 localStorage，T07，查 UI 是否有回访恢复）~~ ✅ a4dcec0（首页 client:load 岛，nextDraftStep 纯函数 + 4 测试，无草稿不渲染、SSR 空帧）。
 - **C 内容**（各 M）：~~① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6；名人原型合规除外）~~ ✅ f725218（simulation-gameplay v0.2：账单日 6 个建议默认、现金流负担率公式与阈值、爽痛 1:1、两张虚构原型卡、一键成目标入 PRD §7.2/F5；剩余为 M3 前拍板项，见 gameplay §6）；~~② Catalog 21 项「待校准」数值补公开来源（deferred #1）~~ ✅ 26b4f4b（盘点所写「21 项」实为 **20 项**；23 项现已全部附可查证来源：BLS CE 2024 / AAA / KFF / NAIS / Child Care Aware / Allianz / Zillow，富豪极端档为行业估算；统一为实际自付现金口径，移除设计器 mock、catalog 改必传，测试增至 10 条；deferred #1 的 USD 部分闭环）；~~③ PRD §2.3 市场时机论证补全（需外部检索，带来源）~~ ✅ 38eb2df（Deloitte / PwC / 美联储 SHED / TIAA-GFLEC 四来源，deferred #8 市场时机部分闭环）。
-- **需拍板后才能动**：正式域名绑定（deferred #2，先定英文名/域名）、首个付费场景、支付渠道、玩法机制方向（simulation-gameplay §6）、git push（dev 有未推送提交，按约定等用户指示）。
+- **需拍板后才能动**：正式域名绑定（deferred #2，先定英文名/域名）、首个付费场景、支付渠道、玩法机制方向（simulation-gameplay §6）。
 
 ## 待决问题
 
@@ -85,4 +86,5 @@
 ## 相关
 
 - 落地页仓库：`rich-sim-landing`（同级目录，独立 git 仓库）
-- git 状态：`dev` 领先 `origin/dev`（未推送；具体提交数以 `git status` 为准，是否 push 等用户指示）
+- git 状态：见「当前状态」的现测命令；本仓库不再手工维护推送/合并节奏，`dev → main` 由 pr-helper 自动化。
+- **若 `dev` 长时间没进 `main`**：优先查 pr-helper 的「合并后门禁」——它评的是上一个 PR 的 merge commit，那个提交上的红 check 不会自己变绿，会让自动创建停摆（2026-10-04 实测停摆 ≥44 分钟，靠详情页「创建 PR」按钮人工解套）。诊断全文见 pr-helper 仓库 `docs/auto-create-pr-remediation.md` 第十八节。
