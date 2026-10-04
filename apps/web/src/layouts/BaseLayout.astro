@@ -20,6 +20,10 @@ const {
   title,
   description = '先看见富人生活的真实成本，再用你自己的收入算清够用线、差距与年限。财商模拟教育工具，不构成投资建议。',
 } = Astro.props;
+
+// Astro.canonicalURL is undefined under SSR, so build it from the configured
+// origin. An empty href would self-canonicalize, which is worse than omitting.
+const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
 ---
 
 <!doctype html>
@@ -29,6 +33,7 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {canonicalURL && <link rel="canonical" href={canonicalURL} />}
 
     <!-- PWA (B1) -->
     <link rel="manifest" href="/manifest.webmanifest" />

@@ -8,6 +8,10 @@ import cloudflare from '@astrojs/cloudflare';
 // Host: Cloudflare (see rich-sim/docs/technical-design.md §9).
 export default defineConfig({
   output: 'server',
+  // Canonical origin. The Pages domain rich-sim.pages.dev keeps serving the
+  // same app, so without this the two hosts are duplicate content and each
+  // would self-canonicalize.
+  site: 'https://app.rich-sim.bayjf.com',
   adapter: cloudflare(),
   integrations: [react()],
   vite: {

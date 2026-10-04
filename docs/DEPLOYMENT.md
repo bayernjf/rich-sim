@@ -4,7 +4,7 @@
 
 ## 站点信息
 - Pages 项目：`rich-sim`（**Git 集成**：GitHub 仓库 `bayernjf/rich-sim`，push `main` 自动构建部署）
-- 域名：`rich-sim.<pages>.dev`（项目创建时分配；正式域名待定——绑定方式参考 `rich-sim-landing`：CNAME → pages.dev，Proxied）
+- 域名：正式域 `app.rich-sim.bayjf.com`（2026-10-04 拍板，落地页为 `rich-sim.bayjf.com`）；Pages 分配域 `rich-sim.pages.dev` 保留作对照。绑定方式同 `rich-sim-landing`：DNS 记录 CNAME → `rich-sim.pages.dev`、Proxied，再在 Pages 项目加 Custom domain。**截至本次提交该子域尚未解析（`dig` 空、`curl` 000），绑定前不要把改动 push。**
 - 技术栈：Astro 5 **SSR**（`@astrojs/cloudflare` adapter）+ React 19 islands + `@rich-sim/core`（monorepo）
 - 包管理器：npm workspaces（`apps/web` + `packages/core`）
 
@@ -60,12 +60,12 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-   —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://rich-sim.pages.dev node scripts/e2e-smoke.mjs`（15 条断言，headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）
-5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（临时域为 `rich-sim.pages.dev`）
+   —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（15 条断言，headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）
+5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（正式域为 `app.rich-sim.bayjf.com`）
 
-> **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为 `rich-sim.pages.dev`。换正式域名后第 5 条必须重跑。
+> **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。**同日稍后域名拍板为 `app.rich-sim.bayjf.com` 并已改码，第 5 条与第 4 条待绑定后重跑。**
 
 ## 与 landing 的关系
 - `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
 - 产品应用 `rich-sim`：本仓库，SSR 应用。两个 Pages 项目各自 Git 集成，互不影响
-- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config、Cloudflare Custom domain，以及 `apps/web/public/robots.txt` 与 `apps/web/public/sitemap.xml`（B3，当前写死临时域 `rich-sim.pages.dev`）多处同步
+- 换正式域名时要同步的位置（2026-10-04 实测清点）：`apps/web/public/sitemap.xml`（4 个 `<loc>`）、`apps/web/public/robots.txt`（1 行 `Sitemap:`）、`rich-sim-landing/src/content/site.ts` 的 `APP_URL`、以及 Cloudflare 侧的 DNS 记录与 Pages Custom domain。**没有别的地方**：本仓库不存在 `consts.ts`，`astro.config.mjs` 也没设 `site`，应用源码与 `manifest.webmanifest` 里没有任何自引用的绝对 URL——此前本节写的「consts.ts / Astro config」是凭空列的，已按实测更正。
