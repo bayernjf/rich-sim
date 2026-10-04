@@ -60,7 +60,10 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
+   —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://rich-sim.pages.dev node scripts/e2e-smoke.mjs`（15 条断言，headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）
 5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（临时域为 `rich-sim.pages.dev`）
+
+> **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为 `rich-sim.pages.dev`。换正式域名后第 5 条必须重跑。
 
 ## 与 landing 的关系
 - `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
