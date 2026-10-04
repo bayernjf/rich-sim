@@ -10,7 +10,7 @@
 | # | 事项 | 当前建议 | 触发条件（何时激活） | 阻塞性 |
 |---|---|---|---|---|
 | 1 | 设计器选项内容 + Catalog 年成本数值口径（美元 / 人民币） | ✅ 海外 USD 口径已跑通，**23 项年成本已全部附公开来源校准**（C2，2026-10，见 `packages/core/src/catalog-data.ts`：BLS CE 2024 / AAA / KFF / NAIS / Child Care Aware / Allianz / Zillow，富豪极端档为行业公开估算）；人民币口径待大陆阶段 | 人民币 / 多币种：大陆阶段上线前 | 不阻塞（USD 已闭环） |
-| 2 | 产品英文名 / 域名 / 品牌 | ✅ **域名与英文名已定（2026-10-04）**：英文名沿用 `rich-sim`（与中文名「财富模拟」并列），产品域 `app.rich-sim.bayjf.com`，落地页 `rich-sim.bayjf.com`（已绑定实测 200）。**代码侧五处已改**（见 `DEPLOYMENT.md` 的同步清单）；**剩 Cloudflare 绑定**——`app.rich-sim.bayjf.com` 目前不解析。品牌视觉 / 商标未定，仍后置 | 绑定完成后本条关闭 | 阻塞「公开推广」，不阻塞开发 |
+| 2 | 产品英文名 / 域名 / 品牌 | ✅ **域名与英文名已定并绑定（2026-10-04）**：英文名沿用 `rich-sim`（与中文名「财富模拟」并列），产品域 `app.rich-sim.bayjf.com`（浏览器实测可达、canonical/robots/sitemap 同域），落地页 `rich-sim.bayjf.com`。代码侧改了四处：`sitemap.xml`、`robots.txt`、`astro.config.mjs` 的 `site` + `BaseLayout` 的 canonical、落地页 `APP_URL`。**仍后置**：品牌视觉 / 商标 | 品牌视觉启动时再开一条 | 不阻塞 |
 | 3 | 付费墙设计（免费 / 付费分界） | 见 PRD §10 付费场景建议 | M1 验证后（付费意愿测试前） | 不阻塞 |
 | 4 | 三数测量方式（埋点方案 + 付费意愿测试形态） | 分析工具接入点预留 | M1 后期埋点接入时 | 不阻塞 |
 | 5 | 合规细节：法务确认「只对自填假设做算术」 + 海外 publicity rights 复核 | 见 simulation-gameplay §4 | 虚构原型卡（M3）上线前 | 不阻塞 M1 |
