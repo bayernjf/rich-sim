@@ -62,6 +62,13 @@
 
 **M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → Pages 项目 `rich-sim`（**Git 集成**：GitHub `bayernjf/rich-sim`，monorepo 根部署，详见 `docs/DEPLOYMENT.md`）。部署冒烟曾全部通过（首页 200、`/api/fx` Workers 环境实测返回完整汇率快照、假设清单+免责声明纯 SSR 源码可见）——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：正式域名绑定（需先定英文名/域名，deferred #2）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
 
+### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
+
+- **A 文档同步**（纯体力，各 ≤S）：① README 部署段过时（「暂不上线」vs DEPLOYMENT.md Git 集成已就位）；② PRD §12 里程碑表 M1 仍标「待开发」；③ 本表文档索引不全（缺 wealth-lifestyle-framework / simulation-gameplay / deferred-items / m1-task-breakdown / DEPLOYMENT 5 份）；④ tech §12 待决 #1/#3 残留旧托管决策（Vercel）与 §9 已拍板冲突；⑤ deferred #2 触发条件「M1 发布前」已过期；⑥ 本表「相关」区 git 同步描述过时（实测 dev 领先 origin/dev 32 提交，未推送）。
+- **B 代码小功能**（各 S–M）：① PWA 增强（manifest + service worker，tech §10.1 定案「半天成本」）；② 埋点接真实上报（现为 localStorage 队列，T13 遗留）；③ sitemap.xml + robots.txt（DEPLOYMENT.md 验证清单 #5 提到，疑未配置）；④ WCAG AA / 键盘可达 / 对比度检查修复（PRD §9 硬要求，M1 验收未实测）；⑤ 深浅色自适应核对（PRD §9，tech §7 说沿用落地页策略，需核实）；⑥ 草稿恢复入口（方案已存 localStorage，T07，查 UI 是否有回访恢复）。
+- **C 内容**（各 M）：① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6，数值边做边定；名人原型合规除外）；② Catalog 21 项「待校准」数值补公开来源（deferred #1）；③ PRD §2.3 市场时机论证补全（需外部检索，带来源）。
+- **需拍板后才能动**：正式域名绑定（deferred #2，先定英文名/域名）、首个付费场景、支付渠道、玩法机制方向（simulation-gameplay §6）、git push（dev 领先 32 提交，按约定等用户指示）。
+
 ## 待决问题
 
 详见 `docs/technical-design.md` §12 与 `docs/PRD.md` §13。关键几条：
@@ -77,4 +84,4 @@
 ## 相关
 
 - 落地页仓库：`rich-sim-landing`（同级目录，独立 git 仓库）
-- git 状态：`dev` 与 `origin/dev` 已同步（2026-10-03 实测，工作区干净）
+- git 状态：`dev` 领先 `origin/dev` **32 个提交**（2026-10-04 实测，未推送；是否 push 等用户指示）
