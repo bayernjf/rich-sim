@@ -253,9 +253,9 @@ MVP 无后端。引入后：
 - **区域**：Cloudflare 与 Supabase 均就近全球边缘/区域，海外访问无碍。
 
 **部署状态（2026-10-04）**
-- `rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（wrangler 直传，已上线 200 可用）
-- 产品应用：**暂不上线**（曾部署冒烟全过——`/api/fx` 实测返回完整汇率快照、CNY base 可用；`/app/result` 假设清单+免责声明纯 SSR 源码可见——后撤销线上部署；代码在本仓库 `apps/`，需要时按 `docs/DEPLOYMENT.md` 重建）
-- 正式域名**待定**（deferred #2 英文名/域名；绑定方式参考 `agent-world-landing/docs/DEPLOYMENT.md`：CNAME → pages.dev，Proxied）
+- `rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建；另绑 `rich-sim.bayjf.com`）
+- 产品应用 `rich-sim` → Pages 项目 `rich-sim`（**Git 集成**：GitHub `bayernjf/rich-sim`，monorepo 根部署——Root directory 留空、`npm ci && npm run build`、output `apps/web/dist`、`NODE_VERSION=22`、production `main`；详见 `docs/DEPLOYMENT.md`）
+- 正式域名**待定**（deferred #2 英文名/域名；产品应用可用 `app.rich-sim.bayjf.com` 等子域，绑定方式参考 landing：CNAME → pages.dev，Proxied）
 
 ### 阶段二 · 大陆（确认主攻后再做）
 

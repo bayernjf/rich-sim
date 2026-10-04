@@ -60,7 +60,7 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（wrangler 直传，200 可用）；产品应用**暂不上线**（曾部署的 `rich-sim-app.pages.dev` 已撤销，代码在本仓库 `apps/`，需要时按 `docs/DEPLOYMENT.md` 重建部署）。部署冒烟曾全部通过（首页 200、`/api/fx` Workers 环境实测返回完整汇率快照、假设清单+免责声明纯 SSR 源码可见）——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：正式域名绑定（需先定英文名/域名，deferred #2）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → Pages 项目 `rich-sim`（**Git 集成**：GitHub `bayernjf/rich-sim`，monorepo 根部署，详见 `docs/DEPLOYMENT.md`）。部署冒烟曾全部通过（首页 200、`/api/fx` Workers 环境实测返回完整汇率快照、假设清单+免责声明纯 SSR 源码可见）——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：正式域名绑定（需先定英文名/域名，deferred #2）；M2 立项（埋点接真实上报、PWA、见 `docs/technical-design.md` §10）。
 
 ## 待决问题
 

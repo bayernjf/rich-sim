@@ -1,37 +1,59 @@
-# 部署 — rich-sim-app（当前未部署）
+# 部署 — rich-sim（产品应用 · Cloudflare Pages Git 集成）
 
 更新时间：2026-10-04
 
-> **状态：暂不上线（2026-10-04 决定）**。产品本身不发版到 Cloudflare，仅本地开发。
-> 线上部署已撤销（Pages 项目 `rich-sim-app` 已删除）。以下流程仅在**决定上线时**使用。
-
-## 站点信息（备查）
-- Pages 项目：`rich-sim-app`（**wrangler 直传模式**；已删除，需要时重建）
-- 技术栈：Astro 5 SSR（`@astrojs/cloudflare` adapter）+ React 19 islands + `@rich-sim/core`（monorepo）
+## 站点信息
+- Pages 项目：`rich-sim`（**Git 集成**：GitHub 仓库 `bayernjf/rich-sim`，push `main` 自动构建部署）
+- 域名：`rich-sim.<pages>.dev`（项目创建时分配；正式域名待定——绑定方式参考 `rich-sim-landing`：CNAME → pages.dev，Proxied）
+- 技术栈：Astro 5 **SSR**（`@astrojs/cloudflare` adapter）+ React 19 islands + `@rich-sim/core`（monorepo）
 - 包管理器：npm workspaces（`apps/web` + `packages/core`）
 
-## 构建
+## 为什么是 monorepo 根部署（关键）
+
+`apps/web` 依赖本地 workspace 包 `@rich-sim/core@0.1.0`——**registry 上没有这个版本**，只有根目录 `npm install` 才能符号链接解析。
+
+所以 Cloudflare 配置中 **Root directory 必须留空（仓库根）**：
+- ❌ 错误：Root directory = `apps/web` → 构建时 `npm install` 从 registry 拉 `@rich-sim/core` 直接失败
+- ✅ 正确：Root directory 留空 → 根 `npm ci` 正确装 workspace，根 `npm run build` 代理到 `@rich-sim/web`
+
+## Cloudflare Pages 配置（已就位）
+| 项 | 值 |
+|---|---|
+| Framework preset | Astro |
+| **Root directory** | **（留空 = 仓库根）** |
+| Build command | `npm ci && npm run build` |
+| Build output directory | `apps/web/dist` |
+| Environment variables | `NODE_VERSION = 22` |
+| Production branch | `main` |
+| Automatic deployments | Enabled |
+| SSR 兼容 | `nodejs_compat` compatibility flag（`/api/fx` 汇率代理端点依赖 Node API） |
+
+## 构建（本地）
 ```bash
 npm install
 npm run build     # 根 script = npm run build -w @rich-sim/web，产物 apps/web/dist/
-npm run test      # core + web 全部单测
+npm run test      # core + web 全部单测（发版质量门槛）
 npm run check     # 类型检查
 ```
 
-## 部署（wrangler 直传）
+## 发布流程
 ```bash
-cd apps/web && wrangler pages deploy dist --project-name=rich-sim-app --branch=main
+npm run build && npm run test     # 本地验证（产品发版必须过测试门槛）
+git add -A && git commit -m "…"
+git checkout main && git merge dev
+git push origin main              # 触发 Cloudflare 自动构建
 ```
-- production branch = `main`
-- 每次更新：根目录 `npm run build && npm run test` 后，`cd apps/web && wrangler pages deploy dist --project-name=rich-sim-app --branch=main`
-
-## 是否需要 GitHub 集成（结论：不需要，维持 wrangler 直传）
-- **rich-sim-app 是产品本身**（区别于 landing 落地页）：发版应受质量门槛控制（先 `npm run test` 再部署），
-  **不接入 GitHub 集成自动构建**，维持 wrangler 直传一条命令发版。
-- GitHub 仓库仅作版本管理用（可选，由发起人决定是否补建），与部署解耦。
+兜底（手动直传，仅应急，不覆盖 Git 集成状态）：
+`wrangler pages deploy apps/web/dist --project-name=rich-sim --branch=main`
 
 ## 发布后验证
 1. 首页 200，标题「财富模拟 · rich-sim」
-2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 Workers `nodejs_compat`）
+2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
+5. `sitemap` / `robots.txt`（应用路由如已配置则核验域名一致）
+
+## 与 landing 的关系
+- `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
+- 产品应用 `rich-sim`：本仓库，SSR 应用。两个 Pages 项目各自 Git 集成，互不影响
+- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config 与 Cloudflare Custom domain 两处同步
