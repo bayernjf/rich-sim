@@ -1,0 +1,27 @@
+---
+/**
+ * B2 · 真实上报（可选，全部由环境变量开启，未配置时零输出）。
+ *
+ * - PUBLIC_CF_WEB_ANALYTICS_TOKEN：Cloudflare Web Analytics 的 beacon token，
+ *   自动采集 PV / 会话（完成率漏斗的「进入」分母）。在 Cloudflare 控制台
+ *   Web Analytics 新建站点后获取；仅生产构建注入，dev 不统计。
+ * - 自定义漏斗事件（designer:select / finance:update / results:view /
+ *   currency:switch）走 lib/analytics.ts 的 PUBLIC_ANALYTICS_ENDPOINT
+ *   （sendBeacon 批量上报）；CF Web Analytics 无通用自定义事件 API。
+ *
+ * 未配置任何环境变量时，本组件不输出任何标签，行为与 M1 完全一致。
+ */
+const cfToken = import.meta.env.PROD
+  ? (import.meta.env.PUBLIC_CF_WEB_ANALYTICS_TOKEN ?? '').trim()
+  : '';
+const cfBeacon = cfToken ? JSON.stringify({ token: cfToken }) : '';
+---
+
+{cfBeacon && (
+  <script
+    is:inline
+    defer
+    src="https://static.cloudflareinsights.com/beacon.min.js"
+    data-cf-beacon={cfBeacon}
+  ></script>
+)}

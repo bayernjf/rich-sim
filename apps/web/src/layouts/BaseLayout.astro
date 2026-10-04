@@ -9,6 +9,7 @@
  * 页面主体（<main> 与内边距差异）由各页通过默认 slot 自行渲染。
  */
 import '../styles/global.css';
+import Analytics from '../components/Analytics.astro';
 
 interface Props {
   title: string;
@@ -42,6 +43,9 @@ const {
   </head>
   <body class="min-h-dvh bg-canvas text-ink">
     <slot />
+
+    <!-- B2 真实上报：未配置环境变量时零输出（见 Analytics.astro） -->
+    <Analytics />
 
     <!-- 注册 service worker：失败静默，绝不阻塞页面（SSR 安全，is:inline 不打包） -->
     <script is:inline>

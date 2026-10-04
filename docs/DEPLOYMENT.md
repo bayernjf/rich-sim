@@ -28,6 +28,15 @@
 | Automatic deployments | Enabled |
 | SSR 实测 | `/api/fx` 已线上验证（Frankfurter ECB 汇率代理，2026-10-04 实测 200）——当前环境无需 `nodejs_compat` 显式配置 |
 
+## 分析埋点（可选，B2）
+
+未配置时应用不加载任何第三方脚本，漏斗事件只存本机队列（等同 M1 行为）。
+
+| 变量 | 作用 |
+|---|---|
+| `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取 |
+| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件（designer:select / finance:update / results:view / currency:switch）收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [...] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机 |
+
 ## 构建（本地）
 ```bash
 npm install
