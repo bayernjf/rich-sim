@@ -195,7 +195,7 @@ export default function FinanceForm() {
         })}
       </div>
 
-      <p className="mt-4 text-xs text-muted">
+      <p className="mt-4 text-xs text-muted" aria-live="polite">
         {saved ? '已自动保存到本机' : '4 项填齐后自动保存到本机'}
       </p>
 

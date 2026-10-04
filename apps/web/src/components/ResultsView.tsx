@@ -65,7 +65,7 @@ export default function ResultsView({ catalog }: { catalog: Catalog }) {
       </header>
 
       {view === 'loading' && (
-        <p className="mt-8 text-sm text-muted" data-results-loading>正在读取本机方案…</p>
+        <p className="mt-8 text-sm text-muted" data-results-loading aria-live="polite">正在读取本机方案…</p>
       )}
 
       {(view === 'no-draft' || (view !== 'loading' && view.status === 'no-profile')) && (

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="rich-sim">
+  <!-- any-purpose icon: rounded dark tile with a gold rising market line -->
+  <rect width="512" height="512" rx="112" fill="#0a0a0c"/>
+  <rect x="96" y="384" width="320" height="6" rx="3" fill="#383842"/>
+  <path d="M116 328 L212 256 L288 292 L396 176"
+        fill="none" stroke="#e8a93c" stroke-width="30"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M396 124 V188 M332 188 H396"
+        fill="none" stroke="#e8a93c" stroke-width="30"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

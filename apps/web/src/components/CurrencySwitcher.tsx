@@ -97,7 +97,7 @@ export default function CurrencySwitcher({
           value={currency}
           disabled={busy}
           onChange={(e) => void handleChange(e.target.value as Currency)}
-          className="rounded-lg border border-line bg-panel-2 px-2 py-1.5 text-sm text-ink focus-visible:outline-accent"
+          className="min-h-11 rounded-lg border border-line bg-panel-2 px-2 py-1.5 text-sm text-ink focus-visible:outline-accent"
         >
           {SUPPORTED_CURRENCIES.map((c) => (
             <option key={c} value={c}>
@@ -110,7 +110,7 @@ export default function CurrencySwitcher({
         </span>
       </div>
       {error ? (
-        <p className="mt-1 text-xs text-red-500">切换失败：{error}</p>
+        <p className="mt-1 text-xs text-danger" role="alert">切换失败：{error}</p>
       ) : null}
     </div>
   );

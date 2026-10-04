@@ -12,93 +12,19 @@ import { track } from '../lib/analytics';
 import CurrencySwitcher from './CurrencySwitcher';
 
 /**
- * T06 · 理想生活设计器（mobile-first, mock-first）。
+ * T06 · 理想生活设计器（mobile-first）。
  *
  * - 7 个维度以卡片列表呈现，每维单选；选项卡显示中文 label + 年成本（USD, 等宽数字）。
  * - 年成本实时预览 + 保存状态，sticky 底部条常驻。
  * - 选择经 lib/draft.ts 持久化到 localStorage（key `rich-sim:plan:v1`），mount 时恢复。
- * - mock Catalog 为组件 prop 默认值；Wave 2 集成 Agent B 的真实 catalog-data 时，
- *   只需把 `catalog={...}` 传进来，本组件无需改动（维度数量不写死）。
+ * - catalog 为必传 prop，由页面传入 core 的 `initialCatalogUSD`（金额唯一事实源，
+ *   已全部附公开来源），组件维度数量不写死。
  * - 不 import core 任何运行时函数；年成本在本地求和。
  */
 
-/**
- * 临时 mock Catalog。年成本为清晰占位值（待校准），仅用于走通 UI 与持久化链路。
- * 默认选择（isDefault）合计 = 36000+12000+15000+0+5000+2000+10000 = 80000。
- */
-const MOCK_CATALOG: Catalog = {
-  currency: 'USD',
-  dimensions: [
-    {
-      id: 'living',
-      label: '居住',
-      options: [
-        { id: 'share', label: '合租单间', annualCost: 12000, note: '待校准占位' },
-        { id: 'apt', label: '一居室公寓', annualCost: 36000, isDefault: true, note: '待校准占位' },
-        { id: 'house', label: '舒适两居', annualCost: 72000, note: '待校准占位' },
-        { id: 'villa', label: '独栋住宅', annualCost: 180000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'transport',
-      label: '出行',
-      options: [
-        { id: 'transit', label: '公共交通为主', annualCost: 3000, note: '待校准占位' },
-        { id: 'sedan', label: '家用轿车', annualCost: 12000, isDefault: true, note: '待校准占位' },
-        { id: 'luxury', label: '豪华车', annualCost: 48000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'dining',
-      label: '餐饮与日常',
-      options: [
-        { id: 'cook', label: '自炊为主', annualCost: 6000, note: '待校准占位' },
-        { id: 'mixed', label: '外食各半', annualCost: 15000, isDefault: true, note: '待校准占位' },
-        { id: 'dineout', label: '经常下馆子', annualCost: 36000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'family',
-      label: '家庭与子女',
-      options: [
-        { id: 'duo', label: '二人世界', annualCost: 0, isDefault: true, note: '待校准占位' },
-        { id: 'onekid', label: '一个孩子', annualCost: 30000, note: '待校准占位' },
-        { id: 'twokids', label: '两个孩子', annualCost: 60000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'travel',
-      label: '旅行',
-      options: [
-        { id: 'domestic', label: '国内短途', annualCost: 5000, isDefault: true, note: '待校准占位' },
-        { id: 'abroad', label: '每年一次出境', annualCost: 15000, note: '待校准占位' },
-        { id: 'global', label: '环球旅行', annualCost: 60000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'medical',
-      label: '保险与医疗',
-      options: [
-        { id: 'basic', label: '基础医疗', annualCost: 2000, isDefault: true, note: '待校准占位' },
-        { id: 'supp', label: '补充商业险', annualCost: 8000, note: '待校准占位' },
-        { id: 'premium', label: '高端医疗', annualCost: 30000, note: '待校准占位' },
-      ],
-    },
-    {
-      id: 'leisure',
-      label: '其他弹性',
-      options: [
-        { id: 'low', label: '几乎没有', annualCost: 0, note: '待校准占位' },
-        { id: 'medium', label: '适度娱乐', annualCost: 10000, isDefault: true, note: '待校准占位' },
-        { id: 'high', label: '宽裕享受', annualCost: 40000, note: '待校准占位' },
-      ],
-    },
-  ],
-};
-
 type DesignerShellProps = {
-  /** 维度目录；默认内置 mock。Wave 2 传入 Agent B 的真实 catalog 即可。 */
-  catalog?: Catalog;
+  /** 维度目录（必传）；生产由页面传入 core 的 initialCatalogUSD。 */
+  catalog: Catalog;
 };
 
 /** 每维默认选中一项（isDefault，否则第一项）。 */
@@ -130,7 +56,7 @@ function annualTotal(catalog: Catalog, choices: LifeChoice): number {
   return sum;
 }
 
-export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellProps) {
+export default function DesignerShell({ catalog }: DesignerShellProps) {
   // SSR 用默认选择渲染（确定性，SSR HTML 即含 7 维标题与选项）；
   // 客户端 mount 后再尝试从 localStorage 恢复。
   const [choices, setChoices] = useState<LifeChoice>(() => defaultChoices(catalog));
@@ -226,6 +152,8 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
         {catalog.dimensions.map((dim, idx) => (
           <div
             key={dim.id}
+            role="radiogroup"
+            aria-label={dim.label}
             className="rounded-2xl border border-line bg-panel p-4"
           >
             <h2 className="text-base font-semibold">
@@ -241,7 +169,8 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
                   <button
                     key={opt.id}
                     type="button"
-                    aria-pressed={selected}
+                    role="radio"
+                    aria-checked={selected}
                     onClick={() => handleSelect(dim.id, opt.id)}
                     className={[
                       'flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left',
@@ -289,7 +218,7 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
               {fmt(total)}
             </div>
           </div>
-          <div className="text-right text-xs leading-relaxed text-muted">
+          <div className="text-right text-xs leading-relaxed text-muted" aria-live="polite">
             <div>{persisted ? '已保存 · 本机' : '未保存'}</div>
             <div className="mt-0.5">
               {persisted ? '选择已自动存入本机' : '选择后自动保存'}

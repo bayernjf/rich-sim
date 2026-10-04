@@ -28,6 +28,15 @@
 | Automatic deployments | Enabled |
 | SSR 实测 | `/api/fx` 已线上验证（Frankfurter ECB 汇率代理，2026-10-04 实测 200）——当前环境无需 `nodejs_compat` 显式配置 |
 
+## 分析埋点（可选，B2）
+
+未配置时应用不加载任何第三方脚本，漏斗事件只存本机队列（等同 M1 行为）。
+
+| 变量 | 作用 |
+|---|---|
+| `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取 |
+| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件（designer:select / finance:update / results:view / currency:switch）收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [...] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机 |
+
 ## 构建（本地）
 ```bash
 npm install
@@ -51,9 +60,9 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-5. `sitemap` / `robots.txt`（应用路由如已配置则核验域名一致）
+5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（临时域为 `rich-sim.pages.dev`）
 
 ## 与 landing 的关系
 - `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
 - 产品应用 `rich-sim`：本仓库，SSR 应用。两个 Pages 项目各自 Git 集成，互不影响
-- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config 与 Cloudflare Custom domain 两处同步
+- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config、Cloudflare Custom domain，以及 `apps/web/public/robots.txt` 与 `apps/web/public/sitemap.xml`（B3，当前写死临时域 `rich-sim.pages.dev`）多处同步

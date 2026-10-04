@@ -68,6 +68,7 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 - ✅ **T02**（2026-10-03）：core 类型契约冻结于 `packages/core/src/types.ts`（含 Currency/FxSnapshot/convert、Catalog 类型、assumptionsVersion），TS 严格模式 0 错误；三线并行契约（localStorage draft schema、路由表）见 `CONVENTIONS.md`。
 - ✅ **T03–T04**（2026-10-03）：core 6 函数实现 + 37 条测试全绿；手算样例独立复核一致（40 万@4%→1000 万、存 10 万年储 6 万@4%→12 年、r=0 退化、gap 年金反解）。
 - ✅ **T05**（2026-10-03）：Catalog 7 维度 × 23 选项（USD 年成本），3 个富豪档带公开 URL，21 个标「待校准」+ 校准意图；形状测试 9 条全绿。
+- ✅ **C2**（2026-10-04）：Catalog **23 项年成本全部附公开来源校准**（普通人/理想档锚 BLS CE 2024 全国均值与最高收入五分位、AAA Your Driving Costs、KFF 雇主医保、NAIS 私校、Child Care Aware 托育、Allianz 度假、Zillow 租金；富豪极端档为行业公开估算，取值保守）；口径统一为消费者实际自付年现金支出（房贷只计利息、雇主承担保费与本金不计入）。同步移除设计器内置 mock catalog、`catalog` 改必传 prop；形状测试增至 10 条（强制每个 `source` 为 http(s) URL、选项金额逐维严格递增）。deferred #1 的 USD 部分闭环。
 - ✅ **T06**（2026-10-03）：设计器 mobile-first（可点选、本地保存、实时年成本预览），已接真实 catalog。
 - ✅ **T07**（2026-10-03）：财务录入 ≤4 项 + 校验拦截 + localStorage 持久化。
 - ✅ **T09**（2026-10-03）：假设清单 + 免责声明 SSR 渲染（纯 Astro 组件，零客户端 JS）。
