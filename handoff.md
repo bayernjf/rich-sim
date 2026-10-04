@@ -42,7 +42,7 @@
 | MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
 | 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
 | 币种与汇率 | 计算在本位币、换算只在展示层；汇率 = 假设的一部分（快照进 Assumptions 并参与版本化）；M1 实时汇率（SSR 代理），M2 历史汇率 | `technical-design.md` §4.2 |
-| **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`，落地页 `rich-sim.bayjf.com`（已绑定，实测 200）；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`**；Cloudflare 侧绑定未完成（子域当前不解析） | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
+| **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`（2026-10-04 绑定，浏览器实测可达、canonical/robots/sitemap 同域、冒烟 15/15），落地页 `rich-sim.bayjf.com`；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`** | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
 
 ## 下一步
 
@@ -63,7 +63,7 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：① Cloudflare 绑定 `app.rich-sim.bayjf.com`（域名已于 2026-10-04 拍板；代码侧 `sitemap.xml` / `robots.txt` / 落地页 `APP_URL` 与全站 canonical 均已指向它，见 `docs/DEPLOYMENT.md`；**实测该子域当前不解析**）；② 配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（埋点代码已上线，线上实测零采集）；③ M2 只剩「账号体系」未立项——PWA / 埋点上报 / 草稿恢复已提前落地。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步：① 配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（埋点代码已上线，线上实测零采集）；② M2 只剩「账号体系」未立项——PWA / 埋点上报 / 草稿恢复已提前落地。（域名 `app.rich-sim.bayjf.com` 已于 2026-10-04 绑定，并在新域复验通过。）
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 

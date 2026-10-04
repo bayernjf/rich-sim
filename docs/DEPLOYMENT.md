@@ -4,7 +4,8 @@
 
 ## 站点信息
 - Pages 项目：`rich-sim`（**Git 集成**：GitHub 仓库 `bayernjf/rich-sim`，push `main` 自动构建部署）
-- 域名：正式域 `app.rich-sim.bayjf.com`（2026-10-04 拍板，落地页为 `rich-sim.bayjf.com`）；Pages 分配域 `rich-sim.pages.dev` 保留作对照。绑定方式同 `rich-sim-landing`：DNS 记录 CNAME → `rich-sim.pages.dev`、Proxied，再在 Pages 项目加 Custom domain。**截至本次提交该子域尚未解析（`dig` 空、`curl` 000），绑定前不要把改动 push。**
+- 域名：正式域 `app.rich-sim.bayjf.com`（2026-10-04 拍板并于同日绑定）；Pages 分配域 `rich-sim.pages.dev` 保留作对照。绑定方式同 `rich-sim-landing`：Pages 项目加 Custom domain，Cloudflare 自动补 CNAME → `rich-sim.pages.dev`、Proxied。
+  - **验证新域时别只信本机 `curl`**：2026-10-04 绑定后 `curl` 先报 `Could not resolve host`（解析器还缓存着绑定前的否定应答），再报 TLS 验证失败（系统信任库不认刚签发的 Google Trust Services `WE1` 证书，而 `-k` 直接 200）。`dig +short @1.1.1.1` 与真实浏览器都是好的。**判定「域名通不通」以浏览器为准，`curl` 失败先怀疑本机。**
 - 技术栈：Astro 5 **SSR**（`@astrojs/cloudflare` adapter）+ React 19 islands + `@rich-sim/core`（monorepo）
 - 包管理器：npm workspaces（`apps/web` + `packages/core`）
 
@@ -63,7 +64,7 @@ git push origin main              # 触发 Cloudflare 自动构建
    —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（15 条断言，headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）
 5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（正式域为 `app.rich-sim.bayjf.com`）
 
-> **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。**同日稍后域名拍板为 `app.rich-sim.bayjf.com` 并已改码，第 5 条与第 4 条待绑定后重跑。**
+> **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。同日域名拍板并绑定后，第 4 / 5 条已在正式域 `app.rich-sim.bayjf.com` 重跑：冒烟 15/15、`robots.txt` 的 `Sitemap:` 与 `sitemap.xml` 的 4 个 `<loc>` 均为该域、每页 canonical 同域自洽。
 
 ## 与 landing 的关系
 - `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
