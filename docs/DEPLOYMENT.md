@@ -60,9 +60,9 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-5. `sitemap` / `robots.txt`（应用路由如已配置则核验域名一致）
+5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（临时域为 `rich-sim.pages.dev`）
 
 ## 与 landing 的关系
 - `rich-sim-landing`（营销落地页）：独立仓库 `bayernjf/rich-sim-landing`，已 Git 集成上线 → https://rich-sim-landing.pages.dev（含 `rich-sim.bayjf.com`）
 - 产品应用 `rich-sim`：本仓库，SSR 应用。两个 Pages 项目各自 Git 集成，互不影响
-- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config 与 Cloudflare Custom domain 两处同步
+- 正式域名未定（deferred #2 英文名/域名）：定后在 `consts.ts` / Astro config、Cloudflare Custom domain，以及 `apps/web/public/robots.txt` 与 `apps/web/public/sitemap.xml`（B3，当前写死临时域 `rich-sim.pages.dev`）多处同步
