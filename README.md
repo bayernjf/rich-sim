@@ -24,8 +24,8 @@ npm run check # TS 类型检查 + astro check
 
 ## 部署
 
-- 产品应用**暂不上线**：线上部署已撤销，需要时按 `docs/DEPLOYMENT.md` 用 wrangler 直传重建。
-- 落地页 `rich-sim-landing` 已上线：https://rich-sim-landing.pages.dev（wrangler 直传）。
+- 产品应用：Cloudflare Pages 项目 `rich-sim`（**Git 集成**：push `main` 自动构建，monorepo 根部署），预览地址 https://rich-sim.pages.dev；正式域名待定。完整配置与发布流程见 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)。
+- 落地页 `rich-sim-landing`（独立仓库）：https://rich-sim-landing.pages.dev（另绑 https://rich-sim.bayjf.com）。
 
 ## 约定
 
