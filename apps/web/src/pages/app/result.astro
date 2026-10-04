@@ -1,23 +1,18 @@
 ---
 import ResultsView from '../../components/ResultsView';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
-import '../../styles/global.css';
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>测算结果 · 财富模拟</title>
-  </head>
-  <body class="min-h-dvh bg-canvas text-ink">
-    <main class="mx-auto max-w-3xl px-4 py-8">
-      <ResultsView catalog={initialCatalogUSD} client:load />
+<BaseLayout
+  title="测算结果 · 财富模拟"
+  description="基于你自己填写的假设做静态算术：够用线、差距、年限与阶梯目标。不预测、不承诺，不构成投资建议。"
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-8">
+    <ResultsView catalog={initialCatalogUSD} client:load />
 
-      <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
-      <AssumptionsPanel />
-    </main>
-  </body>
-</html>
+    <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
+    <AssumptionsPanel />
+  </main>
+</BaseLayout>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>已离线 · 财富模拟</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; display: grid; place-items: center;
+      background: #0a0a0c; color: #f4f4f5;
+      font-family: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 24px; text-align: center;
+    }
+    .card { max-width: 26rem; }
+    .mark { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .2em; color: #e8a93c; }
+    h1 { font-size: 22px; font-weight: 600; margin: 12px 0 8px; }
+    p { color: #9a9aa4; font-size: 14px; line-height: 1.7; margin: 0; }
+    button {
+      margin-top: 20px; min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
+      background: #e8a93c; color: #1a1204; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    button:focus-visible { outline: 2px solid #e8a93c; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="mark">RICH-SIM · 财富模拟</p>
+    <h1>当前处于离线状态</h1>
+    <p>你的方案只保存在这台设备的浏览器里，不会丢失。联网后可继续设计生活、录入财务与查看测算。</p>
+    <button type="button" onclick="location.reload()">重新加载</button>
+  </main>
+</body>
+</html>

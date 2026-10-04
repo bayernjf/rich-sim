@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="rich-sim">
+  <!-- maskable icon: full-bleed dark background, artwork inside the 80% safe zone -->
+  <rect width="512" height="512" fill="#0a0a0c"/>
+  <rect x="128" y="360" width="256" height="6" rx="3" fill="#383842"/>
+  <path d="M144 312 L220 252 L282 282 L368 192"
+        fill="none" stroke="#e8a93c" stroke-width="26"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M368 148 V202 M314 202 H368"
+        fill="none" stroke="#e8a93c" stroke-width="26"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

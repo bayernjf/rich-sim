@@ -1,0 +1,55 @@
+---
+/**
+ * B1 · 全站基础布局（PWA）。
+ *
+ * - 统一 <head>：charset / viewport / title / description / manifest /
+ *   theme-color（深浅双模式）/ 图标 / apple 主屏元信息；
+ * - 注册 /sw.js（离线回退 + 静态资产缓存，见 public/sw.js）；
+ * - global.css 只在此处引入一次。
+ * 页面主体（<main> 与内边距差异）由各页通过默认 slot 自行渲染。
+ */
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = '先看见富人生活的真实成本，再用你自己的收入算清够用线、差距与年限。财商模拟教育工具，不构成投资建议。',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- PWA (B1) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="财富模拟" />
+  </head>
+  <body class="min-h-dvh bg-canvas text-ink">
+    <slot />
+
+    <!-- 注册 service worker：失败静默，绝不阻塞页面（SSR 安全，is:inline 不打包） -->
+    <script is:inline>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
+  </body>
+</html>
