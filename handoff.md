@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：4 份，见 `docs/`（下表）
+- **文档**：9 份，见 `docs/`（下表）
 - **分支**：`dev`，**领先 `origin/dev`（有未推送的提交）**
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -26,6 +26,7 @@
 | `docs/simulation-gameplay.md` | 模拟玩法设计草案（购物 / 六通道体验 / 对比闭环 / 名人原型合规） | Draft |
 | `docs/deferred-items.md` | 可边迭代边讨论的待决事项（每条带触发条件与阻塞性） | 活跃 |
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
+| `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
 
 ## 已做的决策
 
@@ -64,7 +65,7 @@
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 
-- **A 文档同步**（纯体力，各 ≤S）：① README 部署段过时（「暂不上线」vs DEPLOYMENT.md Git 集成已就位）；② PRD §12 里程碑表 M1 仍标「待开发」；③ 本表文档索引不全（缺 wealth-lifestyle-framework / simulation-gameplay / deferred-items / m1-task-breakdown / DEPLOYMENT 5 份）；④ tech §12 待决 #1/#3 残留旧托管决策（Vercel）与 §9 已拍板冲突；⑤ deferred #2 触发条件「M1 发布前」已过期；⑥ 本表「相关」区 git 同步描述过时（实测 dev 领先 origin/dev 32 提交，未推送）。
+- **A 文档同步**（纯体力，各 ≤S）：① README 部署段过时（「暂不上线」vs DEPLOYMENT.md Git 集成已就位）；② PRD §12 里程碑表 M1 仍标「待开发」；③ 本表文档索引缺 DEPLOYMENT.md、文档计数「4 份」过时（实际 9 份）；④ tech §12 待决 #1/#3 残留旧托管决策（Vercel）与 §9 已拍板冲突；⑤ deferred #2 触发条件「M1 发布前」已过期；⑥ 本表「相关」区 git 同步描述过时（实测 dev 领先 origin/dev 32 提交，未推送）。
 - **B 代码小功能**（各 S–M）：① PWA 增强（manifest + service worker，tech §10.1 定案「半天成本」）；② 埋点接真实上报（现为 localStorage 队列，T13 遗留）；③ sitemap.xml + robots.txt（DEPLOYMENT.md 验证清单 #5 提到，疑未配置）；④ WCAG AA / 键盘可达 / 对比度检查修复（PRD §9 硬要求，M1 验收未实测）；⑤ 深浅色自适应核对（PRD §9，tech §7 说沿用落地页策略，需核实）；⑥ 草稿恢复入口（方案已存 localStorage，T07，查 UI 是否有回访恢复）。
 - **C 内容**（各 M）：① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6，数值边做边定；名人原型合规除外）；② Catalog 21 项「待校准」数值补公开来源（deferred #1）；③ PRD §2.3 市场时机论证补全（需外部检索，带来源）。
 - **需拍板后才能动**：正式域名绑定（deferred #2，先定英文名/域名）、首个付费场景、支付渠道、玩法机制方向（simulation-gameplay §6）、git push（dev 领先 32 提交，按约定等用户指示）。
