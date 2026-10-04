@@ -23,10 +23,10 @@
 | **Root directory** | **（留空 = 仓库根）** |
 | Build command | `npm ci && npm run build` |
 | Build output directory | `apps/web/dist` |
-| Environment variables | `NODE_VERSION = 22` |
+| Environment variables | 无必需（Node 版本由根 `.nvmrc` = 22 自动检测） |
 | Production branch | `main` |
 | Automatic deployments | Enabled |
-| SSR 兼容 | `nodejs_compat` compatibility flag（`/api/fx` 汇率代理端点依赖 Node API） |
+| SSR 实测 | `/api/fx` 已线上验证（Frankfurter ECB 汇率代理，2026-10-04 实测 200）——当前环境无需 `nodejs_compat` 显式配置 |
 
 ## 构建（本地）
 ```bash
