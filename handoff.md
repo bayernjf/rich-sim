@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：9 份，见 `docs/`（下表）
+- **文档**：10 份，见 `docs/`（下表）
 - **分支**：`dev`。**同步与领先/落后状态不写死在此**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推送）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -28,6 +28,7 @@
 | `docs/deferred-items.md` | 可边迭代边讨论的待决事项（每条带触发条件与阻塞性） | 活跃 |
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
 | `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
+| `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
 
 ## 已做的决策
 
