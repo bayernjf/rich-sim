@@ -16,6 +16,7 @@
   --color-accent: var(--c-accent);
   --color-accent-soft: var(--c-accent-soft);
   --color-on-accent: var(--c-on-accent);
+  --color-danger: var(--c-danger);
 
   --font-sans: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -33,6 +34,7 @@
   --c-accent: #e8a93c;
   --c-accent-soft: rgba(232, 169, 60, 0.12);
   --c-on-accent: #1a1204;
+  --c-danger: #f87171;
 }
 
 @media (prefers-color-scheme: light) {
@@ -48,6 +50,7 @@
     --c-accent: #a86a0c;
     --c-accent-soft: rgba(168, 106, 12, 0.10);
     --c-on-accent: #ffffff;
+    --c-danger: #b42318;
   }
 }
 
@@ -64,5 +67,22 @@
   :focus-visible {
     outline: 2px solid var(--c-accent);
     outline-offset: 2px;
+  }
+  /* WCAG 2.4.1: keyboard-only skip link to main content */
+  .skip-link {
+    position: absolute;
+    left: 12px;
+    top: -48px;
+    z-index: 50;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--c-accent);
+    color: var(--c-on-accent);
+    font-size: 14px;
+    font-weight: 600;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus-visible {
+    top: 12px;
   }
 }

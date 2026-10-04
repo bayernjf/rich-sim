@@ -226,6 +226,8 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
         {catalog.dimensions.map((dim, idx) => (
           <div
             key={dim.id}
+            role="radiogroup"
+            aria-label={dim.label}
             className="rounded-2xl border border-line bg-panel p-4"
           >
             <h2 className="text-base font-semibold">
@@ -241,7 +243,8 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
                   <button
                     key={opt.id}
                     type="button"
-                    aria-pressed={selected}
+                    role="radio"
+                    aria-checked={selected}
                     onClick={() => handleSelect(dim.id, opt.id)}
                     className={[
                       'flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left',
@@ -289,7 +292,7 @@ export default function DesignerShell({ catalog = MOCK_CATALOG }: DesignerShellP
               {fmt(total)}
             </div>
           </div>
-          <div className="text-right text-xs leading-relaxed text-muted">
+          <div className="text-right text-xs leading-relaxed text-muted" aria-live="polite">
             <div>{persisted ? '已保存 · 本机' : '未保存'}</div>
             <div className="mt-0.5">
               {persisted ? '选择已自动存入本机' : '选择后自动保存'}
