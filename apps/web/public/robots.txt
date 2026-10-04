@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 
 # 工具流程页仍可公开访问；如日后引入账号/私有路径，在此 Disallow。
-Sitemap: https://rich-sim.pages.dev/sitemap.xml
+Sitemap: https://app.rich-sim.bayjf.com/sitemap.xml
