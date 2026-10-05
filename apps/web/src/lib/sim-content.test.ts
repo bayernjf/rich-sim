@@ -17,6 +17,7 @@ import {
   claimBillRows,
   formatRunway,
   runwayMonths,
+  shoppingPool,
   topTierChoices,
 } from './sim-content';
 
@@ -164,5 +165,57 @@ describe('领钱入口（S4）', () => {
     expect(runwayMonths(1_000_000, 0)).toBeNull();
     expect(runwayMonths(1_000_000, -5)).toBeNull();
     expect(runwayMonths(0, 100)).toBeNull();
+  });
+});
+
+describe('购物池（M3 · S1）', () => {
+  it('入池 = 标了 kind；普通人锚点档不进池', () => {
+    const ids = shoppingPool(catalog).map((item) => `${item.dimension}/${item.option.id}`);
+    for (const excluded of [
+      'living/small-rental',
+      'transport/public-transit',
+      'family/single-no-kids',
+      'travel/staycation',
+      'health-insurance/basic-insurance',
+      'dining-daily/home-cooking',
+      'flexibility/modest-buffer',
+    ]) {
+      expect(ids, `${excluded} 不该进购物池`).not.toContain(excluded);
+    }
+    // 每个维度的富豪档都必须在池里，否则购物区会缺一整个维度。
+    expect(ids).toContain('living/luxury-mansion');
+    expect(ids).toContain('transport/private-jet');
+    expect(ids).toContain('travel/superyacht');
+    expect(ids).toContain('flexibility/discretionary-large');
+  });
+
+  it('池项的 kind / joy / source 齐全（m3-task-breakdown §0 G1 要求测试钉住）', () => {
+    for (const item of shoppingPool(catalog)) {
+      const key = `${item.dimension}/${item.option.id}`;
+      expect(item.option.kind, `${key} 缺 kind`).toBeDefined();
+      expect(item.option.joy, `${key} 缺 joy`).toBeDefined();
+      expect(item.option.source, `${key} 缺来源`).toMatch(/^https?:\/\//);
+    }
+  });
+
+  it('三类 kind 都有代表，且体验类不承担持有成本', () => {
+    const pool = shoppingPool(catalog);
+    const kinds = new Set(pool.map((item) => item.option.kind));
+    for (const kind of ['asset', 'consumer', 'experience'] as const) {
+      expect(kinds, `池里没有 ${kind} 类`).toContain(kind);
+    }
+    for (const item of pool) {
+      if (item.option.kind === 'experience') {
+        expect(item.option.resellable, `${item.option.id} 体验类不应可转卖`).toBe(false);
+        expect(item.option.carryingJoy, `${item.option.id} 体验类无持有情绪`).toBeUndefined();
+      }
+    }
+  });
+
+  it('每个维度都有可购项（购物区不会缺一个维度）', () => {
+    const dims = new Set(shoppingPool(catalog).map((item) => item.dimension));
+    for (const dimension of catalog.dimensions) {
+      expect(dims, `维度 ${dimension.id} 没有可购项`).toContain(dimension.id);
+    }
   });
 });
