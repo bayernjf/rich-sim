@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SimRealityCompare from '../../components/SimRealityCompare';
+import ClaimRunway from '../../components/ClaimRunway';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
 import {
@@ -10,6 +11,7 @@ import {
   CARD_A_BROKE,
   CARD_A_LAST_YEAR_COST,
   SELL_DISCOUNT,
+  SIM_STARTING_CAPITAL,
   cardAnnualCost,
   cardBurden,
   cardBills,
@@ -123,6 +125,13 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
           </dd>
         </div>
       </dl>
+
+      {/* S4：领过虚拟起始金的人这里会看到「够撑多久」——没领过则整行不出现 */}
+      <ClaimRunway
+        client:load
+        annualCost={simCost}
+        initialCapital={Astro.url.searchParams.get('claim') === '1' ? SIM_STARTING_CAPITAL : null}
+      />
 
       <p class="mt-4 text-xs leading-relaxed text-muted">
         以上为<strong>年持有成本</strong>的静态展示：数值来自公开来源校准的目录（富豪极端档为行业公开估算），

@@ -38,6 +38,57 @@ const eventsSoFar = async () =>
 const countEvent = (list, name) => list.filter((e) => e.event === name).length;
 
 try {
+  // ── 步骤 0：首页 · S4 领钱入口 ──
+  // 入口受 PUBLIC_HOMEPAGE_CLAIM 开关控制：没开就断言它确实不在，其余流程跳过
+  // （这样同一份脚本既能跑开着的本地环境，也能跑默认关闭的生产）。
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  check(
+    await page.locator('a[href="/app/designer"]').count() === 1,
+    '首页：原有主 CTA 仍在',
+    '',
+  );
+  const claimCta = page.locator('[data-claim-cta]');
+  const claimEnabled = await claimCta.count();
+  if (!claimEnabled) {
+    check(true, '领钱入口：开关未开时不出现（PUBLIC_HOMEPAGE_CLAIM≠1）→ 跳过该流程', 'skipped');
+  } else {
+    check(await claimCta.getAttribute('href') === '/app/sim?claim=1', '领钱入口：SSR 出来就是可用链接（关 JS 也能走）', '');
+    await claimCta.click();
+    await page.waitForSelector('[data-claim-route="life"]', { timeout: 3000 });
+    const panel = await page.locator('section[aria-labelledby="claim-heading"]').innerText();
+    check(panel.includes('年运营全口径'), '领钱：第二拍含账单口径字样', '');
+    check(
+      await page.locator('section[aria-labelledby="claim-heading"] a[href^="http"]').count() >= 2,
+      '领钱：第二拍每个金额带来源',
+      '',
+    );
+    const ledger = await page.evaluate(() => ({
+      sim: localStorage.getItem('rich-sim:sim:v1'),
+      plan: localStorage.getItem('rich-sim:plan:v1'),
+    }));
+    check(
+      !!ledger.sim && ledger.plan === null,
+      '领钱：只写模拟态账本，真实方案账本仍为空（验收 #1）',
+      `sim=${!!ledger.sim} plan=${ledger.plan}`,
+    );
+    const evClaim = await eventsSoFar();
+    const claimEvents = ['claim:tap', 'claim:reveal', 'claim:bill'].map((n) => `${n}=${countEvent(evClaim, n)}`);
+    check(
+      ['claim:tap', 'claim:reveal', 'claim:bill'].every((n) => countEvent(evClaim, n) >= 1),
+      '埋点：claim 三步已入队',
+      claimEvents.join(' '),
+    );
+
+    // 关 JS 的那条路径（?claim=1）：这一行由 SSR 渲染，不依赖本机账本。
+    await page.goto(`${BASE}/app/sim?claim=1`, { waitUntil: 'networkidle' });
+    const runway = await page.locator('[data-claim-runway]').innerText();
+    check(
+      runway.includes('9.1 个月'),
+      '领钱：$1M 撑卡 A 这套生活 ≈ 9.1 个月（手算 1,000,000 ÷ 1,317,000/年）',
+      `text="${runway.replace(/\n/g, ' ').trim()}"`,
+    );
+  }
+
   // 干净起点
   await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());

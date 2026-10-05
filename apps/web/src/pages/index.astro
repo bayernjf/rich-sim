@@ -1,6 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ContinueDraft from '../components/ContinueDraft.tsx';
+import ClaimMillion from '../components/ClaimMillion';
+import { initialCatalogUSD } from '@rich-sim/core';
+import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
+import { SIM_STARTING_CAPITAL, annualDrawdown, claimBillRows } from '../lib/sim-content';
+
+// §6 开关：未配置 PUBLIC_HOMEPAGE_CLAIM 时，这一屏必须完全不存在，
+// 且首页 HTML 与改动前逐字节相同（验收 #2）——所以下面那段连换行都不留，
+// 加在 ContinueDraft 同一行的末尾。
+const claimEnabled = import.meta.env.PUBLIC_HOMEPAGE_CLAIM === '1';
+const claimRows = claimEnabled ? claimBillRows(initialCatalogUSD, DEFAULT_ASSUMPTIONS) : [];
 ---
 
 <BaseLayout title="财富模拟 · rich-sim">
@@ -16,6 +26,6 @@ import ContinueDraft from '../components/ContinueDraft.tsx';
     >
       开始设计理想生活 →
     </a>
-    <ContinueDraft client:load />
+    <ContinueDraft client:load />{claimEnabled && (<ClaimMillion client:load capital={SIM_STARTING_CAPITAL} drawdown={annualDrawdown(SIM_STARTING_CAPITAL, DEFAULT_ASSUMPTIONS)} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} rows={claimRows} />)}
   </main>
 </BaseLayout>

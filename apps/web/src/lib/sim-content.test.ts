@@ -9,9 +9,15 @@ import {
   CARD_A_BROKE,
   CARD_A_LAST_YEAR_COST,
   SELL_DISCOUNT,
+  SIM_STARTING_CAPITAL,
+  annualDrawdown,
   cardAnnualCost,
   cardBills,
   cardBurden,
+  claimBillRows,
+  formatRunway,
+  runwayMonths,
+  topTierChoices,
 } from './sim-content';
 
 const catalog = initialCatalogUSD;
@@ -88,5 +94,75 @@ describe('账单日（S2）', () => {
 
   it('变卖折价是 §2.4 的 75%', () => {
     expect(SELL_DISCOUNT).toBe(0.75);
+  });
+});
+
+describe('领钱入口（S4）', () => {
+  it('第二拍主句：$1M 按默认提取率一年只能产出 $40,000（手算 1,000,000 × 4%）', () => {
+    expect(SIM_STARTING_CAPITAL).toBe(1_000_000);
+    expect(assumptions.withdrawalRate).toBe(0.04);
+    expect(annualDrawdown(SIM_STARTING_CAPITAL, assumptions)).toBe(40_000);
+  });
+
+  it('三行真实账单全部取自目录，UI 层复制不了这里的任何一个数字', () => {
+    const rows = claimBillRows(catalog, assumptions);
+    expect(rows).toHaveLength(3);
+    // 与账单日同序：从贵到便宜。
+    expect(rows.map((row) => row.annualCost)).toEqual([1_000_000, 120_000, 6_800_000]);
+    // 验收 #3 点名的字样：第二拍必须有金额出处。
+    expect(rows[0].label).toContain('年运营全口径');
+    for (const row of rows.slice(0, 2)) {
+      expect(row.source, `${row.label} 缺来源`).toMatch(/^https?:\/\//);
+    }
+    // 金额不是本模块写的：豪宅与飞机都等于 catalog 里那一项。
+    const jet = catalog.dimensions
+      .find((d) => d.id === 'transport')
+      ?.options.find((o) => o.id === 'private-jet');
+    expect(rows[0].annualCost).toBe(jet?.annualCost);
+    const mansion = catalog.dimensions
+      .find((d) => d.id === 'living')
+      ?.options.find((o) => o.id === 'luxury-mansion');
+    expect(rows[1].annualCost).toBe(mansion?.annualCost);
+  });
+
+  /**
+   * 文档 §2 写的是「全顶档 $7,025,000」，目录实测是 $6,800,000。差值来自
+   * 2026-10 的目录校准（26b4f4b）——文档那一行已回写为实测值。这条钉住
+   * 现状：若哪天两边又不一致，先查 `topTierChoices` 的取值定义，再查文档。
+   */
+  it('全顶档生活 = 每个维度最贵项之和 = $6,800,000（不是文档旧写的 7,025,000）', () => {
+    const choice = topTierChoices(catalog);
+    expect(choice).toHaveLength(catalog.dimensions.length);
+    expect(cardAnnualCost(choice, catalog, assumptions)).toBe(6_800_000);
+  });
+
+  it('$1M 撑卡 A 这套生活 ≈ 9.1 个月（手算 1,000,000 ÷ (1,317,000/12)）', () => {
+    const months = runwayMonths(
+      SIM_STARTING_CAPITAL,
+      cardAnnualCost(CARD_A.choices, catalog, assumptions),
+    );
+    expect(months).toBeCloseTo(1_000_000 / (1_317_000 / 12), 6);
+    expect(formatRunway(months as number)).toBe('9.1 个月');
+  });
+
+  it('加购游艇后掉到约 1.8 个月：这就是「起始金必须不够」的那一刀', () => {
+    const months = runwayMonths(
+      SIM_STARTING_CAPITAL,
+      cardAnnualCost(CARD_A_BROKE, catalog, assumptions),
+    );
+    expect(months).toBeCloseTo(1_000_000 / (6_717_000 / 12), 6);
+    expect(formatRunway(months as number)).toBe('1.8 个月');
+  });
+
+  it('撑得住的生活说年数：默认生活 $101,600 → 9.8 年', () => {
+    const months = runwayMonths(SIM_STARTING_CAPITAL, 101_600);
+    expect(months).toBeCloseTo(1_000_000 / (101_600 / 12), 6);
+    expect(formatRunway(months as number)).toBe('9.8 年');
+  });
+
+  it('年成本为 0 或负数时不硬算（返回 null，不产 Infinity）', () => {
+    expect(runwayMonths(1_000_000, 0)).toBeNull();
+    expect(runwayMonths(1_000_000, -5)).toBeNull();
+    expect(runwayMonths(0, 100)).toBeNull();
   });
 });
