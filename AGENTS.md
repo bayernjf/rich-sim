@@ -38,6 +38,31 @@
 | `workers/` | 边缘侧服务（Cloudflare Workers）；目前只有 `analytics-collector` 漏斗事件收集端 |
 | `scripts/`、`CONVENTIONS.md` | 工程工具与口径冻结契约 |
 
+## 工程契约与常用命令
+
+**`CONVENTIONS.md` 是跨 Agent 工程契约**（冻结项、路由表、引擎公式口径、localStorage key、红线）——**改契约 = 过闸门，不要私自改**。核心冻结项：
+
+- 类型以 `packages/core/src/types.ts` 为准；web 侧禁止重定义，一律 `import type ... from '@rich-sim/core'`
+- 路由表：`/` · `/app/designer` · `/app/finance` · `/app/result` · `/app/sim` · `/api/fx`
+- localStorage key：`rich-sim:plan:v1`（真实测算，走 `lib/draft.ts`）/ `rich-sim:sim:v1`（模拟态，走 `lib/sim-draft.ts`）——两本账互不读写，由测试钉住
+- `packages/core/src/index.ts` barrel 由组织者在 Wave 闸门合并，**不要并发编辑**
+
+```bash
+npm install     # 安装全部 workspace
+npm run dev     # 开发服务器（默认 :4321）
+npm run test    # core + web 全部单测
+npm run check   # TS 类型检查 + astro check
+npm run build   # 构建
+```
+
+Node 22（`.nvmrc`）。
+
+## CI 与发布
+
+- **CI**：`.github/workflows/ci.yml`，PR 与 push `dev`/`main` 时跑 `npm test` + `npm run check`（Node 22）。**宁可慢，不要 flaky**——这个 check 与 pr-helper 的自动发布门禁耦合，红了会让自动创建/合并停摆。
+- **发布**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）自动创建并自动合并；push `main` 触发 Cloudflare Pages 生产构建。
+- **线上**：Cloudflare Pages 项目 `rich-sim`（monorepo 根部署），域名 `https://app.rich-sim.bayjf.com`。详见 `docs/DEPLOYMENT.md`。
+
 ## 文档结构
 
 | 文档 | 职责 |
@@ -57,7 +82,7 @@
 | 目标市场 | 先海外、后大陆（两阶段） | `technical-design.md` §9 |
 | 技术栈 | Astro 5 + React 19 岛 + 独立纯函数计算引擎 `@rich-sim/core` | `technical-design.md` §3 |
 | 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
-| 托管 | Vercel（应用）+ Cloudflare（营销 / 边缘） | `technical-design.md` §9 |
+| 托管 | 海外 MVP：应用 + 营销**全 Cloudflare**（一个平台管 DNS/CDN/WAF/部署）；Vercel 后置为触发选项（服务端变重时评估迁入） | `technical-design.md` §9 |
 | MVP 形态 | **无后端**、无账号，方案存 `localStorage` | `technical-design.md` §10 |
 
 ## 红线（合规与产品边界）
@@ -66,6 +91,8 @@
 - 测算结果必须**显式展示假设清单与免责声明**；只做静态推演，不做预测、不承诺结果。
 - 「可达 / 不可达 / 无净储蓄」是**一等状态**，不是错误分支。
 - 不做记账工具、不做社交攀比社区、MVP 不做 3D 与多剧本堆量。
+- **用户自填的财务数据不得上传**：`workers/analytics-collector` 只存事件名与时间，丢弃 props、不存 IP/UA/任何标识符——这是红线的工程保证，改这里要连着理由一起看。
+- **任何数值必须有来源或显式标注「待校准」**，禁止编造。
 
 ## 写作约定
 
