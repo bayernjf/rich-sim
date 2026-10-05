@@ -38,6 +38,15 @@
 | `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取 |
 | `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件（designer:select / finance:update / results:view / currency:switch）收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [...] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机 |
 
+### 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
+
+1. Cloudflare 控制台 → **Web Analytics** → Add site → 域名填 `app.rich-sim.bayjf.com`，复制 beacon token。
+2. Pages → 项目 `rich-sim` → Settings → Environment variables → 加 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`，**Production 与 Preview 都要设**。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），所以设完必须有一次新构建才生效，改环境变量本身不会改变已有产物。
+3. 触发构建：推一个提交，或在 dashboard 对该 production 部署 Retry deployment。
+4. 验证：`curl -s https://app.rich-sim.bayjf.com/ | grep beacon.min.js` 必须命中 `static.cloudflareinsights.com/beacon.min.js` 且带 `data-cf-beacon`。未命中即变量没进构建。**2026-10-05 实测该 grep 命中数为 0**（暂缓期间预期如此）。
+
+本机 `wrangler` 的 OAuth token 权限只有 `account(read) / user(read) / workers(write)`，**建不了 Web Analytics 站点、也写不了 Pages 变量**，所以以上步骤只能在控制台完成；不要试图用 `vercel env pull` 那类思路找凭证，这里没有可代跑的通道。
+
 ## 构建（本地）
 ```bash
 npm install
