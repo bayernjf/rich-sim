@@ -10,6 +10,11 @@
  *     自建 collect 等任意接受 JSON 的收集端；Cloudflare Web Analytics 只自动
  *     采集 PV，不提供通用自定义事件 API，故漏斗事件走本端点）；
  *   - 用 navigator.sendBeacon（页面隐藏/卸载也能发出），载荷 { events: [...] }；
+ *     必须传单字符串（浏览器以 text/plain;charset=UTF-8 发送）：sendBeacon 固定走
+ *     no-cors，application/json 不是其允许的安全 Content-Type，会在发出前被浏览器
+ *     直接拦截（net::ERR_FAILED），而 sendBeacon 仍同步返回 true、队列照常裁剪——
+ *     事件会静默丢失。collect 端 request.json() 不校验 Content-Type，text/plain
+ *     载荷照常解析；
  *   - 发送成功才裁剪队列；失败（无端点 / beacon 返回 false / 存储异常）一律
  *     保留在本机，静默不抛错，绝不影响主流程；
  *   - 未配置端点时完全等同 M1（只存本机）。
@@ -37,7 +42,7 @@ type AnalyticsDeps = {
   beacon: ((url: string, body: string) => boolean) | null;
 };
 
-function defaultDeps(): AnalyticsDeps {
+export function defaultDeps(): AnalyticsDeps {
   const env = (import.meta as { env?: Record<string, string | undefined> }).env;
   const endpoint = env?.PUBLIC_ANALYTICS_ENDPOINT?.trim() || null;
   const storage =
@@ -48,7 +53,7 @@ function defaultDeps(): AnalyticsDeps {
     typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
       ? (url: string, body: string) => {
           try {
-            return navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+            return navigator.sendBeacon(url, body);
           } catch {
             return false;
           }
