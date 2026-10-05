@@ -7,8 +7,9 @@ import staticFx from './static-fx.json';
  * - 汇率兜底快照 `static-fx.json`：构建期/离线兜底（source 显式标
  *   static-snapshot + 日期，参与假设清单展示）。T10 的 /api/fx 实时
  *   成功时用它替换 draft.assumptions.fx。
- * - 数值口径：本快照为静态兜底示意（2026-10-03），非实时行情；
- *   正式上线前由 T10 的抓取脚本（scripts/fetch-static-fx.mjs）刷新。
+ * - 数值口径：静态兜底、非实时行情。**汇率日期以 `static-fx.json` 自身的
+ *   `date` 字段为准**（那是 ECB 定价日，由 scripts/fetch-static-fx.mjs 刷新）——
+ *   不在这里复制日期，否则注释必然比数据更早过期。
  */
 
 export const STATIC_FX_SNAPSHOT: FxSnapshot = staticFx as FxSnapshot;
