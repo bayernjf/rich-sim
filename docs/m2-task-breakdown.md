@@ -33,7 +33,7 @@
 | **S1** | `/app/sim` 卡 A 资产看板 + 年持有成本 | 资产结构可见且标「示意」；年成本 = `scenarioAnnualCost` 对六项求和 = $1,317,000，与 §4.4 一致（写成测试）；含「虚构角色，不代表任何真实人物」标注 | M |
 | **S2** | 账单日（现金流波动 + 断裂） | 用 §2.4 六个默认参数；负担率 r=100% 硬线、绿/黄 60%（§2.5）；加游艇后年成本 $6,717,000 触发红区，作为固定测试用例 | M |
 | **S3** | 换算条（轻量口径） | `comparison-converter.md` §2.1 纯除法；三条边界（币种同域、分母 ≤0、超 60 年改倍数表达）各有测试；**不写入 draft** | S–M ✅ 2026-10-05 |
-| **S4** | 首页「领钱入口」 | 依赖 S1–S3 存在才有落点；按 `homepage-claim-experience.md` §7 P1 范围 | M ✅ 2026-10-05（入口默认关闭） |
+| **S4** | 首页「领钱入口」 | 依赖 S1–S3 存在才有落点；按 `homepage-claim-experience.md` §7 P1 范围 | M ✅ 2026-10-05（当晚 Production 开关打开，Preview 未配） |
 
 **顺序 S1 → S2 → S3 → S4**。S4 明确排最后：先有落点再开门。
 
@@ -54,7 +54,7 @@
 S1–S4 做完**不等于验证过**。度量现状（2026-10-05 晚更新）：
 
 - **漏斗事件收集端已就绪**：`workers/analytics-collector`（Cloudflare Worker + D1 `rich-sim-events`）已部署，端点 `https://rich-sim-collect.jiangfengkxi.workers.dev/collect`，`/summary` 只读查询要 `READ_TOKEN`。**只存事件名+时间，丢 props、不存 IP/UA**（红线工程保证）。
-- **客户端已指过去并端到端验证**：Pages Production 已配 `PUBLIC_ANALYTICS_ENDPOINT`，`PUBLIC_HOMEPAGE_CLAIM=1` 同步打开。开关首日暴露一个静默丢事件缺陷——`sendBeacon` 固定 no-cors，客户端却以 `application/json` Blob 发送，请求在发出前被浏览器拦截、队列却照常裁剪；已在 `c6894a2` 改为纯字符串载荷修复并重新部署，D1 console 可见真实入库（含 `probe:*` 诊断事件）。**注意现在 D1 里有 3 条 `probe:` 开头的联调事件，读漏斗时按事件名过滤掉。**
+- **客户端已指过去并端到端验证**：Pages Production 已配 `PUBLIC_ANALYTICS_ENDPOINT`，`PUBLIC_HOMEPAGE_CLAIM=1` 同步打开。开关首日暴露一个静默丢事件缺陷——`sendBeacon` 固定 no-cors，客户端却以 `application/json` Blob 发送，请求在发出前被浏览器拦截、队列却照常裁剪；已在 `c6894a2` 改为纯字符串载荷修复并重新部署，D1 console 可见真实漏斗事件入库；当晚联调用的 3 条 `probe:*` 诊断事件已在验证后删除，读漏斗无需再过滤。
 - **PV / 会话分母仍缺**：`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 暂缓至今 ⇒ 完成率的「进入」分母没有，自建 collect 只数自定义事件、不给 PV。
 - 配置与 sendBeacon 踩坑细节见 `docs/DEPLOYMENT.md` §分析埋点。**D4（账号体系）与 D5（付费墙/投资线）的判据依赖读数积累——管道已通，等真实流量。**
 
