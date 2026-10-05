@@ -29,23 +29,48 @@
 | Automatic deployments | Enabled |
 | SSR 实测 | `/api/fx` 已线上验证（Frankfurter ECB 汇率代理，2026-10-04 实测 200）——当前环境无需 `nodejs_compat` 显式配置 |
 
-## 分析埋点（可选，B2）
+## 分析埋点（可选，B2 + M2 自建 collect）
 
-未配置时应用不加载任何第三方脚本，漏斗事件只存本机队列（等同 M1 行为）。
+未配置时应用不加载任何第三方脚本，漏斗事件只存本机队列（`rich-sim:events:v1`，等同 M1 行为）。
 
 | 变量 | 作用 |
 |---|---|
-| `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取 |
-| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件（designer:select / finance:update / results:view / currency:switch）收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [...] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机 |
+| `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取。**2026-10-05 决定暂缓**，至今未配。 |
+| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [{event, at, props?}] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机。**自建落点**见下节。 |
+| `PUBLIC_HOMEPAGE_CLAIM` | 首页「领一百万」入口开关（`=1` 显示，未配置则隐藏；见 `docs/homepage-claim-experience.md` §7）。当前未配。 |
 
-### 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
+### 自建收集端 `workers/analytics-collector`（已部署，2026-10-05）
+
+M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` 的 beacon 用，落在 Cloudflare Workers + D1。
+
+| 项 | 值 |
+|---|---|
+| Worker 名 | `rich-sim-collect` |
+| 端点 | **生产** `https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（subdomain `jiangfengkxi`） |
+| 只读查询 | `GET /summary?since=YYYY-MM-DD`，需 `Authorization: Bearer $READ_TOKEN`；返回 `{ totals: [{event,n}], daily: [{day,n}] }` |
+| D1 | `rich-sim-events`（id `8eeca8fa-f11c-4c20-9e6d-7076b3856d5b`），表 `events(ts, day, event)` + 索引 `(day,event)`，schema 见 `workers/analytics-collector/schema.sql` |
+| Secret | `READ_TOKEN`（`wrangler secret put READ_TOKEN`，在 `workers/analytics-collector/` 目录执行） |
+| 部署 | `cd workers/analytics-collector && wrangler deploy`；D1 初始化 `wrangler d1 execute rich-sim-events --remote --file=schema.sql` |
+
+**隐私三条（写在 `src/index.ts` 头，不要悄悄改）**：① 只入库 `event` 名与时间，`props` 一律丢弃（`finance:update` 带用户自填的收入/支出，上传即越过红线）；② 不写 IP / UA / 任何标识符，所以没有跨事件个体链路、不需要 consent 门槛，代价是只能做频次统计、做不了单用户转化漏斗；③ 来源白名单（`ALLOWED_ORIGINS`），未知 Origin 直接 403，绝不回显。
+
+**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-05 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`。props 全丢后只剩频次。
+
+**打开读数的两步（都在 Cloudflare 控制台/CLI，发起人决定）**：
+
+1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。
+2. 触发构建：推一个提交，或 dashboard 对该 production 部署 Retry deployment。
+
+**验证**：浏览器走一遍设计器 → 财务 → 结果，然后 `curl -s -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"` 应看到上述事件有计数；或 `wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events GROUP BY event"`。
+
+### Cloudflare Web Analytics 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
 
 1. Cloudflare 控制台 → **Web Analytics** → Add site → 域名填 `app.rich-sim.bayjf.com`，复制 beacon token。
-2. Pages → 项目 `rich-sim` → Settings → Environment variables → 加 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`，**Production 与 Preview 都要设**。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），所以设完必须有一次新构建才生效，改环境变量本身不会改变已有产物。
+2. Pages → 项目 `rich-sim` → Settings → Environment variables → 加 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`，**Production 与 Preview 都要设**。Astro 在**构建期**内联 `PUBLIC_*`，设完必须有一次新构建才生效。
 3. 触发构建：推一个提交，或在 dashboard 对该 production 部署 Retry deployment。
-4. 验证：`curl -s https://app.rich-sim.bayjf.com/ | grep beacon.min.js` 必须命中 `static.cloudflareinsights.com/beacon.min.js` 且带 `data-cf-beacon`。未命中即变量没进构建。**2026-10-05 实测该 grep 命中数为 0**（暂缓期间预期如此）。
+4. 验证：`curl -s https://app.rich-sim.bayjf.com/ | grep beacon.min.js` 必须命中 `static.cloudflareinsights.com/beacon.min.js` 且带 `data-cf-beacon`。未命中即变量没进构建。
 
-本机 `wrangler` 的 OAuth token 权限只有 `account(read) / user(read) / workers(write)`，**建不了 Web Analytics 站点、也写不了 Pages 变量**，所以以上步骤只能在控制台完成；不要试图用 `vercel env pull` 那类思路找凭证，这里没有可代跑的通道。
+本机 `wrangler` 的 OAuth token 权限**只有 `account(read) / user(read) / workers(write) / d1(write) / pages(write)` 等**，**建不了 Web Analytics 站点、也写不了 Pages 变量**（`pages(write)` scope 在 API 层不能改项目级环境变量），所以以上步骤只能在控制台完成；不要试图用 `vercel env pull` 那类思路找凭证，这里没有可代跑的通道。
 
 ## 构建（本地）
 ```bash

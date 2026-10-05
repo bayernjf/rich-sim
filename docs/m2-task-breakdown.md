@@ -51,4 +51,11 @@
 
 ## 5. 与度量的关系（别自欺）
 
-S1–S4 做完**不等于验证过**。`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 仍暂缓，所以这四片的效果全部无法读数；D4（账号体系）与 D5（付费墙/投资线）的判据也全部悬空。本分解只负责"能开工"，不负责"知道有没有用"。
+S1–S4 做完**不等于验证过**。度量现状（2026-10-05 清点）：
+
+- **漏斗事件收集端已就绪**：`workers/analytics-collector`（Cloudflare Worker + D1 `rich-sim-events`）已部署，端点 `https://rich-sim-collect.jiangfengkxi.workers.dev/collect`，`/summary` 只读查询要 `READ_TOKEN`。**只存事件名+时间，丢 props、不存 IP/UA**（红线工程保证）。
+- **但客户端还没指过去**：Pages 项目 `rich-sim` 的 `PUBLIC_ANALYTICS_ENDPOINT` 未配 ⇒ 线上 beacon 不发，D1 行数 = 0，`claim:tap → route:real` 等漏斗全部无读数。
+- **PV / 会话分母仍缺**：`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 暂缓至今 ⇒ 完成率的「进入」分母没有，自建 collect 只数自定义事件、不给 PV。
+- 要让 S1–S4 的效果可读，需发起人在 Cloudflare 控制台配 `PUBLIC_ANALYTICS_ENDPOINT`（可选 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`），见 `docs/DEPLOYMENT.md` §分析埋点。**D4（账号体系）与 D5（付费墙/投资线）的判据同样依赖读数，仍悬空。**
+
+本分解只负责"能开工"，不负责"知道有没有用"。
