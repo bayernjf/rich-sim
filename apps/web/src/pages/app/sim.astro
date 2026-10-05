@@ -1,0 +1,108 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { initialCatalogUSD } from '@rich-sim/core';
+import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
+import { CARD_A, cardAnnualCost } from '../../lib/sim-content';
+
+const catalog = initialCatalogUSD;
+const annualCost = cardAnnualCost(CARD_A.choices, catalog, DEFAULT_ASSUMPTIONS);
+
+const rows = CARD_A.choices.map((choice) => {
+  const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
+  const option = dimension?.options.find((o) => o.id === choice.optionId);
+  return { dimensionLabel: dimension?.label ?? choice.dimension, option };
+});
+
+const fmt = (value: number) =>
+  `$${value.toLocaleString('en-US')}`;
+
+const assetBars = CARD_A.assetStructure.map((part, index) => ({
+  ...part,
+  width: `${part.share}%`,
+  tone: index === 0 ? 'bg-accent' : 'bg-ink/25',
+}));
+---
+
+<BaseLayout
+  title="卡 A · 富豪模拟 · 财富模拟"
+  description="虚构身份的资产结构与年度持有成本。价格标签是假的爽，持有成本是真的痛。财商模拟教育工具，不构成投资建议。"
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-8">
+    <p class="text-xs font-medium uppercase tracking-widest text-accent">富豪模拟 · F5 最小版</p>
+    <h1 class="mt-2 text-2xl font-semibold tracking-tight">{CARD_A.label}</h1>
+    <p class="mt-1 text-sm leading-relaxed text-muted">{CARD_A.subtitle}</p>
+
+    <p class="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-xs leading-relaxed text-muted">
+      {CARD_A.fictionNotice}
+    </p>
+
+    <section aria-labelledby="sim-assets-heading" class="mt-8">
+      <h2 id="sim-assets-heading" class="text-base font-semibold text-ink">资产结构</h2>
+      <div
+        role="img"
+        aria-label={CARD_A.assetStructure.map((part) => `${part.label} ${part.share}%`).join('，')}
+        class="mt-3 flex h-3 w-full overflow-hidden rounded-full"
+      >
+        {assetBars.map((part) => <div class={part.tone} style={`width:${part.width}`}></div>)}
+      </div>
+      <ul class="mt-3 space-y-1 text-sm text-muted">
+        {assetBars.map((part) => (
+          <li class="flex items-center justify-between gap-3">
+            <span class="flex items-center gap-2">
+              <span class={`inline-block size-2 rounded-full ${part.tone}`} aria-hidden="true"></span>
+              {part.label}
+            </span>
+            <span class="font-mono tabular-nums">{part.share}%</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sim-cost-heading" class="mt-8">
+      <h2 id="sim-cost-heading" class="text-base font-semibold text-ink">一年的持有成本</h2>
+      <p class="mt-1 text-sm text-muted">价格标签是一次性的，这些账单每年都来。</p>
+
+      <dl class="mt-3 divide-y divide-line rounded-2xl border border-line bg-panel px-4">
+        {rows.map((row) => (
+          <div class="flex items-baseline justify-between gap-3 py-3">
+            <dt class="text-sm text-muted">
+              {row.option?.label}
+              <span class="ml-1 text-xs text-muted/70">{row.dimensionLabel}</span>
+            </dt>
+            <dd class="font-mono tabular-nums text-ink">
+              {row.option ? fmt(row.option.annualCost) : '—'}
+              {row.option?.source && (
+                <a
+                  class="ml-2 text-xs text-accent underline-offset-2 hover:underline"
+                  href={row.option.source}
+                  rel="noopener"
+                >
+                  来源
+                </a>
+              )}
+            </dd>
+          </div>
+        ))}
+        <div class="flex items-baseline justify-between gap-3 py-4">
+          <dt class="text-sm font-semibold text-ink">合计（每年）</dt>
+          <dd class="font-mono text-4xl font-semibold tabular-nums tracking-tight text-ink">
+            {fmt(annualCost)}
+          </dd>
+        </div>
+      </dl>
+
+      <p class="mt-4 text-xs leading-relaxed text-muted">
+        以上为<strong>年持有成本</strong>的静态展示：数值来自公开来源校准的目录（富豪极端档为行业公开估算），
+        不代表任何真实人物的持仓，也不构成投资建议或真实报价。
+        资产结构占比为示意，不参与任何计算。
+      </p>
+    </section>
+
+    <a
+      href="/"
+      class="mt-8 inline-flex min-h-11 items-center rounded-full border border-line-strong px-5 py-3 text-sm font-medium text-ink transition-colors hover:bg-panel-2"
+    >
+      ← 回首页，算你自己的生活
+    </a>
+  </main>
+</BaseLayout>

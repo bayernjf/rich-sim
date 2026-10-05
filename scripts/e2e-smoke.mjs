@@ -131,6 +131,14 @@ try {
   check(enoughCny > 15_000_000 && enoughCny < 22_000_000, '切币种后：够用线换算到 CNY（约 1800 万量级）', `enoughCny=${enoughCny} text="${enoughTextCny.trim()}"`);
   const bodyCny = await page.locator('[data-results-root]').innerText();
   check(/CNY/.test(bodyCny), '切币种后：结果页币种标签为 CNY', `hasCNY=${/CNY/.test(bodyCny)}`);
+
+  // ── 步骤 6：富豪模拟卡 A（F5 最小版，纯 SSR 页）──
+  await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
+  const simText = await page.locator('#main').innerText();
+  check(simText.includes('1,317,000'), '卡 A：年持有成本合计 = $1,317,000', '来自六项 catalog 求和');
+  check(simText.includes('虚构角色，不代表任何真实人物'), '卡 A：虚构角色标注可见', '');
+  const simSourceLinks = await page.locator('a[href^="https://"][rel="noopener"]').count();
+  check(simSourceLinks >= 6, '卡 A：六项来源链接可达', `links=${simSourceLinks}`);
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {
