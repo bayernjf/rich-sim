@@ -1,6 +1,6 @@
 # M3 任务分解（F5 富豪模拟完整化：购物机制 + 一键成目标）
 
-> 状态：**待发起人过目后开工 · 2026-10-05**。依据 `PRD.md` §F5/§7.2、`simulation-gameplay.md` v0.2（§2 机制 / §5 购物池与字段 / §3 落点桥）。
+> 状态：**已开工 · 2026-10-06**（发起人 2026-10-06 过目并拍板 G4 走方案 (a)；S1 进行中，见 §2 备注）。依据 `PRD.md` §F5/§7.2、`simulation-gameplay.md` v0.2（§2 机制 / §5 购物池与字段 / §3 落点桥）。
 > 先例：`docs/m2-task-breakdown.md`（已全部上线）。
 > 范围：M3 = 购物交互、购物车、购物即记账、购物车一键成为现实测算目标。**不含**名人原型卡（路径 B 需先过 `deferred #5` 法务）、多剧本、六通道其余通道、3D。
 
@@ -10,16 +10,20 @@
 
 | # | 闸门 | 现状 | M3 要动什么 |
 |---|---|---|---|
-| G1 | core 类型 `packages/core/src/types.ts`（frozen） | `CatalogOption` 只有 `id/label/annualCost/source/note/isDefault` | 增加**可选**玩法字段：`kind?: 'asset'|'consumer'|'experience'`、`purchasePrice?`、`costComponents?`（字符串条目，展示用）、`joy?`（1–5）、`resellable?`、`carryingJoy?`（−2…+2）。字段规格照 gameplay §5.2；**全可选**，23 个现有选项与既有测试零改动；富豪购物池内的项要求必填 `kind` 与 `joy`，由 core 数据测试钉住 |
+| G1 | core 类型 `packages/core/src/types.ts`（frozen） | `CatalogOption` 只有 `id/label/annualCost/source/note/isDefault` | 增加**可选**玩法字段：`kind?: 'asset'|'consumer'|'experience'`、`purchasePrice?`、`costComponents?`（字符串条目，展示用）、`joy?`（1–5）、`resellable?`、`carryingJoy?`（−2…+2）。字段规格照 gameplay §5.2；**全可选**，不破坏既有测试，目录项在 S1 逐条补标注；富豪购物池内的项要求必填 `kind` 与 `joy`，由测试钉住（`shoppingPool` 落在 web 侧 `sim-content.ts`，测试随行） |
 | G2 | `apps/web/src/lib/sim-draft.ts`（`rich-sim:sim:v1`） | `SimState` 只有起始金 | 扩 `cart?: CartItem[]`，`CartItem = { dimension: string; optionId: string }`，**允许同一维度多件**（见 G4）。`schemaVersion` 维持 1：旧状态读出 `cart` 为 `undefined` 时按空车处理，读写兼容由测试钉住。与 `draft.ts` 仍然互不 import（既有源码扫描测试不破） |
 | G3 | 路由表 `CONVENTIONS.md`（frozen） | `/app/sim` 是卡 A 看板 | **不新增路由**：购物区是 `/app/sim` 页内的新区块（客户端岛），SSR 首帧仍是看板 + 「示意 · 虚构角色」。零路由改动，购物状态全在 `sim:v1` |
-| G4 | 桥口径冲突（**需发起人拍板**，不是纯技术选择） | `LifeChoice = { dimension, optionId }[]` 且 `scenarioAnnualCost` 每维取一件求和 | 购物车天然**同维多件**（卡 A 画像本身就含 transport 维的豪华车 \$17,000 + 私人飞机 \$1,000,000），一键成目标时无法用 `LifeChoice` 无损表达。两条路见 §3 S4，**推荐 (a)** |
+| G4 | 桥口径冲突（**2026-10-06 已拍板：走方案 (a)**） | `LifeChoice = { dimension, optionId }[]` 且 `scenarioAnnualCost` 每维取一件求和 | 购物车天然**同维多件**（卡 A 画像本身就含 transport 维的豪华车 \$17,000 + 私人飞机 \$1,000,000），一键成目标时无法用 `LifeChoice` 无损表达。两条路见 §3 S4，**推荐 (a)** |
+
+> **G4 已定（2026-10-06）**：走方案 (a)——`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`，过 `draft.ts` 冻结闸门。约束照 §3 方案 (a) 末条：只携带年成本一个数字进 REAL，不带起始金与资产占比。
 
 **引擎侧零新公式**：年成本仍是 `scenarioAnnualCost` 的简单求和口径；购物车合计 = 对 `cart` 逐项（不是逐维）查 `annualCost` 求和。负担率用既有 `burdenStatus` 与常量 `BURDEN_RATE_GREEN/HARD`。变卖折价 75% M2 已在账单日实现过一次（游艇开关），M3 复用同一常量来源，不新造数字。
 
 ## 1. 内容取值规则（避免编数据）
 
-1. **购物池收敛**（gameplay §5.1）：富豪购物池只取各维度「理想档 + 富豪档」，剔除普通人锚点档（small-rental / public-transit / home-cooking 等），约 14–15 项；普通人档保留在现实设计器，不进购物池。
+1. **购物池收敛**（gameplay §5.1）：剔除普通人锚点档（small-rental / public-transit / home-cooking 等），普通人档保留在现实设计器、不进购物池。
+   **实现口径（2026-10-06，S1 落地时确定）**：入池开关就是**目录项上的 `kind` 标注**——S2 的购物区要按 `kind` 分资产 / 消费品 / 体验三组陈列，没有 `kind` 就无法归组，所以池 = 已标注项，实测 **12 项**；另加一条红线：`source` 不是 http(s)（即「待校准」）的档位**即使标了 `kind` 也不进池**（`shoppingPool()` 里钉住）。
+   ⚠️ **与本文原写法的差异**：原写「每维度取理想档 + 富豪档 ≈ 14–15 项」，实测按 `kind` 收敛是 **12 项**——差的正是 §2.1 点名要补的 2–3 个纯体验项（当前无来源，见 §2 S1 备注）。「理想档是否全部入池」这条口径待发起人确认。
 2. **补 2–3 个纯体验项**（当前目录最缺，gameplay §2.1 点名）：如高端环球旅行、慈善晚宴 / 冠名、私人活动。**红线照走**：每项必须带可查证公开 `source`（口径写 `note`），与现有 23 项同一标准；拿不到可靠来源的档位写「待校准」标记且**不得进生产购物池**。体验项 `kind:'experience'`、`resellable:false`、无持有负担。
 3. `joy` / `carryingJoy` 只做**相对排序**（gameplay §5.2 明令不做伪精确打分），不参与任何财务计算，测试只断言取值域与排序单调性。
 4. 卡 A / 卡 B 的年成本画像仍是 catalog 实测加总（M2 已钉 \$1,317,000 / 加游艇 \$6,717,000），M3 加字段后这两个测试必须继续绿。
@@ -27,7 +31,7 @@
 
 ## 2. 切片
 
-顺序 **S1 → S2 → S3 → S4**。每片独立可上线、自带测试。
+顺序 **S1 → S2 → S3 → S4 → S5**。每片独立可上线、自带测试。
 
 | # | 内容 | 完成判据 | 规模 |
 |---|---|---|---|
@@ -37,7 +41,10 @@
 | **S4** | 购物车一键成为现实测算目标（SIM→REAL 单向桥） | 「把这套生活设为我的目标」按钮（关 JS 降级为普通链接）；点击后**只写 `rich-sim:plan:v1`，绝不回写 sim**；落点按 G4 拍板方案实现；写入后跳 `/app/finance`（未录入）或 `/app/result`（已录入），结果页/草稿恢复处可见「目标来自富豪模拟购物车」标签；结构性测试：走过桥后 SIM 账本不变、REAL 账本不出现任何 sim 起始金 | M |
 | **S5** | 埋点 + 冒烟 | 新增事件（worker 事件名正则天然允许，无需改 worker）：`sim:add` / `sim:remove` / `cart:to-goal`，props 仍全部丢弃；`e2e-smoke.mjs` 加购物车断言（加购→账单变色→一键成目标→REAL 落点），更新 DEPLOYMENT.md 的断言数；事件清单（DEPLOYMENT.md「当前事件清单」）同步 | S–M |
 
-**G4 两个方案（S4 开工前拍板）**：
+**S1 进度（2026-10-06）**：✅ G1 类型扩展（`types.ts` 六个可选玩法字段）+ catalog 玩法字段标注 + `shoppingPool()`（`apps/web/src/lib/sim-content.ts`，4 条测试随行）已实现。
+**未完成**：2–3 个纯体验项——`catalog-data.test.ts` 要求每个 `source` 必须是 http(s) URL，当前无可查证来源（项目禁止编造数据），**未编造，待补来源**；补齐后自动进池。
+
+**G4 两个方案（已拍板 (a)，保留备查）**：
 
 - **(a) 推荐：`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`（过 `draft.ts` 冻结闸门）**。结果页计算时若存在 override，目标年成本直接用它，不经过 `LifeChoice` 逐维选择；`choices` 仍照常写一份「每维最贵项」作展示回显，但计算口径以 override 为准，避免悄悄丢金额。改动集中、口径显式、可测试；代价是动一次冻结 schema（`schemaVersion` 处理 + 草稿测试）。
 - (b) 购物池交互上限制同维度至多一件。零契约改动，但**与卡 A 事实冲突**（车 + 飞机同维），会让 M2 已上线的卡 A 画像在 M3 购物车里无法复现，排除。
