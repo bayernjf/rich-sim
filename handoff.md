@@ -32,6 +32,7 @@
 | `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2/P3 未做；临时取值见该文档 §7.1 |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
+| `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **草案，待发起人过目（2026-10-05）**；G4 桥口径（Draft 增 goalOverride vs 限制同维一件）需拍板后开工 |
 
 ## 已做的决策
 
@@ -75,6 +76,8 @@
 **M2 四片至此全部交付且埋点管道已通**（2026-10-05 晚）：Pages Production 配好 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect` 与 `PUBLIC_HOMEPAGE_CLAIM=1`，Retry deployment 让变量进构建后，线上冒烟 37/37、首页已见「领一百万」、analytics chunk 已内联端点。首日发现并修复一个**静默丢事件**缺陷：`sendBeacon` 固定 no-cors，原实现以 `application/json` Blob 发送被浏览器在发出前拦截（`net::ERR_FAILED`），而 beacon 仍返回 true、队列照常裁剪（`c6894a2` 改为纯字符串载荷，worker 无需改动）。修复后经 headless Chrome 真实 beacon + D1 console 双重确认入库；联调用的 3 条 `probe:*` 诊断事件验证后已删除，当前 D1 仅余真实漏斗事件。下一步不再是既定切片，需要重新排：账号体系 / 投资线等仍押后（D4、D5），判据依赖真实流量下的漏斗读数。PV/会话分母仍需另行配置 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（暂缓）。
 
 诚实边界：埋点管道已通但**真实流量读数尚为零**——当前 D1 里只有联调产生的事件；S1–S4 有没有效果仍要等真实访客积累，口径见 `m2-task-breakdown.md` §5、`docs/DEPLOYMENT.md` §分析埋点。
+
+**M3（F5 完整化：购物机制 + 一键成目标）**：2026-10-05 晚产出分解草案 `docs/m3-task-breakdown.md`（S1–S5：core 玩法字段 + 2–3 个带来源的体验项 → `/app/sim` 购物车 → 购物即记账/负担率联动 → SIM→REAL 一键成目标 → 埋点冒烟），**待发起人过目，未开工**。开工前需拍一个契约口径（分解 §0 G4）：购物车同维可多件（卡 A 本身车+飞机同维），无法无损塞进每维一件的 `LifeChoice`，推荐给 `Draft` 加可选 `goalOverride`（过 draft.ts 冻结闸门，只携带年成本一个数字，不把虚构成分带进 REAL）；备选「限制同维一件」与卡 A 事实冲突，已在分解里排除。名人原型卡（路径 B）仍等 `deferred #5` 法务，不进本轮。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 
