@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：12 份，见 `docs/`（下表）
+- **文档**：13 份，见 `docs/`（下表）
 - **分支**：`dev`。**同步与领先/落后状态不写死在此**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推送）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -30,7 +30,8 @@
 | `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
 | `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **草案 v2，未拍板未排期**（§9 五项待拍） |
-| `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **四条建议，全部 `待定`**；D1/D2/D3 批了即可开工，D4/D5 卡在 token |
+| `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
+| `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **可开工**，顺序 S1→S2→S3→S4 |
 
 ## 已做的决策
 
@@ -45,6 +46,7 @@
 | MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
 | 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
 | 币种与汇率 | 计算在本位币、换算只在展示层；汇率 = 假设的一部分（快照进 Assumptions 并参与版本化）；M1 实时汇率（SSR 代理），M2 历史汇率 | `technical-design.md` §4.2 |
+| **M2 决策包 D1–D5** | **D1** F5 首个剧本 = 卡 A 科技独角兽创始人（年成本 $1,317,000，$1M 起始金只够 76%）；**D2** 六通道只做 看见 / 感受（账单日）/ 比较（换算器），购物与剧情与特权后置；**D3** F2 逐项支出移出 MVP 降 P2（撞 §3.2 Non-Goal）；**D4** 账号体系**暂不立项**，等同设备回访读数（≥15% 立项 / <5% 否）；**D5** 投资线、付费墙、支付渠道一起押后（2026-10-05 整包确认） | `docs/m2-decisions.md`、`docs/m2-task-breakdown.md` |
 | **F5 排期** | **维持 P0，最小版从 M3 提到 M2**（1 个身份剧本 + 资产看板 + 持有成本 + 现金流波动，纯前端）；购物机制 / 六通道 / 原型卡 / 多剧本仍归 M3。M2 第一步是接度量而非写 F5（2026-10-05 拍板） | `docs/PRD.md` §13.7、§12 |
 | **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`（2026-10-04 绑定，浏览器实测可达、canonical/robots/sitemap 同域、冒烟 15/15），落地页 `rich-sim.bayjf.com`；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`** | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
 
@@ -74,7 +76,7 @@
 - **A 文档同步**（纯体力，各 ≤S）：~~① README 部署段过时~~ ✅ 4ca1bcd；~~② PRD §12 里程碑表 M1 仍标「待开发」~~ ✅ 2035316；~~③ 本表文档索引缺 DEPLOYMENT.md、文档计数过时~~ ✅ 462c23a；~~④ tech §12 残留旧托管决策（Vercel）~~ ✅ 5ea6abc；~~⑤ deferred #2 触发条件「M1 发布前」过期~~ ✅ 6c27880；~~⑥ 本表「相关」区 git 同步描述过时~~ ✅ fc2781b。
 - **B 代码小功能**（各 S–M）：~~① PWA 增强（manifest + service worker，tech §10.1 定案「半天成本」）~~ ✅ 32ddb25；~~② 埋点接真实上报（现为 localStorage 队列，T13 遗留）~~ ✅ 629d53c（CF Web Analytics beacon + sendBeacon 自定义事件，均由环境变量开启，未配置零行为）；~~③ sitemap.xml + robots.txt（DEPLOYMENT.md 验证清单 #5 提到，疑未配置）~~ ✅ 584b53b；~~④ WCAG AA / 键盘可达 / 对比度检查修复（PRD §9 硬要求，M1 验收未实测）~~ ✅ 61610ad（danger token、skip link、radiogroup 语义、aria-live、44px 触摸目标、固定底条遮挡）；~~⑤ 深浅色自适应核对（PRD §9，tech §7 说沿用落地页策略，需核实）~~ ✅ 6a4115c（机制已具备：prefers-color-scheme + color-scheme + 全量 light token；仅浅色 accent 对比度 4.36→5.23 加深，双主题全部文本 token 按 WCAG 公式实测 ≥4.5:1）；~~⑥ 草稿恢复入口（方案已存 localStorage，T07，查 UI 是否有回访恢复）~~ ✅ a4dcec0（首页 client:load 岛，nextDraftStep 纯函数 + 4 测试，无草稿不渲染、SSR 空帧）。
 - **C 内容**（各 M）：~~① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6；名人原型合规除外）~~ ✅ f725218（simulation-gameplay v0.2：账单日 6 个建议默认、现金流负担率公式与阈值、爽痛 1:1、两张虚构原型卡、一键成目标入 PRD §7.2/F5；剩余为 M3 前拍板项，见 gameplay §6）；~~② Catalog 21 项「待校准」数值补公开来源（deferred #1）~~ ✅ 26b4f4b（盘点所写「21 项」实为 **20 项**；23 项现已全部附可查证来源：BLS CE 2024 / AAA / KFF / NAIS / Child Care Aware / Allianz / Zillow，富豪极端档为行业估算；统一为实际自付现金口径，移除设计器 mock、catalog 改必传，测试增至 10 条；deferred #1 的 USD 部分闭环）；~~③ PRD §2.3 市场时机论证补全（需外部检索，带来源）~~ ✅ 38eb2df（Deloitte / PwC / 美联储 SHED / TIAA-GFLEC 四来源，deferred #8 市场时机部分闭环）。
-- **需拍板后才能动**：**决策包已备好 → `docs/m2-decisions.md` D1–D5**，每条收敛成一个可批选项 + 理由 + 翻转条件，划「认可/否决」即可。未拍项：F5 首个剧本与六通道取舍（D1/D2，阻塞 M2）、F2 的「精细模型（逐项支出）」（D3，建议移出 MVP）、M2 账号体系是否立项（D4，会推翻「MVP 无后端」这条已拍板决策）、投资线与付费墙/支付渠道（D5，建议押后）。~~正式域名绑定~~ 已定并绑定；~~F5 排期~~ 已定（见「已做的决策」）。
+- **需拍板后才能动**：~~D1–D5~~ **2026-10-05 已整包确认**（见「已做的决策」与 `docs/m2-decisions.md`）。当前真正待拍的只剩：`deferred #5` 法务与 publicity rights 复核（M3 原型卡上线前）、`#3` 付费墙与 `#7` 支付渠道（D5 押后，等付费意愿读数）、品牌视觉 / 商标（deferred #2 剩余部分）。
   - **F2 逐项支出（PRD §8 明写、当前未实现）——我先前把它列进「不需拍板」的 B 组，是错的，已移出**：`Profile.expense` 是**单个数字**（`packages/core/src/types.ts:27`），而 `types.ts` 与 `draft.ts` 都是冻结契约（`CONVENTIONS.md`：改契约 = 过闸门）。两条路必须选一条：**(a)** 展示层拆解 + 独立 localStorage key、引擎不读——零契约改动，但「精细模型」只是看起来精细，不影响测算，**有误导用户以为它参与计算的风险**；**(b)** 扩 `Profile` 让逐项支出真正进引擎——要过契约闸门，且牵动 `project` / `gap` / `buildMilestones` 口径与 `assumptionsVersion`。
 
 ## 待决问题
