@@ -1,6 +1,6 @@
 # 部署 — rich-sim（产品应用 · Cloudflare Pages Git 集成）
 
-更新时间：2026-10-04
+更新时间：2026-10-05
 
 ## 站点信息
 - Pages 项目：`rich-sim`（**Git 集成**：GitHub 仓库 `bayernjf/rich-sim`，push `main` 自动构建部署）
@@ -33,11 +33,13 @@
 
 未配置时应用不加载任何第三方脚本，漏斗事件只存本机队列（`rich-sim:events:v1`，等同 M1 行为）。
 
+**2026-10-05 生产现状**：`PUBLIC_ANALYTICS_ENDPOINT` 与 `PUBLIC_HOMEPAGE_CLAIM=1` 已在 Pages 项目 **Production** 环境变量配好（Preview 未配），经一次 Retry deployment 与后续一次主干构建生效；自建收集端已开始收到真实事件。`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 仍暂缓。
+
 | 变量 | 作用 |
 |---|---|
 | `PUBLIC_CF_WEB_ANALYTICS_TOKEN` | Cloudflare Web Analytics beacon token，自动采集 PV / 会话（完成率漏斗的「进入」分母）；仅生产构建注入，dev 不统计。在 Cloudflare 控制台 Web Analytics 新建站点后获取。**2026-10-05 决定暂缓**，至今未配。 |
-| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [{event, at, props?}] }`（JSON），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机。**自建落点**见下节。 |
-| `PUBLIC_HOMEPAGE_CLAIM` | 首页「领一百万」入口开关（`=1` 显示，未配置则隐藏；见 `docs/homepage-claim-experience.md` §7）。当前未配。 |
+| `PUBLIC_ANALYTICS_ENDPOINT` | 自定义漏斗事件收集端点；客户端用 `navigator.sendBeacon` 批量 POST `{ "events": [{event, at, props?}] }`（JSON 载荷，但 **Content-Type 是 `text/plain`**，原因见下「sendBeacon 踩坑」），可接 Umami / Plausible / 自建 collect；未配置则事件仅留本机。**2026-10-05 已在 Production 配置**为自建端点（值见下节）。**自建落点**见下节。 |
+| `PUBLIC_HOMEPAGE_CLAIM` | 首页「领一百万」入口开关（`=1` 显示，未配置则隐藏；见 `docs/homepage-claim-experience.md` §7）。**2026-10-05 已在 Production 配 `=1`**，入口已在生产打开；Preview 未配。 |
 
 ### 自建收集端 `workers/analytics-collector`（已部署，2026-10-05）
 
@@ -56,10 +58,12 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-05 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`。props 全丢后只剩频次。
 
-**打开读数的两步（都在 Cloudflare 控制台/CLI，发起人决定）**：
+**打开读数的两步（2026-10-05 已全部完成）**：
 
-1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。
-2. 触发构建：推一个提交，或 dashboard 对该 production 部署 Retry deployment。
+1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。✅ 已配。
+2. 触发构建：推一个提交，或 dashboard 对该 production 部署 Retry deployment。✅ 当天先 Retry 了 `cefaf27`（部署 `ca9de98d`）让变量进构建，随后主干的 beacon 修复又触发一次正式构建。
+
+**sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。
 
 **验证**：浏览器走一遍设计器 → 财务 → 结果，然后 `curl -s -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"` 应看到上述事件有计数；或 `wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events GROUP BY event"`。
 
