@@ -99,7 +99,7 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-   —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-05 S3 后为 **30 条**；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
+  —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-05 S4 后实测 **37 条**；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
 5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（正式域为 `app.rich-sim.bayjf.com`）
 
 > **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。同日域名拍板并绑定后，第 4 / 5 条已在正式域 `app.rich-sim.bayjf.com` 重跑：冒烟 15/15、`robots.txt` 的 `Sitemap:` 与 `sitemap.xml` 的 4 个 `<loc>` 均为该域、每页 canonical 同域自洽。
