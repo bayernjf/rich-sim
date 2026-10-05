@@ -1,0 +1,15 @@
+# rich-sim 漏斗事件收集端（给 `apps/web/src/lib/analytics.ts` 的 sendBeacon 用）。
+#
+# 为什么（隐私）：这个端点**只存事件名与时间**。客户端 props 一律丢弃——
+# finance:update 之类的事件里带着用户自己填的收入/支出金额，今天它们只存在
+# 本机，上报之后性质就变了。同理：不存 IP、不存 UA、不设任何标识符，因此
+# 没有跨事件追踪。代价是只能回答「每个环节各有多少次」，回答不了「同一个
+# 人的转化路径」；后者需要加设备级随机 id，那要发起人拍板。
+name = "rich-sim-collect"
+main = "src/index.ts"
+compatibility_date = "2026-10-05"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rich-sim-events"
+database_id = "8eeca8fa-f11c-4c20-9e6d-7076b3856d5b"
