@@ -109,3 +109,79 @@ export function cardAnnualCost(
 ): number {
   return scenarioAnnualCost(choices, catalog, assumptions).annualCost;
 }
+
+/* ── 领钱入口（S4 · homepage-claim-experience.md §7 P1）── */
+
+/**
+ * 虚拟起始金。§9 #1 的「固定 $1M vs 三档」未拍板，P1 取固定档：三档把
+ * "不够"变成可对比的梯度，但它同时多一个决策点，而在没有读数的情况下
+ * 无法判断这对转化是加分还是分散。翻转条件见该节。
+ */
+export const SIM_STARTING_CAPITAL = 1_000_000;
+
+/** 每个维度取最贵的一项 = 「全顶档生活」。金额由目录求和，这里不含它的字面量。 */
+export function topTierChoices(catalog: Catalog): LifeChoice {
+  return catalog.dimensions.map((dimension) => {
+    const top = dimension.options.reduce((best, option) =>
+      option.annualCost > best.annualCost ? option : best,
+    );
+    return { dimension: dimension.id, optionId: top.id };
+  });
+}
+
+/**
+ * 第二拍的主句：一笔本金按给定的提取率，一年能产出多少（$1M × 4% = $40,000）。
+ * 提取率来自假设对象，不在本模块写死。
+ */
+export function annualDrawdown(capital: number, assumptions: Assumptions): number {
+  return capital * assumptions.withdrawalRate;
+}
+
+export type ClaimBillRow = { label: string; annualCost: number; source?: string };
+
+/**
+ * 第二拍的三行真实账单（§4）：豪宅的税和维护、私人飞机年运营、全顶档生活。
+ * 金额与来源链接全部取自目录，UI 层不复制任何数字。
+ */
+export function claimBillRows(catalog: Catalog, assumptions: Assumptions): ClaimBillRow[] {
+  const picks: LifeChoice = [
+    { dimension: 'living', optionId: 'luxury-mansion' },
+    { dimension: 'transport', optionId: 'private-jet' },
+  ];
+  const bills = cardBills(picks, catalog).map((bill) => ({
+    label: bill.optionLabel,
+    annualCost: bill.annualCost,
+    source: bill.source,
+  }));
+  return [
+    ...bills,
+    {
+      label: '全顶档生活（每个维度都选最贵）',
+      annualCost: cardAnnualCost(topTierChoices(catalog), catalog, assumptions),
+    },
+  ];
+}
+
+/**
+ * 一笔本金能撑多久 = 本金 ÷ 年成本，纯除法（与 §2「$1M 只够顶档生活约 7 周」
+ * 同一口径）：不含收益率、不含复利，所以它是一句算术陈述而不是推演。
+ *
+ * P1 的 SIM 态不走 `project` 是有原因的，不是偷懒：SIM 态没有收入，
+ * `project` 会一律返回 `no-net-savings`，此时的年限数字是假的。§9 #2 决定
+ * 不编造 SIM 收入，所以在有收入的切片出现之前，这一屏只用纯除法说话。
+ */
+export function runwayMonths(capital: number, annualCost: number): number | null {
+  if (!(capital > 0) || !(annualCost > 0)) return null;
+  return capital / (annualCost / 12);
+}
+
+/**
+ * 展示取整只发生在这里，与换算条同一套口吻：不足一年说月数，
+ * 因为「0.0 年」既没有信息又显得假。
+ */
+export function formatRunway(months: number): string {
+  if (months < 12) return `${months.toFixed(1)} 个月`;
+  const years = months / 12;
+  const digits = years >= 100 ? Math.round(years).toLocaleString('en-US') : years.toFixed(1);
+  return `${digits.endsWith('.0') ? digits.slice(0, -2) : digits} 年`;
+}
