@@ -27,6 +27,8 @@
 
 key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDraft` / `writeDraft` / `clearDraft`），任何页面不得绕过。结构见该文件 `Draft` 类型（`choices` / `profile` / `currency` / `assumptions` / `updatedAt`）。
 
+**第二个独立 key `rich-sim:sim:v1`**（`docs/homepage-claim-experience.md` §3.1，随 M2 切片 S4 加入）：模拟态的虚拟起始金，读写一律走 `apps/web/src/lib/sim-draft.ts`。两个模块**互不 import、互不读写对方的 key**——这条是「两本账不混」的结构保证，由 `sim-draft.test.ts` 钉住：改任何一侧都要连测试一起改。真实测算只用前者，模拟态只用后者。
+
 ## 类型契约（冻结）
 
 - 一切类型以 `packages/core/src/types.ts` 为准（T02）。**禁止在 web 侧重新定义** core 已有类型，一律 `import type ... from '@rich-sim/core'`。
