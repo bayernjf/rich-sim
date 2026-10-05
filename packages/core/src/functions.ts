@@ -217,3 +217,28 @@ export function convert(amount: number, from: Currency, to: Currency, fx: FxSnap
   }
   return (amount * rateTo) / rateFrom;
 }
+
+/** Simulation bill-day status bands (simulation-gameplay.md §2.5). Below or at the
+ *  green line there is a >=40% cashflow buffer; above the hard line the year's
+ *  holding costs exceed the cashflow and assets must be sold. */
+export const BURDEN_RATE_GREEN = 0.6;
+export const BURDEN_RATE_HARD = 1.0;
+
+export type BurdenStatus = 'green' | 'yellow' | 'red';
+
+/**
+ * burdenStatus(annualCost, annualCashflow) — the bill-day burden ratio
+ * r = annualCost / annualCashflow and its band. A non-positive cashflow is
+ * 'red' with a null rate: there is nothing to divide by and nothing to pay
+ * with, which is the broken state, not an error.
+ */
+export function burdenStatus(
+  annualCost: number,
+  annualCashflow: number,
+): { rate: number | null; status: BurdenStatus } {
+  if (!(annualCashflow > 0)) return { rate: null, status: 'red' };
+  const rate = annualCost / annualCashflow;
+  const status: BurdenStatus =
+    rate <= BURDEN_RATE_GREEN ? 'green' : rate <= BURDEN_RATE_HARD ? 'yellow' : 'red';
+  return { rate, status };
+}

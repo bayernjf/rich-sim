@@ -139,6 +139,15 @@ try {
   check(simText.includes('虚构角色，不代表任何真实人物'), '卡 A：虚构角色标注可见', '');
   const simSourceLinks = await page.locator('a[href^="https://"][rel="noopener"]').count();
   check(simSourceLinks >= 6, '卡 A：六项来源链接可达', `links=${simSourceLinks}`);
+
+  // ── 步骤 7：账单日（S2）——基态黄 / 加游艇红 + 强制变卖提示 ──
+  const baseSim = await page.locator('#main').innerText();
+  check(baseSim.includes('紧张') && baseSim.includes('负担率 78%'), '账单日：基态黄（负担率 78%）', '示意现金流 $1,683,000');
+  await page.goto(`${BASE}/app/sim?yacht=1`, { waitUntil: 'networkidle' });
+  const redSim = await page.locator('#main').innerText();
+  check(redSim.includes('断裂预警') && redSim.includes('负担率 399%'), '账单日：加游艇后断裂预警（负担率 399%）', '');
+  check(redSim.includes('$4,050,000'), '账单日：变卖回笼 = 原价 75% = $4,050,000', 'superyacht 5,400,000 × 0.75');
+  check(redSim.includes('第 2 页'), '账单日：一页 4 张，出现第 2 页', '');
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {

@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { scenarioAnnualCost } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
-import { CARD_A, CARD_A_BROKE, cardAnnualCost } from './sim-content';
+import {
+  BILLS_PER_PAGE,
+  CARD_A,
+  CARD_A_ANNUAL_INCOME,
+  CARD_A_BROKE,
+  CARD_A_LAST_YEAR_COST,
+  SELL_DISCOUNT,
+  cardAnnualCost,
+  cardBills,
+  cardBurden,
+} from './sim-content';
 
 const catalog = initialCatalogUSD;
 const assumptions = DEFAULT_ASSUMPTIONS;
@@ -41,5 +51,42 @@ describe('卡 A（F5 最小版内容）', () => {
     const { breakdown } = scenarioAnnualCost(CARD_A.choices, catalog, assumptions);
     expect(Object.keys(breakdown).length).toBeGreaterThan(0);
     expect(breakdown['transport']).toBe(1_017_000); // 飞机 + 豪华车同维度合并
+  });
+});
+
+describe('账单日（S2）', () => {
+  it('账单按年成本降序，含拆到每月的口径', () => {
+    const bills = cardBills(CARD_A_BROKE, catalog);
+    expect(bills.length).toBe(7);
+    for (let i = 1; i < bills.length; i += 1) {
+      expect(bills[i - 1].annualCost).toBeGreaterThanOrEqual(bills[i].annualCost);
+    }
+    expect(bills[0].optionLabel).toBe('超级游艇自持（年运营全口径）');
+    expect(bills[0].monthlyCost).toBe(450_000); // 5,400,000 / 12
+    expect(bills.at(-1)?.monthlyCost).toBeGreaterThan(0);
+  });
+
+  it('翻页参数：一页 4 张，基态 6 张 = 2 页', () => {
+    expect(BILLS_PER_PAGE).toBe(4);
+    expect(Math.ceil(cardBills(CARD_A.choices, catalog).length / BILLS_PER_PAGE)).toBe(2);
+  });
+
+  it('负担率：基态黄（r ≈ 0.7825），加游艇红（r ≈ 3.9911）', () => {
+    const base = cardBurden(CARD_A.choices, catalog, assumptions);
+    expect(base.cashflow).toBe(CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST);
+    expect(base.status).toBe('yellow');
+    expect(base.rate).toBeCloseTo(1_317_000 / 1_683_000, 4);
+
+    const broke = cardBurden(CARD_A_BROKE, catalog, assumptions);
+    expect(broke.status).toBe('red');
+    expect(broke.rate).toBeCloseTo(6_717_000 / 1_683_000, 4);
+  });
+
+  it('CF 公式与 §2.5 一致：收入 − 上一年已承担的持有成本', () => {
+    expect(CARD_A_LAST_YEAR_COST).toBe(cardAnnualCost(CARD_A.choices, catalog, assumptions));
+  });
+
+  it('变卖折价是 §2.4 的 75%', () => {
+    expect(SELL_DISCOUNT).toBe(0.75);
   });
 });

@@ -1,5 +1,5 @@
 import type { Assumptions, Catalog, LifeChoice } from '@rich-sim/core';
-import { scenarioAnnualCost } from '@rich-sim/core';
+import { burdenStatus, scenarioAnnualCost } from '@rich-sim/core';
 
 /**
  * F5 最小版 · 卡 A（`simulation-gameplay.md` §4.4 定稿，`m2-decisions.md` D1 拍板）。
@@ -45,6 +45,62 @@ export const CARD_A_BROKE: LifeChoice = [
   ...CARD_A.choices,
   { dimension: 'travel', optionId: 'superyacht' },
 ];
+
+/**
+ * 账单日（§2.4/§2.5）的角色现金流参数。
+ *
+ * `annualIncome` 是**示意值**：§4.4 只给财富量级「十亿美元级」没给收入，
+ * 这里取量级下限 $75,000,000 × 4%（产品自己教的安全提取率，与
+ * `DEFAULT_ASSUMPTIONS.withdrawalRate` 同一口径）。改起始设定时改这里，
+ * 不要在 UI 里另算。
+ */
+export const CARD_A_ANNUAL_INCOME = 3_000_000;
+/** 上一年已承担的持有成本 = 卡 A 基态（§2.5：CF = 收入 − 上一年成本）。 */
+export const CARD_A_LAST_YEAR_COST = 1_317_000;
+/** §2.4 参数 4：变卖折价 75%（资产无法原价变现）。 */
+export const SELL_DISCOUNT = 0.75;
+/** §2.4 参数 2：一次翻 4 张，按年成本从高到低。 */
+export const BILLS_PER_PAGE = 4;
+
+export type Bill = {
+  dimensionLabel: string;
+  optionLabel: string;
+  annualCost: number;
+  monthlyCost: number;
+  source?: string;
+};
+
+/** 把一组选择展开成按年成本降序的账单（含拆到每月的口径）。 */
+export function cardBills(
+  choices: LifeChoice,
+  catalog: Catalog,
+): Bill[] {
+  return choices
+    .map((choice) => {
+      const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
+      const option = dimension?.options.find((o) => o.id === choice.optionId);
+      return {
+        dimensionLabel: dimension?.label ?? choice.dimension,
+        optionLabel: option?.label ?? choice.optionId,
+        annualCost: option?.annualCost ?? 0,
+        monthlyCost: Math.round((option?.annualCost ?? 0) / 12),
+        source: option?.source,
+      };
+    })
+    .sort((a, b) => b.annualCost - a.annualCost);
+}
+
+/** 卡 A 的现金流与负担率（模拟态专用，REAL 态不用这个函数）。 */
+export function cardBurden(
+  choices: LifeChoice,
+  catalog: Catalog,
+  assumptions: Assumptions,
+) {
+  const annualCost = scenarioAnnualCost(choices, catalog, assumptions).annualCost;
+  const cashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
+  const { rate, status } = burdenStatus(annualCost, cashflow);
+  return { annualCost, cashflow, rate, status };
+}
 
 export function cardAnnualCost(
   choices: LifeChoice,
