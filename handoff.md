@@ -12,7 +12,8 @@
 ## 当前状态
 
 - **文档**：13 份，见 `docs/`（下表）
-- **分支**：`dev`。**同步与领先/落后状态不写死在此**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推送）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
+- **分支**：`dev`，S1 代码已推送。**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
+- ⚠️ **发布阻塞（2026-10-06）**：PR #31 已开、Pages 构建成功，但 CI 卡 `queued` 未合并，main 未更新。详见下表与 `docs/DEPLOYMENT.md`。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -27,12 +28,14 @@
 | `docs/simulation-gameplay.md` | 模拟玩法设计草案（购物 / 六通道体验 / 对比闭环 / 名人原型合规） | Draft |
 | `docs/deferred-items.md` | 可边迭代边讨论的待决事项（每条带触发条件与阻塞性） | 活跃 |
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
-| `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
+| `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程、冒烟清单与发布事故记录 | 活跃 |
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
 | `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2/P3 未做；临时取值见该文档 §7.1 |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；S1 进行中——G1 类型 + catalog 字段 + `shoppingPool` 已实现，2–3 个纯体验项缺可查证来源待补 |
+
+> ⚠️ **发布阻塞（2026-10-06）**：S1 代码已推 dev（PR #31 自动创建、Cloudflare Pages 构建 SUCCESS），但 **GitHub Actions CI 卡在 `queued`、runner 没领任务**，pr-helper 等 CI 绿才合并 → PR 未合、main 未更新、生产未上。疑为 Actions 额度/计费问题（本地 72/72 绿，非代码问题），排查与出路见 `docs/DEPLOYMENT.md`「发布事故」。
 
 ## 已做的决策
 
