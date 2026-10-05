@@ -29,9 +29,9 @@
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
 | `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程与冒烟清单 | 活跃 |
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
-| `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4）**，入口默认关闭；P2/P3 未做；临时取值见该文档 §7.1 |
+| `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2/P3 未做；临时取值见该文档 §7.1 |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
-| `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **进行中**：S1（卡 A 看板）、S2（账单日）已上线；S3（换算条）代码完成；S4 未开工 |
+| `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 
 ## 已做的决策
 
@@ -69,12 +69,12 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步（**2026-10-05 拍板 F5 后重排**）：① ~~配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`~~ **2026-10-05 决定暂缓**（发起人：现在先不搞）——配置步骤与验证命令见 `docs/DEPLOYMENT.md` 分析埋点节；暂缓期间 PV/会话不可读；**自定义事件收集端 `workers/analytics-collector` 已部署（2026-10-05），只差 Pages 配 `PUBLIC_ANALYTICS_ENDPOINT`，见 M2 段诚实边界**；② **F5 最小版**（1 个身份剧本 + 资产看板 + 年持有成本 + 现金流波动，纯前端），启动前须拍 gameplay §6 的「首个剧本身份」与「六通道取舍」；③ 账号体系是否立项（`待定`，会推翻「MVP 无后端」）。域名 `app.rich-sim.bayjf.com` 已绑定并复验通过。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步（**2026-10-05 拍板 F5 后重排**）：① ~~配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`~~ **2026-10-05 决定暂缓**（发起人：现在先不搞）——配置步骤与验证命令见 `docs/DEPLOYMENT.md` 分析埋点节；暂缓期间 PV/会话不可读；**自定义事件管道已全通（2026-10-05 晚）：收集端部署 + Pages Production 变量 + beacon 修复均完成并端到端验证，见 M2 段**；② **F5 最小版**（1 个身份剧本 + 资产看板 + 年持有成本 + 现金流波动，纯前端），启动前须拍 gameplay §6 的「首个剧本身份」与「六通道取舍」；③ 账号体系是否立项（`待定`，会推翻「MVP 无后端」）。域名 `app.rich-sim.bayjf.com` 已绑定并复验通过。
 
-**M2（F5 最小版 + 三通道）进度**（2026-10-05）：S1 卡 A 资产看板（`/app/sim`，纯 SSR）、S2 账单日（现金流波动 + 断裂负担率）、S3 换算条（轻量口径，挂设计器 sticky 与结果页）**均已上线**；**S4 领钱入口**代码完成——独立账本 `rich-sim:sim:v1`（第二个冻结 key，见 `CONVENTIONS.md`）、首页两拍受 `PUBLIC_HOMEPAGE_CLAIM` 控制、**开关尚未在生产打开**（要在 Cloudflare Pages 项目配该变量，属发起人决定），A 线「够撑多久」挂在 `/app/sim`（`$1M ÷ 卡 A 年成本 = 9.1 个月`；加游艇后 1.8 个月；纯除法，不走 `project`——SIM 态没有收入，用法与 §8 验收 #8 的例外处理见 `homepage-claim-experience.md` §7.1）。
-**M2 四片至此全部交付**，下一步不再是既定切片，需要重新排：账号体系 / 投资线等仍押后（D4、D5），而它们的判据依赖漏斗读数。**收集端已就绪但开关未合**：`workers/analytics-collector`（Cloudflare Worker `rich-sim-collect` + D1 `rich-sim-events`）已部署，端点 `https://rich-sim-collect.jiangfengkxi.workers.dev/collect`，但 Pages 项目 `rich-sim` 未配 `PUBLIC_ANALYTICS_ENDPOINT` ⇒ 线上 beacon 不发、D1 行数 = 0，包括 S4 的 `claim:tap → route:real` 漏斗。配这一个变量（控制台，发起人决定）即可让自定义事件开始读数；PV/会话分母仍需另行配置 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（暂缓）。
+**M2（F5 最小版 + 三通道）进度**（2026-10-05）：S1 卡 A 资产看板（`/app/sim`，纯 SSR）、S2 账单日（现金流波动 + 断裂负担率）、S3 换算条（轻量口径，挂设计器 sticky 与结果页）**均已上线**；**S4 领钱入口**代码完成——独立账本 `rich-sim:sim:v1`（第二个冻结 key，见 `CONVENTIONS.md`）、首页两拍受 `PUBLIC_HOMEPAGE_CLAIM` 控制、**2026-10-05 晚已在生产打开**（Pages Production 配 `PUBLIC_HOMEPAGE_CLAIM=1`；Preview 未配），A 线「够撑多久」挂在 `/app/sim`（`$1M ÷ 卡 A 年成本 = 9.1 个月`；加游艇后 1.8 个月；纯除法，不走 `project`——SIM 态没有收入，用法与 §8 验收 #8 的例外处理见 `homepage-claim-experience.md` §7.1）。
+**M2 四片至此全部交付且埋点管道已通**（2026-10-05 晚）：Pages Production 配好 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect` 与 `PUBLIC_HOMEPAGE_CLAIM=1`，Retry deployment 让变量进构建后，线上冒烟 37/37、首页已见「领一百万」、analytics chunk 已内联端点。首日发现并修复一个**静默丢事件**缺陷：`sendBeacon` 固定 no-cors，原实现以 `application/json` Blob 发送被浏览器在发出前拦截（`net::ERR_FAILED`），而 beacon 仍返回 true、队列照常裁剪（`c6894a2` 改为纯字符串载荷，worker 无需改动）。修复后经 headless Chrome 真实 beacon + D1 console 双重确认入库；D1 现存 3 条 `probe:` 联调事件，读漏斗时按事件名过滤。下一步不再是既定切片，需要重新排：账号体系 / 投资线等仍押后（D4、D5），判据依赖真实流量下的漏斗读数。PV/会话分母仍需另行配置 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（暂缓）。
 
-诚实边界：`PUBLIC_ANALYTICS_ENDPOINT` 未配 ⇒ S1–S4 的效果全部无读数（`m2-task-breakdown.md` §5、`docs/DEPLOYMENT.md` §分析埋点）。
+诚实边界：埋点管道已通但**真实流量读数尚为零**——当前 D1 里只有联调产生的事件；S1–S4 有没有效果仍要等真实访客积累，口径见 `m2-task-breakdown.md` §5、`docs/DEPLOYMENT.md` §分析埋点。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 

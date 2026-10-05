@@ -51,11 +51,11 @@
 
 ## 5. 与度量的关系（别自欺）
 
-S1–S4 做完**不等于验证过**。度量现状（2026-10-05 清点）：
+S1–S4 做完**不等于验证过**。度量现状（2026-10-05 晚更新）：
 
 - **漏斗事件收集端已就绪**：`workers/analytics-collector`（Cloudflare Worker + D1 `rich-sim-events`）已部署，端点 `https://rich-sim-collect.jiangfengkxi.workers.dev/collect`，`/summary` 只读查询要 `READ_TOKEN`。**只存事件名+时间，丢 props、不存 IP/UA**（红线工程保证）。
-- **但客户端还没指过去**：Pages 项目 `rich-sim` 的 `PUBLIC_ANALYTICS_ENDPOINT` 未配 ⇒ 线上 beacon 不发，D1 行数 = 0，`claim:tap → route:real` 等漏斗全部无读数。
+- **客户端已指过去并端到端验证**：Pages Production 已配 `PUBLIC_ANALYTICS_ENDPOINT`，`PUBLIC_HOMEPAGE_CLAIM=1` 同步打开。开关首日暴露一个静默丢事件缺陷——`sendBeacon` 固定 no-cors，客户端却以 `application/json` Blob 发送，请求在发出前被浏览器拦截、队列却照常裁剪；已在 `c6894a2` 改为纯字符串载荷修复并重新部署，D1 console 可见真实入库（含 `probe:*` 诊断事件）。**注意现在 D1 里有 3 条 `probe:` 开头的联调事件，读漏斗时按事件名过滤掉。**
 - **PV / 会话分母仍缺**：`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 暂缓至今 ⇒ 完成率的「进入」分母没有，自建 collect 只数自定义事件、不给 PV。
-- 要让 S1–S4 的效果可读，需发起人在 Cloudflare 控制台配 `PUBLIC_ANALYTICS_ENDPOINT`（可选 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`），见 `docs/DEPLOYMENT.md` §分析埋点。**D4（账号体系）与 D5（付费墙/投资线）的判据同样依赖读数，仍悬空。**
+- 配置与 sendBeacon 踩坑细节见 `docs/DEPLOYMENT.md` §分析埋点。**D4（账号体系）与 D5（付费墙/投资线）的判据依赖读数积累——管道已通，等真实流量。**
 
 本分解只负责"能开工"，不负责"知道有没有用"。
