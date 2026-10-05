@@ -3,7 +3,7 @@
  * 不依赖真实浏览器）。
  */
 import { describe, expect, it, vi } from 'vitest';
-import { EVENTS_KEY, flushQueue, track } from './analytics';
+import { defaultDeps, EVENTS_KEY, flushQueue, track } from './analytics';
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -40,6 +40,27 @@ function seed(storage: Storage, n: number) {
 }
 
 describe('flushQueue', () => {
+  it('default beacon sends a plain string, never a JSON Blob (no-cors would block it)', () => {
+    const sent: unknown[] = [];
+    vi.stubGlobal('navigator', {
+      sendBeacon: (_url: string, body: unknown) => {
+        sent.push(body);
+        return true;
+      },
+    });
+    try {
+      const deps = defaultDeps();
+      expect(typeof deps.beacon).toBe('function');
+      const ok = deps.beacon?.('https://collect.example.com/events', '{"events":[]}');
+      expect(ok).toBe(true);
+      expect(sent).toHaveLength(1);
+      expect(typeof sent[0]).toBe('string');
+      expect(sent[0]).not.toBeInstanceOf(Blob);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('returns disabled and keeps the queue when no endpoint configured', () => {
     const storage = memoryStorage();
     seed(storage, 3);
