@@ -98,6 +98,24 @@ export type CatalogOption = {
   note?: string;
   /** Designer default selection (exactly one per dimension is recommended). */
   isDefault?: boolean;
+  /**
+   * M3 gameplay class (simulation-gameplay §2.1). Optional: the M1 designer
+   * catalog leaves it undefined; the luxury shopping pool requires it.
+   * - asset: large, long-lived, heavy carrying cost
+   * - consumer: instant gratification, depreciates, needs upkeep
+   * - experience: one-off, high emotion, zero carrying burden
+   */
+  kind?: 'asset' | 'consumer' | 'experience';
+  /** One-off purchase price (assets / consumer goods). 0/absent for experiences. */
+  purchasePrice?: number;
+  /** Carrying-cost breakdown labels (tax / crew / insurance ...), display only. */
+  costComponents?: string[];
+  /** Purchase-moment emotion rank 1–5, relative ordering only; never used in math. */
+  joy?: number;
+  /** Whether it can be resold (resale uses the gameplay 75% haircut). */
+  resellable?: boolean;
+  /** Net per-year emotion while holding, −2…+2; experiences leave it undefined. */
+  carryingJoy?: number;
 };
 
 export type CatalogDimension = {
