@@ -1,6 +1,6 @@
 # 对比换算器（Comparison Converter）
 
-> 状态：**方案草案 v1 · 2026-10-05**，未拍板、未排期、未写代码。
+> 状态：**v1 · 2026-10-05**。§2.1 轻量口径 + §3 四条边界**已实现**（M2 切片 S3：`packages/core/src/functions.ts` 的 `wealthTimeEquivalent` + `apps/web/src/lib/converter.ts`，设计器 sticky 与结果页两处挂载）；§2.2 本金口径未做。
 > 目的：给 F5 之前的一段空窗提供一个**立刻能用现有数据制造好奇心**的机制，并顺带抬 F1→F2→F3 的完成率。
 > 关联：`PRD.md` §5 核心价值主张 / §6.2 核心公式 / §6.3 领域规则 / §8 F5、`simulation-gameplay.md` §2.3 六通道（本条是其 MVP 候选 #2）、`technical-design.md` §4.2 币种口径。
 > 数值纪律：富人侧金额**唯一事实源是 `packages/core/src/catalog-data.ts`**，本文不复制金额表，只引用。
@@ -66,6 +66,8 @@
 
 **做**：轻量口径一行 + 三个边界状态（币种、分母 ≤0、超上限）+ 设计器 sticky 与结果页两处挂载 + 埋点事件 `converter:view` / `converter:expand`。
 **不做**：本金口径的多年份曲线、任意两项富人的组合换算、与阶梯目标（F4）的联动、任何「怎么存」的建议。
+
+实现现状（S3，2026-10-05）：上面「做」的部分除 `converter:expand` 外全部落地——`converter:expand` 属于 §2.2 本金口径的展开位，那一档未做，所以这个事件当前无从触发（不是埋了没上报）。
 
 工作量估计：**S–M**。复用 `convert` / `enoughLine` / `yearsToTarget`，新增的是一个纯函数（建议 `wealthTimeEquivalent(annualCostUsd, profile, fx, baseCurrency)`）+ 两个展示位 + 测试。纯函数可单测，符合 `CONVENTIONS.md` 的口径冻结纪律。
 
