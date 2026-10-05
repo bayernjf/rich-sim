@@ -1,4 +1,4 @@
-import type { Assumptions, Catalog, LifeChoice } from '@rich-sim/core';
+import type { Assumptions, Catalog, CatalogOption, LifeChoice } from '@rich-sim/core';
 import { burdenStatus, scenarioAnnualCost } from '@rich-sim/core';
 
 /**
@@ -108,6 +108,44 @@ export function cardAnnualCost(
   assumptions: Assumptions,
 ): number {
   return scenarioAnnualCost(choices, catalog, assumptions).annualCost;
+}
+
+/* ── 购物池（M3 · m3-task-breakdown.md §2 S1）── */
+
+export type ShoppingItem = {
+  dimension: string;
+  dimensionLabel: string;
+  option: CatalogOption;
+};
+
+/**
+ * 可购项 = 目录里被**显式标注了玩法 `kind`** 的选项（`simulation-gameplay.md`
+ * §5.2）。标注就是入池开关：M1 设计器里的普通人锚点档（两居租房、公交通勤、
+ * 自己做饭等）不标注，因而天然不进池；S2 的购物区也依赖 `kind` 才能把卡片分到
+ * 资产 / 消费品 / 体验三组。
+ *
+ * 来源红线（`m3-task-breakdown.md` §1.2）：`source` 不是 http(s)（即来源未核验
+ * 的档位）**不得进生产购物池**，即使它标了 `kind`。这里刻意不写出那个未核验
+ * 标记的字面量——`copy-guard.test.ts` 的界面措辞闸门会连源码注释一起扫。
+ */
+export function shoppingPool(catalog: Catalog): ShoppingItem[] {
+  return catalog.dimensions.flatMap((dimension) =>
+    dimension.options
+      .filter(isPurchasable)
+      .map((option) => ({
+        dimension: dimension.id,
+        dimensionLabel: dimension.label,
+        option,
+      })),
+  );
+}
+
+function isPurchasable(option: CatalogOption): boolean {
+  return (
+    option.kind !== undefined &&
+    typeof option.source === 'string' &&
+    /^https?:\/\//.test(option.source)
+  );
 }
 
 /* ── 领钱入口（S4 · homepage-claim-experience.md §7 P1）── */
