@@ -162,4 +162,43 @@ describe('computeResults', () => {
     if (r.status !== 'ok') return;
     expect(r.annualCostLocal).toBe(80_000);
   });
+
+  // S3 换算条跟着结果页走，所以它的口径也在这一层钉住（验收 §7.1 / §7.3）。
+  it('换算条：纯除法、无假设（手算 80,000 ÷ 60,000 = 1.33… 年）', () => {
+    const r = computeResults(makeDraft(), catalogWith(80_000));
+    expect(r.status).toBe('ok');
+    if (r.status !== 'ok') return;
+
+    expect(r.converter.status).toBe('years');
+    // 年净储蓄 = (15,000 − 10,000) × 12 = 60,000；80,000 / 60,000 = 4/3 -> 展示 1.3 年。
+    expect(r.converter.sentence).toBe(
+      '「你选的这种生活」一年 $80,000 = 你按现在的存法要存 1.3 年。',
+    );
+  });
+
+  it('换算条：切换展示币种后年数不变、金额随币种变（§7.3）', () => {
+    // profile 各金额按 7.12 精确换算（CurrencySwitcher 就是这么写的），
+    // 分子分母同比例缩放 -> 年数必须一模一样。
+    const usd = computeResults(makeDraft(), catalogWith(80_000));
+    const cny = computeResults(
+      makeDraft({
+        currency: 'CNY',
+        profile: {
+          income: 15_000 * 7.12,
+          expense: 10_000 * 7.12,
+          savings: 100_000 * 7.12,
+          debt: 0,
+          currency: 'CNY',
+        },
+      }),
+      catalogWith(80_000),
+    );
+    if (usd.status !== 'ok' || cny.status !== 'ok') throw new Error('expected ok');
+
+    const yearsOf = (s: string) => s.match(/要存 ([\d,.]+) 年/)?.[1];
+    expect(yearsOf(usd.converter.sentence)).toBe('1.3');
+    expect(yearsOf(cny.converter.sentence)).toBe(yearsOf(usd.converter.sentence));
+    // 一旦漏了分子换算，年数会随币种漂移——这两句同时就是那条性质的反证。
+    expect(cny.converter.sentence).toContain('¥569,600');
+  });
 });

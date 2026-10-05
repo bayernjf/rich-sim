@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   convert,
   type Catalog,
   type Currency,
   type FxSnapshot,
   type LifeChoice,
+  type Profile,
 } from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
 import { STATIC_FX_SNAPSHOT } from '../lib/defaults';
+import { converterLine } from '../lib/converter';
 import { track } from '../lib/analytics';
 import CurrencySwitcher from './CurrencySwitcher';
 
@@ -19,7 +21,8 @@ import CurrencySwitcher from './CurrencySwitcher';
  * - 选择经 lib/draft.ts 持久化到 localStorage（key `rich-sim:plan:v1`），mount 时恢复。
  * - catalog 为必传 prop，由页面传入 core 的 `initialCatalogUSD`（金额唯一事实源，
  *   已全部附公开来源），组件维度数量不写死。
- * - 不 import core 任何运行时函数；年成本在本地求和。
+ * - 年成本在本地求和（不走 core 的 scenarioAnnualCost）；S3 换算条例外，它必须
+ *   吃 core 的 `wealthTimeEquivalent`，因为币种换算只能在那个函数内部做。
  */
 
 type DesignerShellProps = {
@@ -66,6 +69,10 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
   // Catalog 以 USD 建模，展示时一律 convert(usdAmount, 'USD', currency, fx)。
   const [currency, setCurrency] = useState<Currency>('USD');
   const [fx, setFx] = useState<FxSnapshot>(() => STATIC_FX_SNAPSHOT);
+  /** S3 换算条的分母（只读；换算条本身不写回任何本机状态）。 */
+  const [profile, setProfile] = useState<Profile | null>(null);
+  /** 本机方案是否已恢复过——换算条上报要等它，见下面的 tracker。 */
+  const [restored, setRestored] = useState(false);
 
   // 仅在浏览器执行（localStorage 不可用于 SSR）。
   useEffect(() => {
@@ -78,14 +85,20 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
     }
   }, [catalog]);
 
-  // 仅展示层：从 draft 恢复展示币种与 fx 快照（不动 choices 的选择/持久化逻辑）。
+  // 仅展示层：从 draft 恢复展示币种、fx 快照与已录入的财务现状
+  // （不动 choices 的选择/持久化逻辑）。
+  // deps 带 currency：CurrencySwitcher 切换时会把 profile 各金额一并换算后写回
+  // draft，这里必须重读，否则换算条吃的还是旧币种的分母。不带 fx——它在每次
+  // readDraft 里都是新解析出来的对象身份，进 deps 会让本 effect 自己转成死循环。
   useEffect(() => {
     const draft = readDraft();
     if (draft) {
       setCurrency(draft.currency ?? 'USD');
       if (draft.assumptions?.fx) setFx(draft.assumptions.fx);
+      setProfile(draft.profile ?? null);
     }
-  }, [catalog]);
+    setRestored(true);
+  }, [catalog, currency]);
 
   /** 切换器切换成功回调：更新展示态（持久化已由 CurrencySwitcher 经 writeDraft 完成）。 */
   const handleCurrencyChanged = (next: Currency, nextFx: FxSnapshot) => {
@@ -125,6 +138,30 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
   const total = useMemo(() => annualTotal(catalog, choices), [catalog, choices]);
   const selectedId = (dimensionId: string) =>
     choices.find((c) => c.dimension === dimensionId)?.optionId;
+
+  // S3 换算条：sticky 条常驻一行——已录入财务就换算，没录入就变成 F2 引导句。
+  // 金额已经在 profile 币种里（core 函数换算过），这里只加符号与千分位。
+  const converter = useMemo(
+    () =>
+      converterLine(catalog, choices, profile, fx, (local, c) =>
+        local.toLocaleString('en-US', {
+          style: 'currency',
+          currency: c,
+          maximumFractionDigits: 0,
+        }),
+      ),
+    [catalog, choices, profile, fx],
+  );
+
+  // 一次页面访问只报一条 converter:view（随选择重算时不重复刷屏）。
+  // 必须等 restored：mount 首帧 profile 恒为 null，否则每个已录入财务的用户
+  // 回访设计器都会被记成 no-profile——把漏斗最想看的那一步反着记。
+  const converterTracked = useRef(false);
+  useEffect(() => {
+    if (!restored || !converter || converterTracked.current) return;
+    converterTracked.current = true;
+    track('converter:view', { status: converter.status });
+  }, [restored, converter]);
 
   return (
     <section className="pb-32">
@@ -207,23 +244,42 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
         结果不承诺未来收益。年成本按当前所选选项简单加总，通胀作为假设记录、暂不参与换算。
       </p>
 
-      {/* sticky 底部实时预览条（常驻） */}
+      {/* sticky 底部实时预览条（常驻）：年成本 + S3 换算条 */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line-strong bg-panel/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <div className="text-xs text-muted">
-              理想生活年成本（{currency}）
+        <div className="mx-auto max-w-3xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs text-muted">
+                理想生活年成本（{currency}）
+              </div>
+              <div className="font-mono text-xl font-semibold tabular-nums text-accent">
+                {fmt(total)}
+              </div>
             </div>
-            <div className="font-mono text-xl font-semibold tabular-nums text-accent">
-              {fmt(total)}
+            <div className="text-right text-xs leading-relaxed text-muted" aria-live="polite">
+              <div>{persisted ? '已保存 · 本机' : '未保存'}</div>
+              <div className="mt-0.5">
+                {persisted ? '选择已自动存入本机' : '选择后自动保存'}
+              </div>
             </div>
           </div>
-          <div className="text-right text-xs leading-relaxed text-muted" aria-live="polite">
-            <div>{persisted ? '已保存 · 本机' : '未保存'}</div>
-            <div className="mt-0.5">
-              {persisted ? '选择已自动存入本机' : '选择后自动保存'}
-            </div>
-          </div>
+
+          {converter && (
+            <p
+              data-converter-line
+              className="mt-2 border-t border-line pt-2 text-xs leading-relaxed text-muted"
+            >
+              {converter.sentence}
+              {converter.status === 'no-profile' && (
+                <a
+                  className="ml-1 whitespace-nowrap text-accent underline-offset-2 hover:underline"
+                  href="/app/finance"
+                >
+                  去录入 →
+                </a>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </section>
