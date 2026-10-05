@@ -11,7 +11,7 @@
   - `src/index.ts` — barrel，**由组织者在 Wave 1 闸门处合并**，各 Agent 不要并发编辑
 - `apps/web`：Astro 5 + React 19 + Tailwind v4，SSR（`output: 'server'` + Cloudflare adapter）。
 - `workers/analytics-collector`：Cloudflare Worker + D1，接收 `apps/web` 客户端上报的漏斗事件（`PUBLIC_ANALYTICS_ENDPOINT` 的默认落点，运维见 `docs/DEPLOYMENT.md` §分析埋点）。**只存事件名与时间**：丢弃 props、不存 IP/UA/任何标识符——这是产品红线（用户自填的财务数据不得上传）的工程保证，改这里要连着理由一起看。
-- **不要把应用代码写进 `../rich-sim`（纯文档仓库）；不要改 `rich-sim-landing`**（除非 T12 口径不一致时按流程回写）。
+- **代码写进 `apps/` 与 `packages/`，文档写进 `docs/`，各归其位**；不要改 `rich-sim-landing`（独立仓库），除非 T12 口径不一致时按流程回写。
 
 ## 路由表（冻结）
 
