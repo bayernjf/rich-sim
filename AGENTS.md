@@ -26,7 +26,7 @@
 
 本仓库是**产品仓库：文档 + 应用代码一体**（2026-10-04 起，M1 代码已并入）。
 - 营销落地页：同级目录 `rich-sim-landing`（独立 git 仓库）
-- 产品应用：**在本仓库内**——`apps/web`（Astro 应用）+ `packages/core`（纯函数计算引擎）+ `scripts/`
+- 产品应用：**在本仓库内**——`apps/web`（Astro 应用）+ `packages/core`（纯函数计算引擎）+ `workers/`（边缘侧服务）+ `scripts/`
 
 ## 仓库结构
 
@@ -35,6 +35,7 @@
 | `docs/` | 方案 / 设计 / 规格全文（product-concept、PRD、technical-design、simulation-gameplay、m1-task-breakdown 等） |
 | `apps/web/` | 产品应用（Astro 5 + React 19 岛） |
 | `packages/core/` | 计算引擎 `@rich-sim/core`（纯函数 + 测试） |
+| `workers/` | 边缘侧服务（Cloudflare Workers）；目前只有 `analytics-collector` 漏斗事件收集端 |
 | `scripts/`、`CONVENTIONS.md` | 工程工具与口径冻结契约 |
 
 ## 文档结构
