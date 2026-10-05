@@ -1,5 +1,5 @@
 /**
- * T03 · @rich-sim/core engine — the six pure functions.
+ * T03 · @rich-sim/core engine — the pure functions.
  *
  * Frozen contract: src/types.ts (comment block at EOF) + CONVENTIONS.md
  * 「引擎公式口径」. All assumptions are passed in explicitly; this module
@@ -18,7 +18,9 @@ import type {
   ScenarioCost,
 } from './types';
 
-/** Max projection horizon (years). Beyond it the goal is 'unreachable'. */
+/** Max projection horizon (years). Beyond it the goal is 'unreachable'.
+ *  The comparison converter shares this horizon: it never prints "N years"
+ *  for an N the engine has already ruled out of a working life. */
 const MAX_YEARS = 60;
 /** Milestone stage 1: target savings rate lifted to 20% of income. */
 const STAGE1_SAVINGS_RATE = 0.2;
@@ -241,4 +243,50 @@ export function burdenStatus(
   const status: BurdenStatus =
     rate <= BURDEN_RATE_GREEN ? 'green' : rate <= BURDEN_RATE_HARD ? 'yellow' : 'red';
   return { rate, status };
+}
+
+/** Above this multiple the line drops the number entirely: "17,562 years"
+ *  reads as noise, not as curiosity (comparison-converter.md §3.3). */
+export const TIME_EQUIVALENT_ABSURD_MULTIPLE = 1000;
+
+/**
+ * The converter's four first-class outcomes. `years` and `multiple` hold the
+ * same quotient and differ only in which framing the doc prescribes; the
+ * `no-net-savings` name matches `project` so the UI speaks one vocabulary.
+ */
+export type TimeEquivalent =
+  | { status: 'no-net-savings'; annualCostLocal: number; annualSavings: number; currency: Currency }
+  | { status: 'years'; years: number; annualCostLocal: number; annualSavings: number; currency: Currency }
+  | { status: 'multiple'; multiple: number; annualCostLocal: number; annualSavings: number; currency: Currency }
+  | { status: 'beyond-scale'; annualCostLocal: number; annualSavings: number; currency: Currency };
+
+/**
+ * wealthTimeEquivalent(annualCostUsd, profile, fx) — the §2.1 lightweight
+ * line: this bill's annual cost / the user's annual net savings, as a pure
+ * division. No returnRate, no withdrawalRate, no compounding, so the result
+ * states an arithmetic relation rather than a projection.
+ *
+ * The convert() below is load-bearing, not cosmetic: catalog costs are USD
+ * while the profile is in the user's entry currency, so skipping it divides
+ * across two currencies and yields a rate-factor-wrong number. It is inside
+ * the function because there is no caller-side way to get that wrong.
+ */
+export function wealthTimeEquivalent(
+  annualCostUsd: number,
+  profile: Profile,
+  fx: FxSnapshot,
+): TimeEquivalent {
+  const currency = profile.currency;
+  const annualCostLocal = convert(annualCostUsd, 'USD', currency, fx);
+  const annualSavings = (profile.income - profile.expense) * 12;
+  if (!(annualSavings > 0)) return { status: 'no-net-savings', annualCostLocal, annualSavings, currency };
+
+  const years = annualCostLocal / annualSavings;
+  if (years > TIME_EQUIVALENT_ABSURD_MULTIPLE) {
+    return { status: 'beyond-scale', annualCostLocal, annualSavings, currency };
+  }
+  if (years > MAX_YEARS) {
+    return { status: 'multiple', multiple: years, annualCostLocal, annualSavings, currency };
+  }
+  return { status: 'years', years, annualCostLocal, annualSavings, currency };
 }
