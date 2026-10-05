@@ -75,6 +75,25 @@ try {
   const evDesigner = await eventsSoFar();
   check(countEvent(evDesigner, 'designer:select') >= 4, '埋点：designer:select 已入队（≥4 次点选）', `count=${countEvent(evDesigner, 'designer:select')}`);
 
+  // ── 步骤 1.5：换算条（S3）——未录入财务时不消失，改成 F2 引导句 ──
+  const stickyText = await page.locator('[data-converter-line]').innerText();
+  check(
+    stickyText.includes('先填 4 个数'),
+    '换算条：未录入财务时显示引导句',
+    `text="${stickyText.trim()}"`,
+  );
+  check(
+    await page.locator('[data-converter-line] a[href="/app/finance"]').count() === 1,
+    '换算条：引导句带「去录入」入口',
+    '',
+  );
+  const evConverter = await eventsSoFar();
+  check(
+    countEvent(evConverter, 'converter:view') >= 1,
+    '埋点：converter:view 已入队',
+    `count=${countEvent(evConverter, 'converter:view')}`,
+  );
+
   // ── 步骤 2：财务录入 4 项 ──
   await page.goto(`${BASE}/app/finance`, { waitUntil: 'networkidle' });
   await page.fill('#field-income', '15000');
@@ -112,6 +131,23 @@ try {
   const evResult = await eventsSoFar();
   check(countEvent(evResult, 'results:view') >= 1, '埋点：results:view 已入队', `count=${countEvent(evResult, 'results:view')}`);
 
+  // ── 步骤 3.5：换算条（S3）——年成本 ÷ 年净储蓄，纯除法、手算核对 ──
+  // 分母用脚本自己填进去的 15,000 / 8,000（不读页面），分子用 sticky 的 v0。
+  const annualSavings = (15_000 - 8_000) * 12;
+  const expectedYears = (v0 / annualSavings).toFixed(1);
+  const converterUsd = await page.locator('[data-results-root] [data-converter-line]').innerText();
+  const yearsOf = (text) => text.match(/(要存|≈ 你)\s*([\d,.]+)\s*(年|个月)/)?.[2] ?? null;
+  check(
+    yearsOf(converterUsd) === expectedYears,
+    '换算条：年数 = sticky 年成本 ÷ 年净储蓄（手算核对）',
+    `shown=${yearsOf(converterUsd)} expected=${expectedYears} text="${converterUsd.trim()}"`,
+  );
+  check(
+    !/NaN|Infinity|undefined/.test(converterUsd),
+    '换算条：不出现 NaN / Infinity / undefined',
+    `text="${converterUsd.trim()}"`,
+  );
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
@@ -123,6 +159,19 @@ try {
   const evSwitch = await eventsSoFar();
   check(countEvent(evSwitch, 'currency:switch') >= 1, '埋点：currency:switch 已入队', `count=${countEvent(evSwitch, 'currency:switch')}`);
 
+  // mount 首帧 profile 恒为 null，上报要等本机方案恢复完——否则已录入财务的人
+  // 回访设计器会被记成 no-profile（漏斗上就是「有 profile 的人看不到换算条」）。
+  const idxFinance = evSwitch.findIndex((e) => e.event === 'finance:update');
+  const converterAfterFinance = evSwitch
+    .slice(idxFinance + 1)
+    .filter((e) => e.event === 'converter:view');
+  check(
+    converterAfterFinance.length >= 1 &&
+      converterAfterFinance.every((e) => e.props?.status !== 'no-profile'),
+    '换算条：录入财务后不再误报 no-profile',
+    `statuses=${converterAfterFinance.map((e) => e.props?.status).join(',') || '(无)'} financeIdx=${idxFinance}`,
+  );
+
   // ── 步骤 5：复看结果页，金额随新币种（约 1800 万量级 CNY）──
   await page.goto(`${BASE}/app/result`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-status]');
@@ -131,6 +180,21 @@ try {
   check(enoughCny > 15_000_000 && enoughCny < 22_000_000, '切币种后：够用线换算到 CNY（约 1800 万量级）', `enoughCny=${enoughCny} text="${enoughTextCny.trim()}"`);
   const bodyCny = await page.locator('[data-results-root]').innerText();
   check(/CNY/.test(bodyCny), '切币种后：结果页币种标签为 CNY', `hasCNY=${/CNY/.test(bodyCny)}`);
+
+  // ── 步骤 5.5：换算条切币种——年数必须不动，金额必须动（§7.3）──
+  // 这一条是分子换算的活体探针：漏了 convert()，年数会随币种漂移。
+  const converterCny = await page.locator('[data-results-root] [data-converter-line]').innerText();
+  check(
+    yearsOf(converterCny) === yearsOf(converterUsd),
+    '换算条：切币种后年数不变',
+    `usd=${yearsOf(converterUsd)} cny=${yearsOf(converterCny)} text="${converterCny.trim()}"`,
+  );
+  const moneyOf = (text) => text.match(/一年\s*[^\d]+([\d,.]+)/)?.[1] ?? null;
+  check(
+    moneyOf(converterCny) !== moneyOf(converterUsd),
+    '换算条：切币种后金额随币种变',
+    `usd=${moneyOf(converterUsd)} cny=${moneyOf(converterCny)}`,
+  );
 
   // ── 步骤 6：富豪模拟卡 A（F5 最小版，纯 SSR 页）──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });

@@ -15,6 +15,8 @@ import type {
   Projection,
 } from '@rich-sim/core';
 import type { Draft } from './draft';
+import type { ConverterStatus } from './converter';
+import { converterForItem } from './converter';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
 
 /**
@@ -52,6 +54,11 @@ export type Results =
       currency: Currency;
       /** 本次测算使用的汇率快照（进假设清单展示）。 */
       fx: FxSnapshot;
+      /**
+       * S3 换算条（轻量口径）：整份理想生活的一年 = 你要存多久。
+       * 只在展示层存在，不进 draft。
+       */
+      converter: { sentence: string; status: ConverterStatus };
     };
 
 /** 为每个维度生成默认选择：优先 isDefault，否则第一项。 */
@@ -88,6 +95,19 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
   const savingsRate =
     projection.status === 'no-net-savings' ? null : projection.savingsRate;
 
+  // S3 换算条：对象是整份理想生活（不是某个单项），分母是用户自己的年净储蓄。
+  const converter = converterForItem(
+    { label: '你选的这种生活', annualCostUSD },
+    profile,
+    assumptions.fx,
+    (local, c) =>
+      local.toLocaleString('en-US', {
+        style: 'currency',
+        currency: c,
+        maximumFractionDigits: 0,
+      }),
+  );
+
   return {
     status: 'ok',
     annualCostLocal,
@@ -98,5 +118,6 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
     savingsRate,
     currency: draft.currency,
     fx: assumptions.fx,
+    converter,
   };
 }

@@ -31,7 +31,7 @@
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **草案 v1，未拍板未排期** |
 | `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **草案 v2，未拍板未排期**（§9 五项待拍） |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
-| `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **可开工**，顺序 S1→S2→S3→S4 |
+| `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **进行中**：S1（卡 A 看板）、S2（账单日）已上线；S3（换算条）代码完成；S4 未开工 |
 
 ## 已做的决策
 
@@ -70,6 +70,8 @@
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
 **M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步（**2026-10-05 拍板 F5 后重排**）：① ~~配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`~~ **2026-10-05 决定暂缓**（发起人：现在先不搞）——配置步骤与验证命令见 `docs/DEPLOYMENT.md` 分析埋点节；暂缓期间线上**零采集**，所有漏斗指标不可读；② **F5 最小版**（1 个身份剧本 + 资产看板 + 年持有成本 + 现金流波动，纯前端），启动前须拍 gameplay §6 的「首个剧本身份」与「六通道取舍」；③ 账号体系是否立项（`待定`，会推翻「MVP 无后端」）。域名 `app.rich-sim.bayjf.com` 已绑定并复验通过。
+
+**M2（F5 最小版 + 三通道）进度**（2026-10-05）：S1 卡 A 资产看板（`/app/sim`，纯 SSR）、S2 账单日（现金流波动 + 断裂负担率）已上线；**S3 换算条**代码完成——`comparison-converter.md` §2.1 轻量口径（年成本 ÷ 年净储蓄的纯除法），挂设计器 sticky 与结果页两处，未录入财务时该行变成 F2 引导句，不写 draft、不在 `/app/sim` 挂；本金口径（§2.2）未做，故 `converter:expand` 事件当前无从触发。**下一片 S4**：首页「领一百万」入口，按 `homepage-claim-experience.md` §7 P1。诚实边界：`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 仍暂缓 ⇒ S1–S4 的效果全部无读数（`m2-task-breakdown.md` §5）。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 

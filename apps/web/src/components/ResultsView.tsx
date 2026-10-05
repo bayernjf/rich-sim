@@ -46,11 +46,13 @@ export default function ResultsView({ catalog }: { catalog: Catalog }) {
         status: res.status === 'ok' ? res.projection.status : res.status,
         currency: res.status === 'ok' ? res.currency : undefined,
       });
+      if (res.status === 'ok') track('converter:view', { status: res.converter.status });
     } catch {
       // choices 与 Catalog 失配（旧本机方案）-> 退回默认选择重算。
       const res = computeResults({ ...draft, choices: [] }, catalog);
       setView(res);
       track('results:view', { status: res.status === 'ok' ? res.projection.status : res.status });
+      if (res.status === 'ok') track('converter:view', { status: res.converter.status });
     }
   }, [catalog]);
 
@@ -105,6 +107,14 @@ export default function ResultsView({ catalog }: { catalog: Catalog }) {
               </div>
             </dl>
           </div>
+
+          {/* S3 换算条：把这份理想生活翻译成用户自己的时间单位（§2.1 纯除法，不含假设） */}
+          <p
+            data-converter-line
+            className="mt-4 rounded-xl border border-line bg-panel px-4 py-3 text-xs leading-relaxed text-muted"
+          >
+            {view.converter.sentence}
+          </p>
 
           {/* 三状态一等状态卡片 */}
           <div
