@@ -202,3 +202,36 @@ describe('computeResults', () => {
     expect(cny.converter.sentence).toContain('¥569,600');
   });
 });
+
+describe('goalOverride（M3 S4 · G4 方案 a）', () => {
+  it('有 override 时目标年成本直接取它，忽略 choices 逐维求和', () => {
+    // catalog 里唯一档位是 80,000；choices 就算指向它也被 override 覆盖。
+    const r = computeResults(
+      makeDraft({ goalOverride: { annualCost: 1_000_000, from: 'sim-cart' } }),
+      catalogWith(80_000),
+    );
+    if (r.status !== 'ok') throw new Error('expected ok');
+    expect(r.annualCostLocal).toBe(1_000_000);
+    expect(r.enoughLine).toBe(25_000_000);
+    expect(r.goalFrom).toBe('sim-cart');
+    expect(r.converter.sentence).toContain('富豪购物车');
+  });
+
+  it('无 override 的普通草稿 goalFrom 为 undefined，行为不变', () => {
+    const r = computeResults(makeDraft(), catalogWith(80_000));
+    if (r.status !== 'ok') throw new Error('expected ok');
+    expect(r.annualCostLocal).toBe(80_000);
+    expect(r.goalFrom).toBeUndefined();
+    expect(r.converter.sentence).toContain('你选的这种生活');
+  });
+
+  it('形状非法的 override（NaN / 错误 from）被忽略，退回 choices', () => {
+    const r = computeResults(
+      makeDraft({ goalOverride: { annualCost: NaN, from: 'sim-cart' } }),
+      catalogWith(80_000),
+    );
+    if (r.status !== 'ok') throw new Error('expected ok');
+    expect(r.annualCostLocal).toBe(80_000);
+    expect(r.goalFrom).toBeUndefined();
+  });
+});

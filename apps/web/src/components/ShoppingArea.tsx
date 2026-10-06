@@ -17,6 +17,8 @@ import {
   type ShoppingItem,
 } from '../lib/sim-content';
 import { type CartItem, readCart, saveCartItem } from '../lib/sim-draft';
+import { adoptCartAsGoal } from '../lib/sim-bridge';
+import { track } from '../lib/analytics';
 
 type Props = {
   items: ShoppingItem[];
@@ -231,6 +233,29 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
         全部商品为公开来源校准的档位（富豪极端档为行业公开估算），是虚构角色生活方式的
         算术教具，不是真实报价、消费建议或投资建议。
       </p>
+
+      <div className="mt-5 rounded-xl border border-line bg-panel p-4">
+        <p className="text-sm font-medium text-ink">把这套生活设为我的目标</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">
+          只把这套生活方式的<strong>年成本</strong>带进你的现实测算，不是你有这么多钱；
+          模拟领的起始金与资产占比不会带过去。
+        </p>
+        {cart.length === 0 ? (
+          <p className="mt-3 text-xs text-muted">先在上面加入至少一件，再设为目标。</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              const dest = adoptCartAsGoal(cart);
+              track('cart:to-goal', { items: cart.length });
+              window.location.assign(dest);
+            }}
+            className="mt-3 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-on-accent transition-colors motion-reduce:transition-none hover:bg-accent/90"
+          >
+            设为我的目标 →
+          </button>
+        )}
+      </div>
     </section>
   );
 }

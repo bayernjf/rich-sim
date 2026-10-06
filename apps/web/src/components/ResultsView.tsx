@@ -94,6 +94,11 @@ export default function ResultsView({ catalog }: { catalog: Catalog }) {
               {fmtMoney(view.enoughLine, view.currency)}
               <span className="ml-2 align-middle text-sm font-normal text-muted">{view.currency}</span>
             </p>
+            {view.goalFrom === 'sim-cart' && (
+              <p data-goal-source className="mt-3 inline-flex items-center rounded-full border border-accent bg-accent-soft px-3 py-1 text-xs text-ink">
+                目标来自富豪模拟购物车 · 这是你想要的生活方式的年成本，不是你有这么多钱
+              </p>
+            )}
             <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-xs text-muted">理想生活年成本</dt>
