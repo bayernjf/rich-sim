@@ -96,13 +96,18 @@ function persistCart(cart: CartItem[]): void {
   }
 }
 
-/** 加购并持久化；返回最新车（未领取起始金时调用方把它当纯前端态用）。 */
-export function saveCartItem(item: CartItem, add: boolean): CartItem[] {
-  const cart = add
-    ? addCartItem(sanitizeCart(readSimState()?.cart), item)
-    : removeCartItem(sanitizeCart(readSimState()?.cart), item);
-  persistCart(cart);
-  return cart;
+/**
+ * 基于调用方持有的当前车做幂等加/删，并尝试持久化，返回最新车。
+ *
+ * 当前车由 UI 持有（事实源），不从账本重读：没领过起始金的人没有 sim 账本，
+ * 若这里每次都从 readSimState() 重新派生，连续加购会各自从空车算起而互相覆盖。
+ * 有 sim 账本时把结果写回；没有时购物车是纯内存会话态（不凭空创建账本）。
+ */
+export function saveCartItem(cart: CartItem[], item: CartItem, add: boolean): CartItem[] {
+  const current = sanitizeCart(cart);
+  const next = add ? addCartItem(current, item) : removeCartItem(current, item);
+  persistCart(next);
+  return next;
 }
 
 /** 读出当前购物车（无草稿/坏数据统一为空车）。 */
