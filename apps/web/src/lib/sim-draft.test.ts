@@ -10,7 +10,17 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DRAFT_KEY } from './draft';
-import { SIM_KEY, claimSim, clearSimState, readSimState } from './sim-draft';
+import {
+  SIM_KEY,
+  addCartItem,
+  claimSim,
+  clearSimState,
+  readCart,
+  readSimState,
+  removeCartItem,
+  sanitizeCart,
+  saveCartItem,
+} from './sim-draft';
 
 function installStorage(): Map<string, string> {
   const map = new Map<string, string>();
@@ -81,6 +91,82 @@ describe('模拟态存储（S4）', () => {
     localStorage.setItem(SIM_KEY, JSON.stringify({ schemaVersion: 2, startingCapital: 100 }));
     expect(readSimState()).toBeNull();
     localStorage.setItem(SIM_KEY, JSON.stringify({ schemaVersion: 1, startingCapital: 'x' }));
+    expect(readSimState()).toBeNull();
+  });
+});
+
+describe('购物车（M3 S2 · G2）', () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  it('旧草稿（无 cart 字段）读出来是空车，schemaVersion 仍是 1', () => {
+    claimSim(1_000_000);
+    expect(readSimState()?.cart ?? []).toEqual([]);
+    expect(readCart()).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(SIM_KEY)!).schemaVersion).toBe(1);
+  });
+
+  it('加购幂等：同一选项重复加只有一件；同维可多件', () => {
+    claimSim(1_000_000);
+    expect(saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true)).toHaveLength(1);
+    expect(saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true)).toHaveLength(1);
+    const two = saveCartItem({ dimension: 'travel', optionId: 'international' }, true);
+    expect(two).toHaveLength(2);
+    expect(two.map((item) => item.optionId)).toEqual(['superyacht', 'international']);
+  });
+
+  it('移出幂等：删本就不在车里的条目不报错', () => {
+    expect(addCartItem([], { dimension: 'a', optionId: 'x' })).toHaveLength(1);
+    expect(
+      addCartItem(
+        [{ dimension: 'a', optionId: 'x' }],
+        { dimension: 'a', optionId: 'x' },
+      ),
+    ).toEqual([{ dimension: 'a', optionId: 'x' }]);
+    expect(removeCartItem([], { dimension: 'a', optionId: 'x' })).toEqual([]);
+    expect(
+      removeCartItem(
+        [{ dimension: 'a', optionId: 'x' }],
+        { dimension: 'a', optionId: 'x' },
+      ),
+    ).toEqual([]);
+  });
+
+  it('持久化后能读回，且只动 sim 账本', () => {
+    localStorage.setItem(DRAFT_KEY, REAL_PLAN);
+    claimSim(1_000_000);
+    saveCartItem({ dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
+    expect(readCart()).toEqual([
+      { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
+    ]);
+    expect(localStorage.getItem(DRAFT_KEY)).toBe(REAL_PLAN);
+  });
+
+  it('坏 cart（非数组 / 形状错 / 重复）被收敛：合法项保留并去重', () => {
+    claimSim(1_000_000);
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        startingCapital: 1_000_000,
+        claimedAt: '2026-10-06T00:00:00.000Z',
+        cart: [
+          { dimension: 'travel', optionId: 'superyacht' },
+          { dimension: 'travel', optionId: 'superyacht' },
+          { dimension: 42 },
+          null,
+          'nope',
+        ],
+      }),
+    );
+    expect(readCart()).toEqual([{ dimension: 'travel', optionId: 'superyacht' }]);
+    expect(sanitizeCart(undefined)).toEqual([]);
+    expect(sanitizeCart(null)).toEqual([]);
+  });
+
+  it('没领过起始金时加车不凭空创建账本（购物区不强迫先领钱）', () => {
+    saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true);
     expect(readSimState()).toBeNull();
   });
 });
