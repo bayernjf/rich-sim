@@ -54,6 +54,11 @@ Necker 整岛包岛候选因媒体口径不一（$113k–140k/晚，且 7 晚起
 - 新 React 岛 `ShoppingArea.tsx` 挂在 `/app/sim` 页内（G3 不新增路由）：服务端传 `shoppingPool(catalog)`，挂载后读本机 cart；按 asset/consumer/experience 三组陈列，每项显示年成本、`costComponents`、来源；`aria-pressed` 切换按钮（44px 触摸目标）、`aria-live` 合计行、`motion-reduce` 关动效。SSR 首帧该岛渲染 null，卡 A 看板/账单/免责标注保持完整（已 curl 实测）。
 - S2 只做选择与年成本合计；负担率变色、下一期账单联动、1:1 配比提示属 S3，未提前做。
 
+**S3 进度（2026-10-06，代码完成待推送）**：✅ 购物即记账落地，本地 86 测试绿、check/构建/SSR 首帧验证：
+- `sim-content.ts` 增纯函数（带单测 5 条）：`cartAddedAnnualCost`（逐项非逐维求和；基线已拥有项与重复条目不双算；坏 id 计 0 不产 NaN）、`cartKindCounts`、`cartBurdenSummary`（合计 → `burdenStatus` 绿黄红，阈值常量仍来自 core，UI 不硬编码；现金流沿用卡 A M2 口径 `CARD_A_ANNUAL_INCOME − CARD_A_LAST_YEAR_COST`）。
+- 购物区岛接实时预览：`aria-live` 状态横幅显示「基线 + 加购 = 下一期」、负担率百分比与阈值说明；资产件数 > 体验件数时显示 1:1 配比**提示**（措辞声明只呈现算术、不是消费建议，copy-guard 绿）；红区给出最贵资产 75% 折价回笼提示并引导移出购物车（复用 M2 折价口径，未新造数字）。
+- 口径确认：基线卡 A 自身负担率 1,317,000 ÷ 1,683,000 ≈ 78%，空车即**黄**（与账单日横幅一致），测试按此钉住，不再假设基线为绿。
+
 **G4 两个方案（已拍板 (a)，保留备查）**：
 
 - **(a) 推荐：`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`（过 `draft.ts` 冻结闸门）**。结果页计算时若存在 override，目标年成本直接用它，不经过 `LifeChoice` 逐维选择；`choices` 仍照常写一份「每维最贵项」作展示回显，但计算口径以 override 为准，避免悄悄丢金额。改动集中、口径显式、可测试；代价是动一次冻结 schema（`schemaVersion` 处理 + 草稿测试）。

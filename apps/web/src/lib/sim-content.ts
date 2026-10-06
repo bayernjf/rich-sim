@@ -159,6 +159,100 @@ function isPurchasable(option: CatalogOption): boolean {
   );
 }
 
+/* ── 购物即记账（M3 · m3-task-breakdown.md §2 S3）── */
+
+export type CartEntry = { dimension: string; optionId: string };
+
+export type CartBurdenSummary = {
+  /** 购物车新增的年成本（基线已含的同项不重复计）。 */
+  addedAnnualCost: number;
+  /** 基线年成本 + 新增。 */
+  totalAnnualCost: number;
+  /** 卡 A 固定可支配现金流（M2 口径：税后收入 − 上一年成本）。 */
+  cashflow: number;
+  rate: number | null;
+  status: 'green' | 'yellow' | 'red';
+  assetCount: number;
+  experienceCount: number;
+  /** gameplay §2.1 的 1:1 默认（购买次数，不是金额）：资产件数 > 体验件数。 */
+  ratioHint: boolean;
+};
+
+function poolLookup(items: ShoppingItem[]): Map<string, ShoppingItem> {
+  return new Map(items.map((item) => [`${item.dimension}/${item.option.id}`, item]));
+}
+
+/**
+ * 购物车年成本逐项求和（m3 §1：不是逐维）。`baseline` 是卡 A 已拥有的项：
+ * 同一件东西在购物车里再点一次不重复收费——它是基线账单的一部分。
+ * 解析不到池项的条目（旧目录 id、坏数据）一律计 0，不产 NaN。
+ */
+export function cartAddedAnnualCost(
+  cart: CartEntry[],
+  pool: ShoppingItem[],
+  baseline: CartEntry[] = [],
+): number {
+  const lookup = poolLookup(pool);
+  const owned = new Set(baseline.map((entry) => `${entry.dimension}/${entry.optionId}`));
+  const counted = new Set<string>();
+  let sum = 0;
+  for (const entry of cart) {
+    const key = `${entry.dimension}/${entry.optionId}`;
+    if (owned.has(key) || counted.has(key)) continue;
+    counted.add(key);
+    sum += lookup.get(key)?.option.annualCost ?? 0;
+  }
+  return sum;
+}
+
+/** 车中各类 kind 的件数（按去重后的真实条目计，解析不到的不计）。 */
+export function cartKindCounts(
+  cart: CartEntry[],
+  pool: ShoppingItem[],
+): { asset: number; consumer: number; experience: number } {
+  const lookup = poolLookup(pool);
+  const seen = new Set<string>();
+  const counts = { asset: 0, consumer: 0, experience: 0 };
+  for (const entry of cart) {
+    const key = `${entry.dimension}/${entry.optionId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const kind = lookup.get(key)?.option.kind;
+    if (kind === 'asset' || kind === 'consumer' || kind === 'experience') {
+      counts[kind] += 1;
+    }
+  }
+  return counts;
+}
+
+/**
+ * 下一期账单预览：基线 + 加购，用既有 burdenStatus 算状态色（阈值常量来自
+ * core，UI 不硬编码）。现金流沿用卡 A M2 口径（上一年成本固定），与
+ * sim.astro 现有账单日横幅同一算法。
+ */
+export function cartBurdenSummary(
+  cart: CartEntry[],
+  pool: ShoppingItem[],
+  baseline: CartEntry[],
+  baselineAnnualCost: number,
+  cashflow: number,
+): CartBurdenSummary {
+  const addedAnnualCost = cartAddedAnnualCost(cart, pool, baseline);
+  const totalAnnualCost = baselineAnnualCost + addedAnnualCost;
+  const { rate, status } = burdenStatus(totalAnnualCost, cashflow);
+  const counts = cartKindCounts(cart, pool);
+  return {
+    addedAnnualCost,
+    totalAnnualCost,
+    cashflow,
+    rate,
+    status,
+    assetCount: counts.asset,
+    experienceCount: counts.experience,
+    ratioHint: counts.asset > counts.experience,
+  };
+}
+
 /**
  * 纯体验项（M3 · m3-task-breakdown.md §2 S1 点名要补的 2–3 项）。
  * 不进 core catalog，只在购物池与后续购物区出现：`kind:'experience'`、
