@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SimRealityCompare from '../../components/SimRealityCompare';
 import ClaimRunway from '../../components/ClaimRunway';
+import ShoppingArea from '../../components/ShoppingArea';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
 import {
@@ -15,10 +16,12 @@ import {
   cardAnnualCost,
   cardBurden,
   cardBills,
+  shoppingPool,
 } from '../../lib/sim-content';
 
 const catalog = initialCatalogUSD;
 const annualCost = cardAnnualCost(CARD_A.choices, catalog, DEFAULT_ASSUMPTIONS);
+const pool = shoppingPool(catalog);
 
 const yacht = Astro.url.searchParams.get('yacht') === '1';
 const simChoices = yacht ? CARD_A_BROKE : CARD_A.choices;
@@ -208,6 +211,8 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
         bills={pageBills.map((bill) => ({ optionLabel: bill.optionLabel, annualCost: bill.annualCost }))}
       />
     </section>
+
+    <ShoppingArea client:load items={pool} />
 
     <a
       href="/"
