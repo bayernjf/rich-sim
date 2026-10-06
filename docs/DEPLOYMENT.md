@@ -76,20 +76,15 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 本机 `wrangler` 的 OAuth token 权限**只有 `account(read) / user(read) / workers(write) / d1(write) / pages(write)` 等**，**建不了 Web Analytics 站点、也写不了 Pages 变量**（`pages(write)` scope 在 API 层不能改项目级环境变量），所以以上步骤只能在控制台完成；不要试图用 `vercel env pull` 那类思路找凭证，这里没有可代跑的通道。
 
-## 发布事故：CI 卡在 queued，pr-helper 不合并（2026-10-06，S1）
+## 发布事故：CI 卡在 queued，pr-helper 不合并（2026-10-05，S1 · 已解除）
 
-**现象**：推 dev 后 pr-helper 正常开出 PR #31、Cloudflare Pages 构建 SUCCESS，但 **GitHub Actions 的 CI（push + pull_request 两个 run）一直 `queued`、runner 没领任务**（不是 in_progress），数分钟无变化。pr-helper 等 CI 变绿才自动合并，于是 PR 停在 OPEN，main 不更新、生产不上。
+**现象**：推 dev 后 pr-helper 正常开出 PR #31、Cloudflare Pages 构建 SUCCESS，但 **GitHub Actions 的 CI（push + pull_request 两个 run）一度 `queued`、runner 没领任务**（不是 in_progress）。pr-helper 等 CI 变绿才自动合并。
 
-**判定**：这不是代码问题——本地 `npm test` 72/72 全绿、`npm run check` 0 错误。run 卡在 queued 而不是 in_progress，指向 **GitHub Actions 侧**（免费额度/计费用尽，或账户 Actions 被暂停），不是测试 flaky。
+**判定**：这不是代码问题——本地测试全绿、`npm run check` 0 错误。run 卡在 queued 而不是 in_progress，指向 **GitHub Actions 侧**（免费额度/计费，或 runner 排队），不是测试 flaky。
 
-**排查顺序**：
-1. 打开 https://github.com/bayernjf/rich-sim/actions 看顶部有无 Actions 暂停 / billing 红条；
-2. 账户 Actions 用量与账单；
-3. 恢复后 run 会自动开始，pr-helper 接着自动合并，无需人工。
+**收尾（2026-10-05 20:46 UTC）**：CI 恢复后 run 自动开始并变绿，pr-helper 随即自动合并 PR #31，main 更新、生产发布完成，无需人工干预。
 
-**两条出路**：(a) 修好 Actions 额度/计费，走正常门禁，推荐；(b) 在 GitHub 界面手动合并 PR #31（本地与 Pages 均已验证），但绕过了 pr-helper 的门禁约定。
-
-> 教训（写进这里）：**「PR 开了但迟迟不合并」先查 run 是 `queued` 还是 `in_progress`**。queued 不动是基础设施/计费问题，别去翻测试；这与 handoff 记录的「合并后门禁红 check 导致停摆」是两种不同的停摆，诊断时先分清。
+> 教训（写进这里）：**「PR 开了但迟迟不合并」先查 run 是 `queued` 还是 `in_progress`**。queued 不动是基础设施/计费问题，别去翻测试，恢复后无需补操作；这与「合并后门禁红 check 导致停摆」是两种不同的停摆，诊断时先分清。
 
 ## 构建（本地）
 ```bash
