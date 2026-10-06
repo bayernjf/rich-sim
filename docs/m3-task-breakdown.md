@@ -49,15 +49,21 @@
 
 Necker 整岛包岛候选因媒体口径不一（$113k–140k/晚，且 7 晚起订口径无权威一手来源），按红线放弃，未编造。
 
-**S2 进度（2026-10-06，代码完成待上线）**：✅ G2 购物车状态 + `/app/sim` 购物区岛落地，本地 81 测试绿、check/构建/SSR 首帧均验证：
+**S2 进度（2026-10-06，已上线）**：✅ G2 购物车状态 + `/app/sim` 购物区岛落地，本地 81 测试绿、check/构建/SSR 首帧均验证：
 - `sim-draft.ts` 扩可选 `cart?: CartItem[]`（`CartItem = {dimension, optionId}`），`schemaVersion` 维持 1；旧草稿无 cart 按空车处理。纯函数 `addCartItem`/`removeCartItem`/`sanitizeCart`（幂等加删、坏数据收敛、重复去重），持久化走 `saveCartItem`/`readCart`；与 `draft.ts` 仍零 import（结构隔离测试不破）。同一选项在车中至多一件（幂等切换），同维允许多件（卡 A 画像需要）。未领起始金时加车不凭空创建 sim 账本。
 - 新 React 岛 `ShoppingArea.tsx` 挂在 `/app/sim` 页内（G3 不新增路由）：服务端传 `shoppingPool(catalog)`，挂载后读本机 cart；按 asset/consumer/experience 三组陈列，每项显示年成本、`costComponents`、来源；`aria-pressed` 切换按钮（44px 触摸目标）、`aria-live` 合计行、`motion-reduce` 关动效。SSR 首帧该岛渲染 null，卡 A 看板/账单/免责标注保持完整（已 curl 实测）。
 - S2 只做选择与年成本合计；负担率变色、下一期账单联动、1:1 配比提示属 S3，未提前做。
 
-**S3 进度（2026-10-06，代码完成待推送）**：✅ 购物即记账落地，本地 86 测试绿、check/构建/SSR 首帧验证：
+**S3 进度（2026-10-06，已上线）**：✅ 购物即记账落地，本地 86 测试绿、check/构建/SSR 首帧验证：
 - `sim-content.ts` 增纯函数（带单测 5 条）：`cartAddedAnnualCost`（逐项非逐维求和；基线已拥有项与重复条目不双算；坏 id 计 0 不产 NaN）、`cartKindCounts`、`cartBurdenSummary`（合计 → `burdenStatus` 绿黄红，阈值常量仍来自 core，UI 不硬编码；现金流沿用卡 A M2 口径 `CARD_A_ANNUAL_INCOME − CARD_A_LAST_YEAR_COST`）。
 - 购物区岛接实时预览：`aria-live` 状态横幅显示「基线 + 加购 = 下一期」、负担率百分比与阈值说明；资产件数 > 体验件数时显示 1:1 配比**提示**（措辞声明只呈现算术、不是消费建议，copy-guard 绿）；红区给出最贵资产 75% 折价回笼提示并引导移出购物车（复用 M2 折价口径，未新造数字）。
 - 口径确认：基线卡 A 自身负担率 1,317,000 ÷ 1,683,000 ≈ 78%，空车即**黄**（与账单日横幅一致），测试按此钉住，不再假设基线为绿。
+
+**S4 进度（2026-10-06，代码完成待推送）**：✅ 一键成目标（SIM→REAL 单向桥，G4 方案 a）落地，本地 95 测试绿、check/构建/SSR 降级验证：
+- 过冻结闸门：`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`（`draft.ts`），旧草稿天然兼容；`computeResults` 在 override 存在时目标年成本直接取它、不经过 `LifeChoice` 逐维求和（购物车同维多件装不进 choices），`choices` 仍写「每维最贵项」（`topTierChoices`）作展示回显；override 非法（NaN/错 from）退回 choices，由测试钉住。
+- 新模块 `sim-bridge.ts`：`cartGoalAnnualCost`（卡 A 基线 + 加购，复用 S3 `cartAddedAnnualCost`，基线项不双算）；`adoptCartAsGoal` 只写 `rich-sim:plan:v1`，保留已有 profile/currency/assumptions，无草稿则建最小合法草稿；按 profile 完整性返回落点 `/app/result` 或 `/app/finance`。结构性测试钉死：过桥后 sim key 原样、REAL 草稿不含 `startingCapital`、override 对象只有 `annualCost`+`from` 两个键。
+- UI：购物区岛底部「把这套生活设为我的目标」CTA（空车禁用态；文案重申「这是年成本不是你有这么多钱，起始金与资产占比不带过去」），点击写桥 + `track('cart:to-goal')` + 跳转；结果页核心数字卡显示「目标来自富豪模拟购物车」标签。
+- **关 JS 降级**：noscript 链接放在 `sim.astro` SSR 层而非岛内（岛首帧返回 null，岛内 noscript 永不出现——已实测修正），SSR 可见降级链接 1 处、岛交互态 0 处。
 
 **G4 两个方案（已拍板 (a)，保留备查）**：
 
