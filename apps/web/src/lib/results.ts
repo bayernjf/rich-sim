@@ -54,6 +54,8 @@ export type Results =
       currency: Currency;
       /** 本次测算使用的汇率快照（进假设清单展示）。 */
       fx: FxSnapshot;
+      /** 目标来源：普通设计器为 undefined；S4 购物车桥为 'sim-cart'。 */
+      goalFrom?: 'sim-cart';
       /**
        * S3 换算条（轻量口径）：整份理想生活的一年 = 你要存多久。
        * 只在展示层存在，不进 draft。
@@ -84,7 +86,18 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
       : buildDefaultChoices(catalog);
 
   // Catalog 以 USD 建模 -> 理想生活年成本（USD）-> 换算到录入币种。
-  const annualCostUSD = scenarioAnnualCost(choices, catalog, assumptions).annualCost;
+  // S4 桥（G4 方案 a）：有 goalOverride 时目标年成本直接取购物车合计，
+  // 不经过逐维 choices 求和（购物车允许同维多件，LifeChoice 装不下）。
+  // choices 仍保留「每维最贵项」作展示回显，计算口径以 override 为准。
+  const override =
+    draft.goalOverride &&
+    draft.goalOverride.from === 'sim-cart' &&
+    Number.isFinite(draft.goalOverride.annualCost)
+      ? draft.goalOverride
+      : undefined;
+  const annualCostUSD = override
+    ? override.annualCost
+    : scenarioAnnualCost(choices, catalog, assumptions).annualCost;
   const annualCostLocal = convert(annualCostUSD, 'USD', profile.currency, assumptions.fx);
 
   const goal = { kind: 'enough-line', value: annualCostLocal } as const;
@@ -97,7 +110,10 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
 
   // S3 换算条：对象是整份理想生活（不是某个单项），分母是用户自己的年净储蓄。
   const converter = converterForItem(
-    { label: '你选的这种生活', annualCostUSD },
+    {
+      label: override ? '富豪购物车里的这套生活' : '你选的这种生活',
+      annualCostUSD,
+    },
     profile,
     assumptions.fx,
     (local, c) =>
@@ -119,5 +135,6 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
     currency: draft.currency,
     fx: assumptions.fx,
     converter,
+    goalFrom: override?.from,
   };
 }

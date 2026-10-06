@@ -16,6 +16,13 @@ export type Draft = {
   currency: Currency;
   /** Assumptions incl. fx snapshot (T09/T10); null until defaults land. */
   assumptions: Assumptions | null;
+  /**
+   * M3 S4 · 富豪模拟购物车一键成目标（G4 方案 a）。
+   * 存在时，结果页的目标年成本直接用这个 USD 数字，不再逐维求和 choices；
+   * choices 仍写「每维最贵项」仅作展示回显。只携带年成本，不含任何虚构成分
+   * （无起始金、无资产占比）。undefined = 普通设计器方案，旧草稿天然兼容。
+   */
+  goalOverride?: { annualCost: number; from: 'sim-cart' };
   /** ISO timestamp. */
   updatedAt: string;
 };
