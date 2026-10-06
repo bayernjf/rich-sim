@@ -9,11 +9,40 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { CatalogOption } from '@rich-sim/core';
-import type { ShoppingItem } from '../lib/sim-content';
+import {
+  CARD_A,
+  CARD_A_ANNUAL_INCOME,
+  CARD_A_LAST_YEAR_COST,
+  cartBurdenSummary,
+  type ShoppingItem,
+} from '../lib/sim-content';
 import { type CartItem, readCart, saveCartItem } from '../lib/sim-draft';
 
 type Props = {
   items: ShoppingItem[];
+  /** 基线年成本（卡 A 当前生活），S3 账单预览在它之上累加。 */
+  baselineAnnualCost: number;
+};
+
+const STATUS_BANNER: Record<
+  'green' | 'yellow' | 'red',
+  { label: string; cls: string; note: string }
+> = {
+  green: {
+    label: '可负担',
+    cls: 'border-accent bg-accent-soft text-ink',
+    note: '付完持有成本仍有 ≥40% 结余。',
+  },
+  yellow: {
+    label: '紧张',
+    cls: 'border-line bg-panel text-ink',
+    note: '结余被压到 40% 以下——再加一件可能断裂。',
+  },
+  red: {
+    label: '断裂预警',
+    cls: 'border-danger bg-panel text-danger',
+    note: '当年持有成本超过年现金流：得变卖资产（75% 折价）或增加收入。',
+  },
 };
 
 const KIND_GROUPS: { kind: CatalogOption['kind']; label: string; hint: string }[] = [
@@ -30,7 +59,7 @@ function itemKey(item: CartItem): string {
   return `${item.dimension}/${item.optionId}`;
 }
 
-export default function ShoppingArea({ items }: Props) {
+export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
   const [mounted, setMounted] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -41,17 +70,38 @@ export default function ShoppingArea({ items }: Props) {
 
   const selected = useMemo(() => new Set(cart.map(itemKey)), [cart]);
 
-  const totalAnnual = useMemo(
+  const summary = useMemo(
     () =>
-      cart.reduce((sum, cartItem) => {
-        const hit = items.find(
-          (entry) =>
-            entry.dimension === cartItem.dimension && entry.option.id === cartItem.optionId,
-        );
-        return sum + (hit?.option.annualCost ?? 0);
-      }, 0),
-    [cart, items],
+      cartBurdenSummary(
+        cart,
+        items,
+        CARD_A.choices.map((choice) => ({
+          dimension: choice.dimension,
+          optionId: choice.optionId,
+        })),
+        baselineAnnualCost,
+        CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST,
+      ),
+    [cart, items, baselineAnnualCost],
   );
+
+  const resellValue = useMemo(() => {
+    // 红区变卖：车中最贵的资产类条目按 75% 折价回笼（复用 M2 常量口径）。
+    const asset = cart
+      .map((cartItem) =>
+        items.find(
+          (entry) =>
+            entry.dimension === cartItem.dimension &&
+            entry.option.id === cartItem.optionId &&
+            entry.option.kind === 'asset',
+        ),
+      )
+      .filter((entry): entry is ShoppingItem => Boolean(entry))
+      .sort((a, b) => b.option.annualCost - a.option.annualCost)[0];
+    return asset
+      ? { label: asset.option.label, value: Math.round(asset.option.annualCost * 0.75) }
+      : null;
+  }, [cart, items]);
 
   if (!mounted) return null;
 
@@ -75,8 +125,43 @@ export default function ShoppingArea({ items }: Props) {
       >
         已选 <span className="font-mono font-semibold tabular-nums">{cart.length}</span> 件 ·
         新增年成本{' '}
-        <span className="font-mono font-semibold tabular-nums">{money(totalAnnual)}</span>/年
+        <span className="font-mono font-semibold tabular-nums">
+          {money(summary.addedAnnualCost)}
+        </span>
+        /年
       </p>
+
+      <div
+        role="status"
+        className={`mt-2 rounded-xl border px-4 py-3 ${STATUS_BANNER[summary.status].cls}`}
+      >
+        <p className="text-sm font-semibold">
+          下一期账单预览 · {STATUS_BANNER[summary.status].label}
+          {summary.rate !== null && (
+            <span className="ml-2 font-mono text-xs tabular-nums">
+              负担率 {Math.round(summary.rate * 100)}%
+            </span>
+          )}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed">{STATUS_BANNER[summary.status].note}</p>
+        <p className="mt-2 font-mono text-xs tabular-nums opacity-80">
+          {money(baselineAnnualCost)}（当前生活）+ {money(summary.addedAnnualCost)}（加购）=
+          {' '}{money(summary.totalAnnualCost)}/年 · 可支配现金流 {money(summary.cashflow)}
+        </p>
+        {summary.ratioHint && (
+          <p className="mt-2 rounded-lg border border-line bg-canvas px-2 py-1.5 text-xs leading-relaxed text-muted">
+            购物车里重资产有 {summary.assetCount} 件、体验只有 {summary.experienceCount} 件：
+            这个玩法默认 1:1 配（按购买次数，不按金额）——纯堆资产时每年的账单会涨得最快，
+            这只是算术呈现，不是建议你怎么花钱。
+          </p>
+        )}
+        {summary.status === 'red' && resellValue && (
+          <p className="mt-2 rounded-lg border border-danger px-2 py-1.5 text-xs leading-relaxed">
+            变卖最贵的一项（{resellValue.label}）只能回笼 {money(resellValue.value)}（原价 75%）
+            ——在购物车里把它移出，下一期账单立即回落。
+          </p>
+        )}
+      </div>
 
       {KIND_GROUPS.map((group) => {
         const groupItems = items.filter((item) => item.option.kind === group.kind);

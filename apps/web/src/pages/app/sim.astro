@@ -212,7 +212,7 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
       />
     </section>
 
-    <ShoppingArea client:load items={pool} />
+    <ShoppingArea client:load items={pool} baselineAnnualCost={annualCost} />
 
     <a
       href="/"
