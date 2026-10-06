@@ -213,6 +213,22 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
     </section>
 
     <ShoppingArea client:load items={pool} baselineAnnualCost={annualCost} />
+    {/* S4 关 JS 降级：岛首帧为 null、无 JS 写不了购物车，给一个 SSR 可见的
+        普通链接继续现实测算主线，不在此处假装有购物车目标。 */}
+    <noscript>
+      <section class="mt-8 rounded-2xl border border-line bg-panel p-4">
+        <h2 class="text-base font-semibold text-ink">富豪购物区需要开启 JavaScript</h2>
+        <p class="mt-1 text-xs leading-relaxed text-muted">
+          购物车与一键成目标是交互功能。不开脚本也可以直接走现实测算主线。
+        </p>
+        <a
+          href="/app/finance"
+          class="mt-3 inline-flex min-h-11 items-center rounded-full border border-accent px-5 py-3 text-sm font-medium text-accent"
+        >
+          继续到财务录入 →
+        </a>
+      </section>
+    </noscript>
 
     <a
       href="/"
