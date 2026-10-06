@@ -109,11 +109,13 @@ describe('购物车（M3 S2 · G2）', () => {
 
   it('加购幂等：同一选项重复加只有一件；同维可多件', () => {
     claimSim(1_000_000);
-    expect(saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true)).toHaveLength(1);
-    expect(saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true)).toHaveLength(1);
-    const two = saveCartItem({ dimension: 'travel', optionId: 'international' }, true);
-    expect(two).toHaveLength(2);
-    expect(two.map((item) => item.optionId)).toEqual(['superyacht', 'international']);
+    let cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(cart).toHaveLength(1);
+    cart = saveCartItem(cart, { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(cart).toHaveLength(1);
+    cart = saveCartItem(cart, { dimension: 'travel', optionId: 'international' }, true);
+    expect(cart).toHaveLength(2);
+    expect(cart.map((item) => item.optionId)).toEqual(['superyacht', 'international']);
   });
 
   it('移出幂等：删本就不在车里的条目不报错', () => {
@@ -136,7 +138,7 @@ describe('购物车（M3 S2 · G2）', () => {
   it('持久化后能读回，且只动 sim 账本', () => {
     localStorage.setItem(DRAFT_KEY, REAL_PLAN);
     claimSim(1_000_000);
-    saveCartItem({ dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
+    saveCartItem([], { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
     expect(readCart()).toEqual([
       { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
     ]);
@@ -166,7 +168,15 @@ describe('购物车（M3 S2 · G2）', () => {
   });
 
   it('没领过起始金时加车不凭空创建账本（购物区不强迫先领钱）', () => {
-    saveCartItem({ dimension: 'travel', optionId: 'superyacht' }, true);
+    const cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(cart).toHaveLength(1);
+    expect(readSimState()).toBeNull();
+  });
+
+  it('没账本时连续加购也能累积（车由 UI 持有，不各自从空车派生）', () => {
+    let cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    cart = saveCartItem(cart, { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
+    expect(cart).toHaveLength(2);
     expect(readSimState()).toBeNull();
   });
 });

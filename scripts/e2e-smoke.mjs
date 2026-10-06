@@ -27,14 +27,23 @@ function parseAmount(text) {
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
-const eventsSoFar = async () =>
-  page.evaluate((key) => {
+// 导航刚结束时 evaluate 可能撞上被销毁的执行上下文，重试两次再放弃。
+const eventsSoFar = async () => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return JSON.parse(localStorage.getItem(key) || '[]');
+      return await page.evaluate((key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || '[]');
+        } catch {
+          return [];
+        }
+      }, EVENTS_KEY);
     } catch {
-      return [];
+      await page.waitForTimeout(150);
     }
-  }, EVENTS_KEY);
+  }
+  return [];
+};
 const countEvent = (list, name) => list.filter((e) => e.event === name).length;
 
 try {
@@ -263,6 +272,119 @@ try {
   check(redSim.includes('断裂预警') && redSim.includes('负担率 399%'), '账单日：加游艇后断裂预警（负担率 399%）', '');
   check(redSim.includes('$4,050,000'), '账单日：变卖回笼 = 原价 75% = $4,050,000', 'superyacht 5,400,000 × 0.75');
   check(redSim.includes('第 2 页'), '账单日：一页 4 张，出现第 2 页', '');
+
+  // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
+  await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });
+  await page.waitForSelector('[data-cart-count]', { timeout: 5000 });
+
+  const cartCount = async () => Number((await page.locator('[data-cart-count]').innerText()).trim());
+  const cartAdded = async () => (await page.locator('[data-cart-added]').innerText()).trim();
+  // 该节点带 aria-live，点击后被 React 替换；直接 getAttribute 在重渲染窗口里
+  // 偶发拿到旧节点（outerHTML 有序列化值但属性读取为 null）。改为轮询 outerHTML，
+  // 从序列化结果里解析属性，读到与横幅 class 一致的稳定值。
+  const cartStatus = async () => {
+    for (let i = 0; i < 20; i += 1) {
+      const html = await page
+        .locator('[data-shopping-area] [data-cart-status]')
+        .evaluate((el) => el.outerHTML)
+        .catch(() => '');
+      const m = html.match(/data-cart-status="([a-z]+)"/);
+      if (m) return m[1];
+      await page.waitForTimeout(100);
+    }
+    return null;
+  };
+
+  check(await cartCount() === 0, '购物区：首帧空车', `count=${await cartCount()}`);
+
+  const galaCard = page.locator('li', { hasText: 'Met Gala 慈善晚宴单张门票' }).first();
+  await galaCard.getByRole('button', { name: '加入购物车' }).click();
+  await page.waitForTimeout(200);
+  check(await cartCount() === 1, '购物区：加购后件数 = 1', `count=${await cartCount()}`);
+  check(
+    (await cartAdded()).includes('100,000'),
+    '购物区：新增年成本 = $100,000（体验项）',
+    `added=${await cartAdded()}`,
+  );
+  check(
+    await galaCard.getByRole('button', { name: '移出购物车' }).count() === 1,
+    '购物区：按钮切换为移出（幂等态）',
+    '',
+  );
+
+  // 重复点击同一项不叠加（幂等）。
+  await galaCard.getByRole('button', { name: '移出购物车' }).click();
+  await galaCard.getByRole('button', { name: '加入购物车' }).click();
+  await page.waitForTimeout(150);
+  check(await cartCount() === 1, '购物区：同一项反复切换不叠加', `count=${await cartCount()}`);
+
+  const yachtCard = page.locator('li', { hasText: '超级游艇' }).first();
+  await yachtCard.getByRole('button', { name: '加入购物车' }).click();
+  await page.waitForTimeout(200);
+  check(await cartCount() === 2, '购物区：加购游艇后件数 = 2（同维多件允许）', `count=${await cartCount()}`);
+  check(
+    (await cartAdded()).includes('5,500,000'),
+    '购物区：新增年成本 = 游艇 5,400,000 + 晚宴 100,000',
+    `added=${await cartAdded()}`,
+  );
+  check(await cartStatus() === 'red', '购物即记账：下一期负担率变红', `status=${await cartStatus()}`);
+
+  const evShop = await eventsSoFar();
+  check(
+    countEvent(evShop, 'sim:add') >= 2 && countEvent(evShop, 'sim:remove') >= 1,
+    '埋点：sim:add / sim:remove 已入队',
+    `add=${countEvent(evShop, 'sim:add')} remove=${countEvent(evShop, 'sim:remove')}`,
+  );
+
+  // 红区变卖引导出现（最贵资产 75% 折价口径）。
+  const shopText = await page.locator('[data-shopping-area]').innerText();
+  check(shopText.includes('4,050,000'), '购物即记账：红区给出游艇 75% 折价回笼 $4,050,000', '');
+
+  // 移出游艇 → 回到黄、新增回落。
+  await yachtCard.getByRole('button', { name: '移出购物车' }).click();
+  await page.waitForTimeout(200);
+  check((await cartAdded()).includes('100,000'), '购物区：移出游艇后新增回落到 $100,000', `added=${await cartAdded()}`);
+  check(await cartStatus() === 'yellow', '购物即记账：移出后回到黄色', `status=${await cartStatus()}`);
+
+  // ── 步骤 9：一键成目标（M3 S4 · SIM→REAL 单向桥）──
+  const ledgersBefore = await page.evaluate(() => ({
+    sim: localStorage.getItem('rich-sim:sim:v1'),
+    plan: localStorage.getItem('rich-sim:plan:v1'),
+  }));
+  await Promise.all([
+    page.waitForURL('**/app/result', { timeout: 5000 }),
+    page.locator('[data-adopt-goal]').click(),
+  ]);
+  await page.waitForLoadState('networkidle');
+  check(page.url().includes('/app/result'), '桥：点击后跳到结果页（前面已录入财务）', page.url());
+  await page.waitForSelector('[data-goal-source]', { timeout: 5000 });
+  const goalSource = await page.locator('[data-goal-source]').innerText();
+  check(
+    goalSource.includes('目标来自富豪模拟购物车'),
+    '桥：结果页显示目标来源标签',
+    goalSource.replace(/\s+/g, ' ').trim(),
+  );
+  const ledgersAfter = await page.evaluate(() => ({
+    sim: localStorage.getItem('rich-sim:sim:v1'),
+    plan: JSON.parse(localStorage.getItem('rich-sim:plan:v1') || 'null'),
+  }));
+  check(
+    ledgersAfter.sim === ledgersBefore.sim,
+    '桥：sim 账本原样不动（单向）',
+    `simBefore=${ledgersBefore.sim !== null} simAfter=${ledgersAfter.sim !== null}`,
+  );
+  check(
+    ledgersAfter.plan?.goalOverride?.from === 'sim-cart' &&
+      Number.isFinite(ledgersAfter.plan?.goalOverride?.annualCost) &&
+      JSON.stringify(ledgersAfter.plan).includes('sim-cart') &&
+      !JSON.stringify(ledgersAfter.plan).includes('startingCapital'),
+    '桥：REAL 只拿到 goalOverride 年成本，无起始金/资产占比',
+    JSON.stringify(ledgersAfter.plan?.goalOverride),
+  );
+
+  const evGoal = await eventsSoFar();
+  check(countEvent(evGoal, 'cart:to-goal') >= 1, '埋点：cart:to-goal 已入队', `count=${countEvent(evGoal, 'cart:to-goal')}`);
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {

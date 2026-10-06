@@ -108,12 +108,18 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
   if (!mounted) return null;
 
   const toggle = (item: ShoppingItem, add: boolean) => {
-    const next = saveCartItem({ dimension: item.dimension, optionId: item.option.id }, add);
+    const next = saveCartItem(
+      cart,
+      { dimension: item.dimension, optionId: item.option.id },
+      add,
+    );
     setCart(next);
+    // S5 漏斗：只发事件名，不发金额 / 档 id / 任何用户数据（收集端 props 全丢）。
+    track(add ? 'sim:add' : 'sim:remove');
   };
 
   return (
-    <section aria-labelledby="sim-shop-heading" className="mt-8">
+    <section aria-labelledby="sim-shop-heading" className="mt-8" data-shopping-area>
       <h2 id="sim-shop-heading" className="text-base font-semibold text-ink">
         富豪购物区
       </h2>
@@ -125,9 +131,13 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
         className="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink"
         aria-live="polite"
       >
-        已选 <span className="font-mono font-semibold tabular-nums">{cart.length}</span> 件 ·
+        已选{' '}
+        <span className="font-mono font-semibold tabular-nums" data-cart-count>
+          {cart.length}
+        </span>{' '}
+        件 ·
         新增年成本{' '}
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-mono font-semibold tabular-nums" data-cart-added>
           {money(summary.addedAnnualCost)}
         </span>
         /年
@@ -135,6 +145,7 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
 
       <div
         role="status"
+        data-cart-status={summary.status}
         className={`mt-2 rounded-xl border px-4 py-3 ${STATUS_BANNER[summary.status].cls}`}
       >
         <p className="text-sm font-semibold">
@@ -245,6 +256,7 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
         ) : (
           <button
             type="button"
+            data-adopt-goal
             onClick={() => {
               const dest = adoptCartAsGoal(cart);
               track('cart:to-goal', { items: cart.length });
