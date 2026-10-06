@@ -218,4 +218,36 @@ describe('购物池（M3 · S1）', () => {
       expect(dims, `维度 ${dimension.id} 没有可购项`).toContain(dimension.id);
     }
   });
+
+  it('web 侧补的两个纯体验项在池里，池总数 = 12 目录项 + 2 体验项 = 14', () => {
+    const pool = shoppingPool(catalog);
+    expect(pool).toHaveLength(14);
+    const ids = pool.map((item) => item.option.id);
+    expect(ids).toContain('exp-private-jet-world-tour');
+    expect(ids).toContain('exp-met-gala-ticket');
+  });
+
+  it('纯体验项是一次性花费：不可转卖、无持有情绪、无购买价', () => {
+    const pool = shoppingPool(catalog);
+    for (const id of ['exp-private-jet-world-tour', 'exp-met-gala-ticket']) {
+      const item = pool.find((entry) => entry.option.id === id);
+      expect(item?.option.kind).toBe('experience');
+      expect(item?.option.resellable).toBe(false);
+      expect(item?.option.carryingJoy).toBeUndefined();
+      expect(item?.option.purchasePrice ?? 0).toBe(0);
+      expect(item?.option.source).toMatch(/^https?:\/\//);
+      expect(item?.option.note).toBeTruthy();
+    }
+  });
+
+  it('体验项只存在于 web 侧购物池，core catalog 仍是 23 项且不被污染', () => {
+    const count = catalog.dimensions.reduce((sum, dimension) => sum + dimension.options.length, 0);
+    expect(count).toBe(23);
+    for (const dimension of catalog.dimensions) {
+      expect(dimension.options.map((option) => option.id)).not.toContain(
+        'exp-private-jet-world-tour',
+      );
+      expect(dimension.options.map((option) => option.id)).not.toContain('exp-met-gala-ticket');
+    }
+  });
 });

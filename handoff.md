@@ -12,8 +12,7 @@
 ## 当前状态
 
 - **文档**：13 份，见 `docs/`（下表）
-- **分支**：`dev`，S1 代码已推送。**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
-- ⚠️ **发布阻塞（2026-10-06）**：PR #31 已开、Pages 构建成功，但 CI 卡 `queued` 未合并，main 未更新。详见下表与 `docs/DEPLOYMENT.md`。
+- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -33,9 +32,7 @@
 | `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2/P3 未做；临时取值见该文档 §7.1 |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
-| `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；S1 进行中——G1 类型 + catalog 字段 + `shoppingPool` 已实现，2–3 个纯体验项缺可查证来源待补 |
-
-> ⚠️ **发布阻塞（2026-10-06）**：S1 代码已推 dev（PR #31 自动创建、Cloudflare Pages 构建 SUCCESS），但 **GitHub Actions CI 卡在 `queued`、runner 没领任务**，pr-helper 等 CI 绿才合并 → PR 未合、main 未更新、生产未上。疑为 Actions 额度/计费问题（本地 72/72 绿，非代码问题），排查与出路见 `docs/DEPLOYMENT.md`「发布事故」。
+| `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1 已完成上线**（PR #31，2026-10-05），含补源后的 2 个纯体验项（环球私人喷气之旅、Met Gala 门票），购物池 14 项；下一步 S2 购物车 |
 
 ## 已做的决策
 
@@ -81,7 +78,7 @@
 
 诚实边界：埋点管道已通但**真实流量读数尚为零**——当前 D1 里只有联调产生的事件；S1–S4 有没有效果仍要等真实访客积累，口径见 `m2-task-breakdown.md` §5、`docs/DEPLOYMENT.md` §分析埋点。
 
-**M3（F5 完整化：购物机制 + 一键成目标）**：2026-10-05 晚产出分解草案 `docs/m3-task-breakdown.md`（S1–S5：core 玩法字段 + 2–3 个带来源的体验项 → `/app/sim` 购物车 → 购物即记账/负担率联动 → SIM→REAL 一键成目标 → 埋点冒烟），**2026-10-06 已开工**：发起人拍板 G4 走方案 (a)——`Draft` 增可选 `goalOverride`（只携带年成本一个数字进 REAL，不带起始金与资产占比）；备选「限制同维一件」与卡 A 事实冲突，已排除。**S1 进行中**：G1 类型扩展（`types.ts` 六个可选玩法字段）、catalog 字段标注、`shoppingPool()`（`apps/web/src/lib/sim-content.ts` + 4 测试）已落地；**未完成**是 2–3 个纯体验项——目录测试要求每个 `source` 为 http(s) URL，当前无可查证来源，未编造，待补。名人原型卡（路径 B）仍等 `deferred #5` 法务，不进本轮。
+**M3（F5 完整化：购物机制 + 一键成目标）**：2026-10-05 晚产出分解草案 `docs/m3-task-breakdown.md`（S1–S5：core 玩法字段 + 2–3 个带来源的体验项 → `/app/sim` 购物车 → 购物即记账/负担率联动 → SIM→REAL 一键成目标 → 埋点冒烟），**2026-10-06 已开工**：发起人拍板 G4 走方案 (a)——`Draft` 增可选 `goalOverride`（只携带年成本一个数字进 REAL，不带起始金与资产占比）；备选「限制同维一件」与卡 A 事实冲突，已排除。**S1 已完成**：G1 类型扩展、catalog 字段标注、`shoppingPool()`（池 = 12 个 catalog 标注项）随 PR #31 合并上线；2 个纯体验项（私人喷气环球之旅 $189,500/人、Met Gala 门票 $100,000/张，均带已核验 http 来源）放在 **web 侧** `sim-content.ts` 而非 core catalog（不破坏每维 3–5 项/递增/单一默认档契约），购物池现为 14 项，本地 75 测试绿。名人原型卡（路径 B）仍等 `deferred #5` 法务，不进本轮。**下一步 S2**：`sim-draft.ts` 扩 `cart` + `/app/sim` 购物区岛。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 

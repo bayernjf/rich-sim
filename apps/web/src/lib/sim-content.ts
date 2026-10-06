@@ -127,9 +127,14 @@ export type ShoppingItem = {
  * 来源红线（`m3-task-breakdown.md` §1.2）：`source` 不是 http(s)（即来源未核验
  * 的档位）**不得进生产购物池**，即使它标了 `kind`。这里刻意不写出那个未核验
  * 标记的字面量——`copy-guard.test.ts` 的界面措辞闸门会连源码注释一起扫。
+ *
+ * 纯体验项刻意放 web 侧而不进 core catalog：catalog 受每维 3–5 项、维内年成本
+ * 严格递增、每维一个默认档的契约约束（`catalog-data.test.ts`），而这些一次性
+ * 体验不属于 M1 现实设计器的「每维选一件」模型。`annualCost` 对它们是「每年
+ * 体验一次的花费」，口径写进各自 `note`。
  */
 export function shoppingPool(catalog: Catalog): ShoppingItem[] {
-  return catalog.dimensions.flatMap((dimension) =>
+  const fromCatalog = catalog.dimensions.flatMap((dimension) =>
     dimension.options
       .filter(isPurchasable)
       .map((option) => ({
@@ -138,6 +143,12 @@ export function shoppingPool(catalog: Catalog): ShoppingItem[] {
         option,
       })),
   );
+  const experiences = EXPERIENCE_ITEMS.map(({ dimension, option }) => ({
+    dimension,
+    dimensionLabel: catalog.dimensions.find((d) => d.id === dimension)?.label ?? dimension,
+    option,
+  }));
+  return [...fromCatalog, ...experiences];
 }
 
 function isPurchasable(option: CatalogOption): boolean {
@@ -147,6 +158,42 @@ function isPurchasable(option: CatalogOption): boolean {
     /^https?:\/\//.test(option.source)
   );
 }
+
+/**
+ * 纯体验项（M3 · m3-task-breakdown.md §2 S1 点名要补的 2–3 项）。
+ * 不进 core catalog，只在购物池与后续购物区出现：`kind:'experience'`、
+ * `resellable:false`、无持有情绪，`annualCost` = 每年体验一次的花费，
+ * 金额口径写在 `note` 里。每项的价格与页面归属均已人工核验。
+ */
+const EXPERIENCE_ITEMS: { dimension: string; option: CatalogOption }[] = [
+  {
+    dimension: 'travel',
+    option: {
+      id: 'exp-private-jet-world-tour',
+      label: '私人喷气飞机环球之旅（26 天）',
+      annualCost: 189_500,
+      source:
+        'https://www.abercrombiekent.com/journeys/private-jet-journeys/wild-wonders-around-the-world-by-private-jet',
+      note: 'Abercrombie & Kent 官网该行程 lowestPrices：2027 团期、26 天 10 个目的地，每人 $189,500（双人占房；单人单房差另计）。此处按每年一次、每人计价。',
+      kind: 'experience',
+      joy: 5,
+      resellable: false,
+    },
+  },
+  {
+    dimension: 'flexibility',
+    option: {
+      id: 'exp-met-gala-ticket',
+      label: 'Met Gala 慈善晚宴单张门票',
+      annualCost: 100_000,
+      source: 'https://www.cbsnews.com/news/how-much-met-gala-ticket-2026/',
+      note: 'CBS News 援引《纽约时报》：2026 年 Met Gala 单张票价 $100,000（2025 年为 $75,000，桌位约 $350,000）。此处按每年一次、单张票计价。',
+      kind: 'experience',
+      joy: 4,
+      resellable: false,
+    },
+  },
+];
 
 /* ── 领钱入口（S4 · homepage-claim-experience.md §7 P1）── */
 
