@@ -49,6 +49,11 @@
 
 Necker 整岛包岛候选因媒体口径不一（$113k–140k/晚，且 7 晚起订口径无权威一手来源），按红线放弃，未编造。
 
+**S2 进度（2026-10-06，代码完成待上线）**：✅ G2 购物车状态 + `/app/sim` 购物区岛落地，本地 81 测试绿、check/构建/SSR 首帧均验证：
+- `sim-draft.ts` 扩可选 `cart?: CartItem[]`（`CartItem = {dimension, optionId}`），`schemaVersion` 维持 1；旧草稿无 cart 按空车处理。纯函数 `addCartItem`/`removeCartItem`/`sanitizeCart`（幂等加删、坏数据收敛、重复去重），持久化走 `saveCartItem`/`readCart`；与 `draft.ts` 仍零 import（结构隔离测试不破）。同一选项在车中至多一件（幂等切换），同维允许多件（卡 A 画像需要）。未领起始金时加车不凭空创建 sim 账本。
+- 新 React 岛 `ShoppingArea.tsx` 挂在 `/app/sim` 页内（G3 不新增路由）：服务端传 `shoppingPool(catalog)`，挂载后读本机 cart；按 asset/consumer/experience 三组陈列，每项显示年成本、`costComponents`、来源；`aria-pressed` 切换按钮（44px 触摸目标）、`aria-live` 合计行、`motion-reduce` 关动效。SSR 首帧该岛渲染 null，卡 A 看板/账单/免责标注保持完整（已 curl 实测）。
+- S2 只做选择与年成本合计；负担率变色、下一期账单联动、1:1 配比提示属 S3，未提前做。
+
 **G4 两个方案（已拍板 (a)，保留备查）**：
 
 - **(a) 推荐：`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`（过 `draft.ts` 冻结闸门）**。结果页计算时若存在 override，目标年成本直接用它，不经过 `LifeChoice` 逐维选择；`choices` 仍照常写一份「每维最贵项」作展示回显，但计算口径以 override 为准，避免悄悄丢金额。改动集中、口径显式、可测试；代价是动一次冻结 schema（`schemaVersion` 处理 + 草稿测试）。
