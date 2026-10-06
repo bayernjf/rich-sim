@@ -14,6 +14,9 @@ import {
   cardAnnualCost,
   cardBills,
   cardBurden,
+  cartAddedAnnualCost,
+  cartBurdenSummary,
+  cartKindCounts,
   claimBillRows,
   formatRunway,
   runwayMonths,
@@ -249,5 +252,86 @@ describe('购物池（M3 · S1）', () => {
       );
       expect(dimension.options.map((option) => option.id)).not.toContain('exp-met-gala-ticket');
     }
+  });
+});
+
+describe('购物即记账（M3 S3）', () => {
+  const pool = shoppingPool(catalog);
+  const baseline = CARD_A.choices.map((choice) => ({
+    dimension: choice.dimension,
+    optionId: choice.optionId,
+  }));
+  const cashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
+
+  it('空车：新增 0，下一期 = 基线 $1,317,000；基线本身已 78% → 黄（与账单日横幅一致）', () => {
+    const summary = cartBurdenSummary([], pool, baseline, 1_317_000, cashflow);
+    expect(summary.addedAnnualCost).toBe(0);
+    expect(summary.totalAnnualCost).toBe(1_317_000);
+    expect(summary.status).toBe('yellow');
+    expect(summary.ratioHint).toBe(false);
+  });
+
+  it('逐项（非逐维）求和：游艇 $5.4M + Met Gala $100k = $5.5M 新增，状态红', () => {
+    const cart = [
+      { dimension: 'travel', optionId: 'superyacht' },
+      { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
+    ];
+    const summary = cartBurdenSummary(cart, pool, baseline, 1_317_000, cashflow);
+    expect(summary.addedAnnualCost).toBe(5_500_000);
+    expect(summary.totalAnnualCost).toBe(6_817_000);
+    expect(summary.status).toBe('red');
+    expect(summary.rate).toBeCloseTo(6_817_000 / cashflow, 6);
+  });
+
+  it('基线已拥有的项加车不重复计费；重复条目不双算', () => {
+    const cart = [
+      { dimension: 'living', optionId: 'luxury-mansion' },
+      { dimension: 'travel', optionId: 'superyacht' },
+      { dimension: 'travel', optionId: 'superyacht' },
+    ];
+    expect(cartAddedAnnualCost(cart, pool, baseline)).toBe(5_400_000);
+  });
+
+  it('解析不到池项的坏条目计 0，不产 NaN', () => {
+    const cart = [
+      { dimension: 'travel', optionId: 'ghost-option' },
+      { dimension: 'nope', optionId: 'whatever' },
+    ];
+    const summary = cartBurdenSummary(cart, pool, baseline, 1_317_000, cashflow);
+    expect(summary.addedAnnualCost).toBe(0);
+    expect(Number.isNaN(summary.totalAnnualCost)).toBe(false);
+  });
+
+  it('kind 件数统计与 1:1 提示：只买资产不买体验时提示', () => {
+    expect(
+      cartKindCounts(
+        [
+          { dimension: 'travel', optionId: 'superyacht' },
+          { dimension: 'transport', optionId: 'private-jet' },
+        ],
+        pool,
+      ),
+    ).toEqual({ asset: 2, consumer: 0, experience: 0 });
+    const withExp = cartBurdenSummary(
+      [
+        { dimension: 'travel', optionId: 'superyacht' },
+        { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
+      ],
+      pool,
+      baseline,
+      1_317_000,
+      cashflow,
+    );
+    expect(withExp.assetCount).toBe(1);
+    expect(withExp.experienceCount).toBe(1);
+    expect(withExp.ratioHint).toBe(false);
+    const assetOnly = cartBurdenSummary(
+      [{ dimension: 'travel', optionId: 'superyacht' }],
+      pool,
+      baseline,
+      1_317_000,
+      cashflow,
+    );
+    expect(assetOnly.ratioHint).toBe(true);
   });
 });
