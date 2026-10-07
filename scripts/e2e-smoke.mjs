@@ -267,7 +267,25 @@ try {
   );
 
   // ── 步骤 2：财务录入 4 项 ──
-  await page.goto(`${BASE}/app/finance`, { waitUntil: 'networkidle' });
+  // 先验英文界面是 SSR 直接产出的：这一片的完成判据就是「英文页不再中英混排」，
+  // 而 label 由岛渲染，所以必须看真实浏览器里的 DOM，不是只看单测。
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const finEn = await page.content();
+  check(/<html[^>]*lang="en"/.test(finEn), 'i18n：财务页 ?lang=en 时 <html lang> 是 en', '');
+  check(
+    finEn.includes('Tell us where you stand financially') &&
+      finEn.includes('Monthly income') &&
+      !finEn.includes('月收入'),
+    'i18n：财务页英文界面不夹中文标签',
+    '',
+  );
+  check(
+    finEn.includes('never uploaded'),
+    'i18n：隐私说明（数据不出本机）在英文页也在',
+    '',
+  );
+
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.fill('#field-income', '15000');
   await page.fill('#field-expense', '8000');
   await page.fill('#field-savings', '100000');
