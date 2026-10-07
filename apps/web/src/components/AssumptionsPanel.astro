@@ -1,6 +1,8 @@
 ---
 import type { Assumptions } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
+import { type Locale } from '../lib/i18n';
+import { format, t } from '../lib/messages';
 
 /**
  * T09 · 假设清单 + 免责声明面板（纯 Astro SSR，零客户端 JS）。
@@ -10,15 +12,19 @@ import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
  * 输出的纯静态 HTML 即全部内容——即便 JS 被禁用或岛加载失败，合规文案
  * 依然存在于首屏。
  *
+ * 也正因为它是合规文本，locale 必须在 **SSR 期**就生效（由页面传入，
+ * 不由客户端改写）：英文页面配中文免责声明等于没展示。
+ *
  * props.assumptions 默认取 DEFAULT_ASSUMPTIONS（冻结）。汇率来源与日期
  * 必须展示（币种口径约定），否则视为不达标。
  */
 
 interface Props {
   assumptions?: Assumptions;
+  locale?: Locale;
 }
 
-const { assumptions = DEFAULT_ASSUMPTIONS } = Astro.props;
+const { assumptions = DEFAULT_ASSUMPTIONS, locale = 'zh' } = Astro.props;
 const a = assumptions;
 
 /** 0.04 -> "4%"；用 Math.round 规避浮点尾差。 */
@@ -33,39 +39,44 @@ const eurText = Number.isFinite(eurRate) ? eurRate.toFixed(2) : '—';
 
 <aside class="mt-10 border-t border-line pt-6 text-xs leading-relaxed text-muted">
   <section aria-labelledby="assumptions-heading">
-    <h2 id="assumptions-heading" class="mb-2 text-[13px] font-medium text-ink">假设清单</h2>
+    <h2 id="assumptions-heading" class="mb-2 text-[13px] font-medium text-ink">{t('assumptions.title', locale)}</h2>
     <dl class="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
       <div class="flex justify-between gap-3">
-        <dt>年化投资回报率</dt>
+        <dt>{t('assumptions.returnRate', locale)}</dt>
         <dd class="font-mono tabular-nums text-ink">{pct(a.returnRate)}</dd>
       </div>
       <div class="flex justify-between gap-3">
-        <dt>安全提取率</dt>
+        <dt>{t('assumptions.withdrawalRate', locale)}</dt>
         <dd class="font-mono tabular-nums text-ink">{pct(a.withdrawalRate)}</dd>
       </div>
       <div class="flex justify-between gap-3">
-        <dt>年化通胀</dt>
+        <dt>{t('assumptions.inflation', locale)}</dt>
         <dd class="font-mono tabular-nums text-ink">{pct(a.inflation)}</dd>
       </div>
       <div class="flex justify-between gap-3">
-        <dt>假设版本</dt>
+        <dt>{t('assumptions.version', locale)}</dt>
         <dd class="font-mono tabular-nums text-ink">v{a.assumptionsVersion}</dd>
       </div>
     </dl>
     <p class="mt-2">
-      汇率：按 1 {fx.base} = {cnyText} CNY、{eurText} EUR 折算；
-      来源 {fx.source}，日期 {fx.date}。
+      {format(t('assumptions.fxLine', locale), {
+        base: fx.base,
+        cny: cnyText,
+        eur: eurText,
+        source: fx.source,
+        date: fx.date,
+      })}
     </p>
   </section>
 
   <section aria-labelledby="disclaimer-heading" class="mt-5 border-t border-line pt-4">
-    <h2 id="disclaimer-heading" class="mb-2 text-[13px] font-medium text-ink">免责声明</h2>
+    <h2 id="disclaimer-heading" class="mb-2 text-[13px] font-medium text-ink">{t('assumptions.disclaimerTitle', locale)}</h2>
     <ul class="list-disc space-y-1 pl-4">
-      <li>本工具仅对用户自行填写的假设做静态推演与算术，不构成投资建议。</li>
-      <li>不推荐、不背书任何具体金融产品、标的或机构。</li>
-      <li>测算结果不预测市场、不承诺未来收益；实际结果可能与测算差异巨大。</li>
-      <li>通胀等假设仅作记录展示，M1 暂不参与换算。</li>
-      <li>本工具仅用于财商模拟教育，不替代专业的财务、法律或税务意见。</li>
+      <li>{t('assumptions.disclaimer1', locale)}</li>
+      <li>{t('assumptions.disclaimer2', locale)}</li>
+      <li>{t('assumptions.disclaimer3', locale)}</li>
+      <li>{t('assumptions.disclaimer4', locale)}</li>
+      <li>{t('assumptions.disclaimer5', locale)}</li>
     </ul>
   </section>
 </aside>

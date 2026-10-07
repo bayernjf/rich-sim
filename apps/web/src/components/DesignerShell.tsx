@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   convert,
+  dimensionLabel,
+  optionLabel,
   type Catalog,
   type Currency,
   type FxSnapshot,
@@ -10,6 +12,8 @@ import {
 import { readDraft, writeDraft } from '../lib/draft';
 import { STATIC_FX_SNAPSHOT } from '../lib/defaults';
 import { converterLine } from '../lib/converter';
+import { format, t } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 import CurrencySwitcher from './CurrencySwitcher';
 
@@ -28,6 +32,8 @@ import CurrencySwitcher from './CurrencySwitcher';
 type DesignerShellProps = {
   /** 维度目录（必传）；生产由页面传入 core 的 initialCatalogUSD。 */
   catalog: Catalog;
+  /** 界面语言（页面 SSR 解析后传入；省略即中文）。 */
+  locale?: Locale;
 };
 
 /** 每维默认选中一项（isDefault，否则第一项）。 */
@@ -59,7 +65,7 @@ function annualTotal(catalog: Catalog, choices: LifeChoice): number {
   return sum;
 }
 
-export default function DesignerShell({ catalog }: DesignerShellProps) {
+export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellProps) {
   // SSR 用默认选择渲染（确定性，SSR HTML 即含 7 维标题与选项）；
   // 客户端 mount 后再尝试从 localStorage 恢复。
   const [choices, setChoices] = useState<LifeChoice>(() => defaultChoices(catalog));
@@ -149,8 +155,9 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
           currency: c,
           maximumFractionDigits: 0,
         }),
+        locale,
       ),
-    [catalog, choices, profile, fx],
+    [catalog, choices, profile, fx, locale],
   );
 
   // 一次页面访问只报一条 converter:view（随选择重算时不重复刷屏）。
@@ -167,12 +174,11 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
     <section className="pb-32">
       <header>
         <p className="text-xs font-medium uppercase tracking-widest text-accent">
-          理想生活设计器
+          {t('designer.eyebrow', locale)}
         </p>
-        <h1 className="mt-2 text-2xl font-semibold">设计你想过的生活</h1>
+        <h1 className="mt-2 text-2xl font-semibold">{t('designer.h1', locale)}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          在每个维度里选一项，系统把它们的年成本加总。金额为美国全国口径的实际自付年现金支出，
-          按公开统计估算（数据年 2024；富豪档为行业估算），仅用于财商教育，不代表真实报价。
+          {t('designer.intro', locale)}
         </p>
       </header>
 
@@ -182,6 +188,7 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
           currency={currency}
           fx={fx}
           onChanged={handleCurrencyChanged}
+          locale={locale}
         />
       </div>
 
@@ -190,14 +197,14 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
           <div
             key={dim.id}
             role="radiogroup"
-            aria-label={dim.label}
+            aria-label={dimensionLabel(dim, locale)}
             className="rounded-2xl border border-line bg-panel p-4"
           >
             <h2 className="text-base font-semibold">
               <span className="mr-2 font-mono text-sm text-muted">
                 {String(idx + 1).padStart(2, '0')}
               </span>
-              {dim.label}
+              {dimensionLabel(dim, locale)}
             </h2>
             <div className="mt-3 grid gap-2">
               {dim.options.map((opt) => {
@@ -225,11 +232,11 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
                           selected ? 'bg-accent' : 'bg-line-strong',
                         ].join(' ')}
                       />
-                      {opt.label}
+                      {optionLabel(opt, locale)}
                     </span>
                     <span className="shrink-0 font-mono text-sm tabular-nums text-muted">
                       {fmt(opt.annualCost)}
-                      <span className="ml-1 text-xs">/年</span>
+                      <span className="ml-1 text-xs">{locale === 'en' ? '/yr' : '/年'}</span>
                     </span>
                   </button>
                 );
@@ -240,8 +247,7 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-muted">
-        免责声明：本工具仅做静态推演与财商教育，不构成投资建议，不推荐任何金融产品；
-        结果不承诺未来收益。年成本按当前所选选项简单加总，通胀作为假设记录、暂不参与换算。
+        {t('designer.disclaimer', locale)}
       </p>
 
       {/* sticky 底部实时预览条（常驻）：年成本 + S3 换算条 */}
@@ -250,16 +256,16 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs text-muted">
-                理想生活年成本（{currency}）
+                {format(t('designer.totalLabel', locale), { currency })}
               </div>
               <div className="font-mono text-xl font-semibold tabular-nums text-accent">
                 {fmt(total)}
               </div>
             </div>
             <div className="text-right text-xs leading-relaxed text-muted" aria-live="polite">
-              <div>{persisted ? '已保存 · 本机' : '未保存'}</div>
+              <div>{t(persisted ? 'designer.saved' : 'designer.notSaved', locale)}</div>
               <div className="mt-0.5">
-                {persisted ? '选择已自动存入本机' : '选择后自动保存'}
+                {t(persisted ? 'designer.savedHint' : 'designer.saveHint', locale)}
               </div>
             </div>
           </div>
@@ -275,7 +281,7 @@ export default function DesignerShell({ catalog }: DesignerShellProps) {
                   className="ml-1 whitespace-nowrap text-accent underline-offset-2 hover:underline"
                   href="/app/finance"
                 >
-                  去录入 →
+                  {t('designer.gotoFinance', locale)}
                 </a>
               )}
             </p>

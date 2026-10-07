@@ -15,6 +15,8 @@ import type {
   Projection,
 } from '@rich-sim/core';
 import type { Draft } from './draft';
+import type { Locale } from './i18n';
+import { t } from './messages';
 import type { ConverterStatus } from './converter';
 import { converterForItem } from './converter';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
@@ -75,7 +77,11 @@ export function buildDefaultChoices(catalog: Catalog): LifeChoice {
  * computeResults(draft, catalog) — 由本机方案 + Catalog 算结构化结果。
  * profile 缺失 -> { status: 'no-profile' }（UI 引导先录财务）。
  */
-export function computeResults(draft: Draft, catalog: Catalog): Results {
+export function computeResults(
+  draft: Draft,
+  catalog: Catalog,
+  locale: Locale = 'zh',
+): Results {
   const assumptions = draft.assumptions ?? DEFAULT_ASSUMPTIONS;
   const profile = draft.profile;
   if (!profile) return { status: 'no-profile' };
@@ -111,7 +117,7 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
   // S3 换算条：对象是整份理想生活（不是某个单项），分母是用户自己的年净储蓄。
   const converter = converterForItem(
     {
-      label: override ? '富豪购物车里的这套生活' : '你选的这种生活',
+      label: t(override ? 'converter.cartLife' : 'converter.lifeTotal', locale),
       annualCostUSD,
     },
     profile,
@@ -122,6 +128,7 @@ export function computeResults(draft: Draft, catalog: Catalog): Results {
         currency: c,
         maximumFractionDigits: 0,
       }),
+    locale,
   );
 
   return {

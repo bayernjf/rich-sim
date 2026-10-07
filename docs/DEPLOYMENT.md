@@ -56,7 +56,7 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **隐私三条（写在 `src/index.ts` 头，不要悄悄改）**：① 只入库 `event` 名与时间，`props` 一律丢弃（`finance:update` 带用户自填的收入/支出，上传即越过红线）；② 不写 IP / UA / 任何标识符，所以没有跨事件个体链路、不需要 consent 门槛，代价是只能做频次统计、做不了单用户转化漏斗；③ 来源白名单（`ALLOWED_ORIGINS`），未知 Origin 直接 403，绝不回显。
 
-**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
+**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`locale:switch`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
 
 **合成流量自标记（2026-10-07）**：冒烟运行一律带 `?smoke=1`，此后同标签页的所有事件名加 `smoke:` 前缀（`apps/web/src/lib/analytics.ts` 的 `SMOKE_PREFIX`；标记落在 `sessionStorage`，一次冒烟跳多个 URL 也延续）。原因：库里只有 `{ts, day, event}` 三个字段，**冒烟行与真人行形状完全相同**，在真实流量为零时跑一次生产冒烟就会把「到底有没有人来过」这个唯一信号污染掉。带前缀后可以从查询侧整段滤掉：
 

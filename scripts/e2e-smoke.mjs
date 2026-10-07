@@ -188,7 +188,7 @@ try {
   }
 
   // 干净起点（localStorage.clear() 只清队列，不动 sessionStorage 里的冒烟标记）
-  await page.goto(`${BASE}/app/designer?smoke=1`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
 
@@ -233,6 +233,19 @@ try {
     '冒烟打标：观测到的事件名全部带 smoke: 前缀',
     `total=${evDesigner.length} unmarked=${unmarked.map((e) => e.event).join(',') || '(无)'}`,
   );
+
+  // ── 步骤 1.6：语言在 SSR 期生效（?lang=en 直接出英文界面，不是客户端改写）──
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const enHtml = await page.content();
+  check(/<html[^>]*lang="en"/.test(enHtml), 'i18n：?lang=en 时 <html lang> 是 en', '');
+  check(enHtml.includes('Design the life you want'), 'i18n：英文 H1 由 SSR 渲染', '');
+  check(
+    enHtml.includes('Disclaimer') && !enHtml.includes('设计你想过的生活'),
+    'i18n：英文页面的合规文本也是英文（不是中文兜过去）',
+    '',
+  );
+  // 切回中文继续——后面的断言用中文选择器与中文文案。
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
 
   // ── 步骤 1.5：换算条（S3）——未录入财务时不消失，改成 F2 引导句 ──
   const stickyText = await page.locator('[data-converter-line]').innerText();
@@ -308,7 +321,7 @@ try {
   );
 
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
-  await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
   await page.waitForSelector('#display-currency:not([disabled])');
   await page.waitForTimeout(300);

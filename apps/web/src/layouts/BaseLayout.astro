@@ -10,15 +10,19 @@
  */
 import '../styles/global.css';
 import Analytics from '../components/Analytics.astro';
+import { HTML_LANG, type Locale } from '../lib/i18n';
 
 interface Props {
   title: string;
   description?: string;
+  /** 页面语言；由页面用 localeFromRequest 解析后传入（SSR 期就得知道，见 lib/i18n.ts）。 */
+  locale?: Locale;
 }
 
 const {
   title,
   description = '先看见富人生活的真实成本，再用你自己的收入算清够用线、差距与年限。财商模拟教育工具，不构成投资建议。',
+  locale = 'zh',
 } = Astro.props;
 
 // Astro.canonicalURL is undefined under SSR, so build it from the configured
@@ -27,7 +31,7 @@ const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site).href :
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang={HTML_LANG[locale]}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
