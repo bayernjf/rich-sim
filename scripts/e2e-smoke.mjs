@@ -478,6 +478,188 @@ try {
     leakedRate ? JSON.stringify(leakedRate.props) : `n=${assumptionEvents.length}`,
   );
 
+  // ── 步骤 3.7：本机测算历史（F6 本机版）——回访时看到的「和上次比」──
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-results-root]');
+  // 先验关 JS 的一屏：复盘块是岛渲染的，源码里不能有它。
+  const ssrProgress = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
+  check(
+    !ssrProgress.includes('data-progress-note'),
+    '测算历史：SSR 源码里没有复盘块',
+    '',
+  );
+
+  // 第一次访问：只该留下一条今天的记录，而且没有可比对象。
+  const histAfterFirstVisit = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}').history?.length ?? 0,
+  );
+  check(
+    histAfterFirstVisit === 1,
+    '测算历史：首次测算只落一条本机记录',
+    `count=${histAfterFirstVisit}`,
+  );
+  check(
+    (await page.locator('[data-progress-note]').count()) === 0,
+    '测算历史：没有上一条时不编造对比',
+    '',
+  );
+
+  // 反复刷新不得越刷越多：同一天覆盖当天那一条，而不是追加。
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-results-root]');
+  const histAfterReload = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}').history?.length ?? 0,
+  );
+  check(
+    histAfterReload === 1,
+    '测算历史：同一天反复测算不增长（写盘只发生在数字真的变了时）',
+    `count=${histAfterReload}`,
+  );
+
+  // 喂一条「3 天前」的记录：年限推后 5 年、净资产少 5 万——都是脚本自己写的数，
+  // 所以断言看得见「读的是本机历史、算的是差值」，而不是碰巧渲染了什么。
+  const yearsNow = Number(
+    (await page.locator('[data-status]').innerText()).match(/约\s*(\d+)\s*年/)?.[1] ?? NaN,
+  );
+  check(Number.isFinite(yearsNow), '测算历史：先从状态卡读到当前年限', `years=${yearsNow}`);
+
+  const seedHistory = (entries) =>
+    page.evaluate((raw) => {
+      const draft = JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}');
+      draft.history = raw;
+      localStorage.setItem('rich-sim:plan:v1', JSON.stringify(draft));
+    }, entries);
+
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]', { timeout: 5000 });
+
+  const yearsLine = await page.locator('[data-progress-years]').innerText();
+  check(
+    yearsLine.includes(String(yearsNow + 5)) && yearsLine.includes(String(yearsNow)) && yearsLine.includes('提前 5 年'),
+    '复盘：上一条年限更大时，报「提前 5 年」',
+    `text="${yearsLine.trim()}"`,
+  );
+  const netLine = await page.locator('[data-progress-net]').innerText();
+  check(
+    netLine.includes('净资产') && netLine.includes('50,000'),
+    '复盘：同币种时给出净资产差值',
+    `text="${netLine.trim()}"`,
+  );
+  const progressNote = await page.locator('[data-progress-note]').innerText();
+  check(
+    /相隔 \d+ 天/.test(progressNote) && progressNote.includes('2026-'),
+    '复盘：说清两次测算的日期与间隔',
+    `text="${progressNote.replace(/\s+/g, ' ').trim().slice(0, 80)}"`,
+  );
+  check(
+    progressNote.includes('不是预测') && progressNote.includes('不构成建议'),
+    '复盘：合规措辞跟着走（这不是预测，也不是建议）',
+    '',
+  );
+
+  // 跨币种：金额不放在一起比，但年限仍然可比（递推的齐次性）。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'CNY',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 723_392,
+      enoughLine: 18_084_800,
+      netWorth: 356_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]');
+  check(
+    (await page.locator('[data-progress-net]').count()) === 0,
+    '复盘：跨币种时不给金额差（不同单位相减没有意义）',
+    '',
+  );
+  check(
+    (await page.locator('[data-progress-currency-note]').count()) === 1 &&
+      (await page.locator('[data-progress-years]').count()) === 1,
+    '复盘：跨币种改成明说「不放在一起比」，年限仍然比',
+    '',
+  );
+
+  // 状态跨档：三状态是一等状态，复盘要说状态而不是年限。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'no-net-savings',
+      years: null,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-status]');
+  const statusLine = await page.locator('[data-progress-status]').innerText();
+  check(
+    statusLine.includes('无净储蓄') && statusLine.includes('可达'),
+    '复盘：状态跨档说状态（复用三状态的词典，不另造说法）',
+    `text="${statusLine.trim()}"`,
+  );
+
+  const evProgress = await eventsSoFar();
+  check(
+    countEvent(evProgress, 'progress:view') >= 1,
+    '埋点：progress:view 已入队（回访且手里有上一条时才算一次）',
+    `count=${countEvent(evProgress, 'progress:view')}`,
+  );
+  const progressWithValues = (await eventsSoFar()).find(
+    (e) => e.event === NAME('progress:view') && /\d/.test(JSON.stringify(e.props ?? {})),
+  );
+  check(
+    !progressWithValues,
+    '红线：progress:view 一个 props 都不带',
+    progressWithValues ? JSON.stringify(progressWithValues.props) : '',
+  );
+
+  // 英文态同一块。eyebrow 有 CSS uppercase，innerText 拿到的是渲染后的大写形，
+  // 所以按小写比对——按原样字符串比会红在一个纯样式决定上。
+  // 此时手里那条是「无净储蓄」的记录，所以这块说的是状态而不是年限。
+  await page.goto(`${BASE}/app/result?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]');
+  const progressEn = await page.locator('[data-progress-note]').innerText();
+  const progressEnLower = progressEn.toLowerCase();
+  check(
+    progressEnLower.includes('versus your last calculation') &&
+      /days apart/.test(progressEn) &&
+      progressEnLower.includes('no net savings') &&
+      progressEnLower.includes('forecasts nothing') &&
+      !/[\u4e00-\u9fff]/.test(progressEn),
+    'i18n：复盘块英文态不夹中文（含复用的三状态词）',
+    `text="${progressEn.replace(/\s+/g, ' ').trim().slice(0, 90)}"`,
+  );
+
+  // 留两条记录给后面的步骤：390 宽要带着这一块量一次不溢出（步骤 10 那条）。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
