@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Catalog } from '@rich-sim/core';
-import { readDraft, type Draft } from '../lib/draft';
+import { DRAFT_UPDATED_EVENT, readDraft, type Draft } from '../lib/draft';
 import { t, format, type MessageKey } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 import type { Results } from '../lib/results';
@@ -62,8 +62,13 @@ export default function ScenarioPanel({
   const [state, setState] = useState<ScenarioState>(initialState);
 
   useEffect(() => {
-    setDraft(readDraft());
+    const sync = () => setDraft(readDraft());
+    sync();
     setReady(true);
+    // 情景比较的是「同一套假设下的差值」，所以假设编辑器改写 draft 之后必须重读：
+    // 留着旧假设会让四条情景线集体与上面的结果区口径不一致。
+    window.addEventListener(DRAFT_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(DRAFT_UPDATED_EVENT, sync);
   }, []);
 
   const active: Scenario[] = useMemo(

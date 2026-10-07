@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Catalog, Currency } from '@rich-sim/core';
 import Interpolated from './Interpolated';
-import { readDraft } from '../lib/draft';
+import { DRAFT_UPDATED_EVENT, readDraft } from '../lib/draft';
 import { computeResults } from '../lib/results';
 import type { Results } from '../lib/results';
 import { format, t, type MessageKey } from '../lib/messages';
@@ -17,6 +17,8 @@ import { track } from '../lib/analytics';
  * - 金额一律按 draft.currency 格式化，等宽数字，币种标签始终可见。
  * - 假设清单与免责声明由 result.astro 的 <AssumptionsPanel /> 纯 SSR 渲染，
  *   不依赖本岛。
+ * - 假设编辑器是**另一个岛**：它 writeDraft 后本岛靠 DRAFT_UPDATED_EVENT 重读
+ *   重算，所以「改假设 -> 上面的数字立刻跟着变」不需要刷新页面。
  * - 文案走 messages（i18n 切片三）。阶梯目标的行动项**由词典渲染**而不是
  *   直接用 core 返回的 `m.action`：core 那句是中文。两边不能各写一份还指望它们
  *   一致，所以 i18n.test.ts 有一条「zh 词典必须逐字等于 core 的 action」的测试，
@@ -53,26 +55,38 @@ export default function ResultsView({
   const [view, setView] = useState<View>('loading');
 
   useEffect(() => {
-    const draft = readDraft();
-    if (!draft) {
-      setView('no-draft');
-      return;
-    }
-    try {
-      const res = computeResults(draft, catalog, locale);
-      setView(res);
-      track('results:view', {
-        status: res.status === 'ok' ? res.projection.status : res.status,
-        currency: res.status === 'ok' ? res.currency : undefined,
-      });
-      if (res.status === 'ok') track('converter:view', { status: res.converter.status });
-    } catch {
-      // choices 与 Catalog 失配（旧本机方案）-> 退回默认选择重算。
-      const res = computeResults({ ...draft, choices: [] }, catalog, locale);
-      setView(res);
-      track('results:view', { status: res.status === 'ok' ? res.projection.status : res.status });
-      if (res.status === 'ok') track('converter:view', { status: res.converter.status });
-    }
+    let tracked = false;
+
+    const recompute = () => {
+      const draft = readDraft();
+      if (!draft) {
+        setView('no-draft');
+        return;
+      }
+      const emit = (res: Results) => {
+        setView(res);
+        // 一条访问只报一组：假设编辑器每改一次就重报 results:view / converter:view，
+        // 会把「看过结果」刷成「改了假设」——那一步有它自己的事件名。
+        if (!tracked) {
+          tracked = true;
+          track('results:view', {
+            status: res.status === 'ok' ? res.projection.status : res.status,
+            currency: res.status === 'ok' ? res.currency : undefined,
+          });
+          if (res.status === 'ok') track('converter:view', { status: res.converter.status });
+        }
+      };
+      try {
+        emit(computeResults(draft, catalog, locale));
+      } catch {
+        // choices 与 Catalog 失配（旧本机方案）-> 退回默认选择重算。
+        emit(computeResults({ ...draft, choices: [] }, catalog, locale));
+      }
+    };
+
+    recompute();
+    window.addEventListener(DRAFT_UPDATED_EVENT, recompute);
+    return () => window.removeEventListener(DRAFT_UPDATED_EVENT, recompute);
   }, [catalog, locale]);
 
   const money = (n: number, c: Currency) => fmtMoney(n, c, locale);
