@@ -6,7 +6,8 @@
 //
 // 驱动：playwright-core + 系统 Chrome（channel:'chrome'），移动视口 390×844。
 // 断言用页面实际值互相校验（相对变化），避免脆死数；每步同时断言对应埋点事件
-// 已入 localStorage 队列（rich-sim:events:v1），末尾打印事件摘要作为可观测证据。
+// 已产生（观测 = 已 POST 出去的载荷 + 本机队列 rich-sim:events:v1 的残留，两路合并），
+// 末尾打印事件摘要作为可观测证据。
 //
 // 流量自标记：首个导航带 ?smoke=1，此后同标签页的所有事件名都加 `smoke:` 前缀
 // （apps/web/src/lib/analytics.ts 的 SMOKE_PREFIX）。收集端不存任何标识符，
@@ -36,22 +37,102 @@ function parseAmount(text) {
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
+// 埋点观测不能依赖投递：analytics.ts 只要 sendBeacon 返回 true（= 已入队，不是已送达）
+// 就把那一批裁出本机队列，而翻页时的 beacon 实测大量丢失（2026-10-07：sink 只收到
+// 1 批 1 条）。所以这里在页面脚本之前挂钩 localStorage.setItem，把每一次写进队列的
+// 事件累积进 sessionStorage——它跨同标签页的多次导航存活，且完全不看网络。
+const CAPTURE_KEY = 'rich-sim:smoke-capture';
+await page.addInitScript(
+  ([queueKey, captureKey]) => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function patched(key, value) {
+      if (key === queueKey) {
+        try {
+          const batch = JSON.parse(value);
+          if (Array.isArray(batch)) {
+            // 捕获桶固定写 sessionStorage（this 是被调用的那个 Storage，可能是
+            // localStorage）；key 与队列不同，所以这次写入不会再进本挂钩。
+            const seen = JSON.parse(sessionStorage.getItem(captureKey) || '[]');
+            const ids = new Set(seen.map((e) => `${e.event}|${e.at}`));
+            for (const e of batch) {
+              const id = `${e.event}|${e.at}`;
+              if (!ids.has(id)) {
+                seen.push(e);
+                ids.add(id);
+              }
+            }
+            sessionStorage.setItem(captureKey, JSON.stringify(seen));
+          }
+        } catch {
+          // 挂钩本身绝不影响被测页面。
+        }
+      }
+      return orig.call(this, key, value);
+    };
+  },
+  [EVENTS_KEY, CAPTURE_KEY],
+);
+
+// 上报出去的载荷也收着（能看见就看得见，看不见也不影响判读）。
+const flushed = [];
+page.on('request', (req) => {
+  if (req.method() !== 'POST') return;
+  let body;
+  try {
+    body = req.postData();
+  } catch {
+    return;
+  }
+  if (!body) return;
+  try {
+    const parsed = JSON.parse(body);
+    if (Array.isArray(parsed?.events)) flushed.push(...parsed.events);
+  } catch {
+    // 不是埋点批次，忽略。
+  }
+});
+
+const identity = (e) => `${e.event}|${e.at}`;
+
 // 导航刚结束时 evaluate 可能撞上被销毁的执行上下文，重试两次再放弃。
-const eventsSoFar = async () => {
+const readObserved = async () => {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await page.evaluate((key) => {
-        try {
-          return JSON.parse(localStorage.getItem(key) || '[]');
-        } catch {
-          return [];
-        }
-      }, EVENTS_KEY);
+      return await page.evaluate(
+        ([key, captureKey]) => {
+          const parse = (raw) => {
+            try {
+              const v = JSON.parse(raw || '[]');
+              return Array.isArray(v) ? v : [];
+            } catch {
+              return [];
+            }
+          };
+          return [
+            ...parse(sessionStorage.getItem(captureKey)),
+            ...parse(localStorage.getItem(key)),
+          ];
+        },
+        [EVENTS_KEY, CAPTURE_KEY],
+      );
     } catch {
       await page.waitForTimeout(150);
     }
   }
   return [];
+};
+
+// 同名同毫秒的两条会并成一条；断言全是 >= 阈值，这点损耗不影响判读。
+const eventsSoFar = async () => {
+  const seen = new Set();
+  const merged = [];
+  for (const e of [...(await readObserved()), ...flushed]) {
+    const id = identity(e);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(e);
+  }
+  return merged;
 };
 
 try {
@@ -143,13 +224,13 @@ try {
   const evDesigner = await eventsSoFar();
   check(countEvent(evDesigner, 'designer:select') >= 4, '埋点：designer:select 已入队（≥4 次点选）', `count=${countEvent(evDesigner, 'designer:select')}`);
 
-  // 打标自检：此刻队列里的事件名必须全部带 smoke: 前缀。少一条就是打标失效——
+  // 自标记自检：此刻观测到的事件名必须全部带 smoke: 前缀。少一条就是打标失效——
   // 那样每跑一次生产冒烟，都会把自己的流量混进「到底有没有真人来过」这个唯一
   // 信号里，而且没人会发现（收集端不存标识符，冒烟行与真人行形状完全相同）。
   const unmarked = evDesigner.filter((e) => !String(e.event).startsWith('smoke:'));
   check(
     evDesigner.length > 0 && unmarked.length === 0,
-    '冒烟打标：队列内事件名全部带 smoke: 前缀',
+    '冒烟打标：观测到的事件名全部带 smoke: 前缀',
     `total=${evDesigner.length} unmarked=${unmarked.map((e) => e.event).join(',') || '(无)'}`,
   );
 
