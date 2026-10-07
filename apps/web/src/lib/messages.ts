@@ -50,6 +50,19 @@ const ZH = {
   'assumptions.disclaimer3': '测算结果不预测市场、不承诺未来收益；实际结果可能与测算差异巨大。',
   'assumptions.disclaimer4': '通胀等假设仅作记录展示，M1 暂不参与换算。',
   'assumptions.disclaimer5': '本工具仅用于财商模拟教育，不替代专业的财务、法律或税务意见。',
+  'assumptions.editor.title': '这两个假设可以直接改',
+  'assumptions.editor.lead': '上面的测算就是按这两个数算出来的。改完立即重算，数值只存在你的设备上。',
+  'assumptions.editor.returnHint': '复利速度：r 越高，达标的年限越短；填 0 就是完全不涨。',
+  'assumptions.editor.withdrawalHint': '够用线的分母：提取率越低，撑住同一年开销所需的本金越高。',
+  'assumptions.editor.percent': '%',
+  'assumptions.editor.range': '可填 {min}–{max}%',
+  'assumptions.editor.reset': '恢复默认',
+  'assumptions.editor.inflationNote': '年化通胀只作记录、不参与任何换算，所以不在这里改。',
+  'assumptions.editor.applied': '已按安全提取率 {withdrawal}、年化回报 {returnRate} 重算。',
+  'assumptions.error.empty': '填一个数字（留空不改）。',
+  'assumptions.error.invalid': '这不是数字。',
+  'assumptions.error.below': '不能低于 {min}%。',
+  'assumptions.error.above': '不能高于 {max}%。',
   'finance.metaTitle': '财务录入 · 财富模拟',
   'finance.metaDesc': '只需要月收入、月支出、存款与负债 4 个数，随时可改，数据只保存在你的设备上。',
   'finance.eyebrow': '财务录入',
@@ -259,6 +272,23 @@ const EN: Record<keyof typeof ZH, string> = {
   'assumptions.disclaimer4': 'Inflation and similar assumptions are recorded and displayed, not applied yet.',
   'assumptions.disclaimer5':
     'This is a financial-literacy simulator. It does not replace professional financial, legal or tax advice.',
+  'assumptions.editor.title': 'Change these two assumptions',
+  'assumptions.editor.lead':
+    'The figures above were computed from these two rates. Edits recalculate instantly and stay on your device.',
+  'assumptions.editor.returnHint': 'Compounding speed: a higher r shortens the horizon; 0 means no growth at all.',
+  'assumptions.editor.withdrawalHint':
+    'The denominator of the enough line: the lower the withdrawal rate, the more capital the same annual spend needs.',
+  'assumptions.editor.percent': '%',
+  'assumptions.editor.range': 'Allowed: {min}–{max}%.',
+  'assumptions.editor.reset': 'Reset to defaults',
+  'assumptions.editor.inflationNote':
+    'Annual inflation is recorded for display only — no calculation in this version uses it, so it is not editable here.',
+  'assumptions.editor.applied':
+    'Recalculated with withdrawal rate {withdrawal} and annual return {returnRate}.',
+  'assumptions.error.empty': 'Enter a number (empty changes nothing).',
+  'assumptions.error.invalid': 'That is not a number.',
+  'assumptions.error.below': 'Cannot be below {min}%.',
+  'assumptions.error.above': 'Cannot be above {max}%.',
   'finance.metaTitle': 'Enter your finances · rich-sim',
   'finance.metaDesc':
     'Four numbers only: monthly income, monthly spending, savings and debt. Editable any time, stored on your device.',

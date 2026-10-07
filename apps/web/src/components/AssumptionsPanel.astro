@@ -1,5 +1,6 @@
 ---
 import type { Assumptions } from '@rich-sim/core';
+import { formatRate } from '../lib/assumptions';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
 import { type Locale } from '../lib/i18n';
 import { format, t } from '../lib/messages';
@@ -17,6 +18,11 @@ import { format, t } from '../lib/messages';
  *
  * props.assumptions 默认取 DEFAULT_ASSUMPTIONS（冻结）。汇率来源与日期
  * 必须展示（币种口径约定），否则视为不达标。
+ *
+ * **`data-assumption` 是给客户端增强留的钩子**：SSR 只能印默认值，而
+ * `AssumptionsEditor`（结果页）与设计器岛会把用户真正在用的那套数值改写进
+ * 这几个节点（`lib/assumptions.ts` 的 `patchAssumptionDisplay`）。钩子留在
+ * 服务端 HTML 上、改写只动文本，所以关 JS 时这份清单仍是完整的一屏。
  */
 
 interface Props {
@@ -26,9 +32,6 @@ interface Props {
 
 const { assumptions = DEFAULT_ASSUMPTIONS, locale = 'zh' } = Astro.props;
 const a = assumptions;
-
-/** 0.04 -> "4%"；用 Math.round 规避浮点尾差。 */
-const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 const fx = a.fx;
 const cnyRate = fx.rates['CNY'];
@@ -43,15 +46,15 @@ const eurText = Number.isFinite(eurRate) ? eurRate.toFixed(2) : '—';
     <dl class="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
       <div class="flex justify-between gap-3">
         <dt>{t('assumptions.returnRate', locale)}</dt>
-        <dd class="font-mono tabular-nums text-ink">{pct(a.returnRate)}</dd>
+        <dd data-assumption="returnRate" class="font-mono tabular-nums text-ink">{formatRate(a.returnRate)}</dd>
       </div>
       <div class="flex justify-between gap-3">
         <dt>{t('assumptions.withdrawalRate', locale)}</dt>
-        <dd class="font-mono tabular-nums text-ink">{pct(a.withdrawalRate)}</dd>
+        <dd data-assumption="withdrawalRate" class="font-mono tabular-nums text-ink">{formatRate(a.withdrawalRate)}</dd>
       </div>
       <div class="flex justify-between gap-3">
         <dt>{t('assumptions.inflation', locale)}</dt>
-        <dd class="font-mono tabular-nums text-ink">{pct(a.inflation)}</dd>
+        <dd data-assumption="inflation" class="font-mono tabular-nums text-ink">{formatRate(a.inflation)}</dd>
       </div>
       <div class="flex justify-between gap-3">
         <dt>{t('assumptions.version', locale)}</dt>

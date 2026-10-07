@@ -1,6 +1,7 @@
 ---
 import ResultsView from '../../components/ResultsView';
 import ScenarioPanel from '../../components/ScenarioPanel';
+import AssumptionsEditor from '../../components/AssumptionsEditor';
 import LocaleSwitcher from '../../components/LocaleSwitcher';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
@@ -22,6 +23,9 @@ const locale = localeFromRequest(Astro.request, Astro.url);
     </div>
 
     <ResultsView catalog={initialCatalogUSD} locale={locale} client:load />
+
+    <!-- M4 · 可调假设（PRD §6.2：提取率与 r 必须可调，不只是可看） -->
+    <AssumptionsEditor locale={locale} client:load />
 
     <!-- M4 S1 · T02/T03 情景面板（页内岛，不新增路由） -->
     <ScenarioPanel catalog={initialCatalogUSD} locale={locale} client:load />
