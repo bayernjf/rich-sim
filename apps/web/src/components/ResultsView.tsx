@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import type { Catalog, Currency } from '@rich-sim/core';
+import Interpolated from './Interpolated';
 import { readDraft } from '../lib/draft';
 import { computeResults } from '../lib/results';
 import type { Results } from '../lib/results';
@@ -40,34 +41,6 @@ function fmtMoney(n: number, c: Currency, locale: Locale): string {
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-
-/**
- * 把 {name} 占位符替换成带等宽样式的节点。
- * 存在的理由：数字周围的句子语序在两种语言里不同，若为了保留 `tabular-nums`
- * 而把句子拆成「前缀 + 数字 + 后缀」三段文案，翻译就会退化成中文语序的英文。
- */
-function Interpolated({
-  template,
-  vars,
-}: {
-  template: string;
-  vars: Record<string, string | number>;
-}) {
-  const parts: ReactNode[] = [];
-  template.split(/(\{\w+\})/g).forEach((chunk, index) => {
-    const name = /^\{(\w+)\}$/.exec(chunk)?.[1];
-    if (!name) {
-      if (chunk) parts.push(<Fragment key={index}>{chunk}</Fragment>);
-      return;
-    }
-    parts.push(
-      <span key={index} className="font-mono tabular-nums text-ink">
-        {name in vars ? vars[name] : chunk}
-      </span>,
-    );
-  });
-  return <>{parts}</>;
-}
 
 export default function ResultsView({
   catalog,

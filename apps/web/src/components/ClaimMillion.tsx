@@ -15,9 +15,12 @@
  * 渲染过，报了就是把漏斗最想看的那一步记成假的。
  */
 import { useEffect, useRef, useState } from 'react';
+import Interpolated from './Interpolated';
 import { track } from '../lib/analytics';
 import { claimSim, readSimState } from '../lib/sim-draft';
 import type { ClaimBillRow } from '../lib/sim-content';
+import { format, t } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 
 type Props = {
   /** 虚拟起始金（USD）。 */
@@ -28,19 +31,25 @@ type Props = {
   withdrawalRate: number;
   /** 三行真实账单（含 catalog 来源链接）。 */
   rows: ClaimBillRow[];
+  /** 界面语言（页面 SSR 解析后传入）。 */
+  locale?: Locale;
 };
 
 /** §4 时间常数：T+0.3s 到账，T+1.8s 翻转——第二拍在 2 秒内出现是可验收的。 */
 const GRANT_MS = 300;
 const BILL_MS = 1800;
 
-const VIRTUAL_NOTE = '虚拟模拟起始金 · 不是你的真实资产';
-
 function money(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
 }
 
-export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }: Props) {
+export default function ClaimMillion({
+  capital,
+  drawdown,
+  withdrawalRate,
+  rows,
+  locale = 'zh',
+}: Props) {
   const [phase, setPhase] = useState<'idle' | 'granted' | 'bill'>('idle');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -86,11 +95,13 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
       aria-labelledby="claim-heading"
       className="mt-10 rounded-2xl border border-line bg-panel px-4 py-5"
     >
-      <p className="text-xs font-medium uppercase tracking-widest text-accent">富豪模拟</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-accent">
+        {t('claim.eyebrow', locale)}
+      </p>
       <h2 id="claim-heading" className="mt-2 text-xl font-semibold tracking-tight">
-        先领一百万
+        {t('claim.h1', locale)}
       </h2>
-      <p className="mt-1 text-xs leading-relaxed text-muted">{VIRTUAL_NOTE}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">{t('claim.virtualNote', locale)}</p>
 
       <div aria-live="polite">
         {phase === 'idle' && (
@@ -100,7 +111,7 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
             onClick={handleClaim}
             className="mt-4 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
           >
-            先领 {money(capital)} →
+            {format(t('claim.tap', locale), { money: money(capital) })}
           </a>
         )}
 
@@ -109,19 +120,21 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
             <p className="mt-4 font-mono text-3xl font-semibold tabular-nums tracking-tight text-accent">
               {money(capital)}
             </p>
-            <p className="mt-1 text-sm font-medium text-ink">虚拟起始金已到账</p>
+            <p className="mt-1 text-sm font-medium text-ink">{t('claim.revealed', locale)}</p>
           </>
         )}
 
         {phase === 'bill' && (
           <div className="mt-4 border-t border-line pt-4">
             <p className="text-sm leading-relaxed text-ink">
-              按 {Math.round(withdrawalRate * 100)}% 的提取率，它一年只能给你{' '}
-              <span className="font-mono font-semibold tabular-nums">{money(drawdown)}</span>
-              ——它不够，这才是重点：
+              <Interpolated
+                template={t('claim.drawdown', locale)}
+                vars={{ rate: Math.round(withdrawalRate * 100), amount: money(drawdown) }}
+                className="font-mono font-semibold tabular-nums"
+              />
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              提取率是可修改的假设，不是收益承诺。
+              {t('claim.withdrawNote', locale)}
             </p>
 
             <ul className="mt-3 space-y-2">
@@ -129,14 +142,14 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
                 <li key={row.label} className="flex items-baseline justify-between gap-3">
                   <span className="text-xs leading-relaxed text-muted">{row.label}</span>
                   <span className="shrink-0 font-mono text-sm tabular-nums text-ink">
-                    {money(row.annualCost)}/年
+                    {format(t('claim.perYear', locale), { amount: money(row.annualCost) })}
                     {row.source && (
                       <a
                         className="ml-2 text-xs text-accent underline-offset-2 hover:underline"
                         href={row.source}
                         rel="noopener"
                       >
-                        来源
+                        {t('claim.source', locale)}
                       </a>
                     )}
                   </span>
@@ -151,7 +164,7 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
                 onClick={() => track('route:life', { from: 'claim' })}
                 className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
               >
-                用它撑这种生活 →
+                {t('claim.runway', locale)}
               </a>
               <a
                 data-claim-route="real"
@@ -159,7 +172,7 @@ export default function ClaimMillion({ capital, drawdown, withdrawalRate, rows }
                 onClick={() => track('route:real', { from: 'claim' })}
                 className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-5 py-3 text-sm font-medium text-ink"
               >
-                换成我的真实生活 →
+                {t('claim.toReal', locale)}
               </a>
             </div>
           </div>

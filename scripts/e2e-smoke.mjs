@@ -139,7 +139,9 @@ try {
   // ── 步骤 0：首页 · S4 领钱入口 ──
   // 入口受 PUBLIC_HOMEPAGE_CLAIM 开关控制：没开就断言它确实不在，其余流程跳过
   // （这样同一份脚本既能跑开着的本地环境，也能跑默认关闭的生产）。
-  await page.goto(`${BASE}/?smoke=1`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  // 首页这一屏先钉中文：下面的断言读的是账单行的目录文案（「年运营全口径」），
+  // 那是 catalog 内容，两种语言都由 CATALOG_LABELS_EN 驱动，英文状态单独验。
   check(
     await page.locator('a[href="/app/designer"]').count() === 1,
     '首页：原有主 CTA 仍在',
@@ -184,6 +186,28 @@ try {
       runway.includes('9.1 个月'),
       '领钱：$1M 撑卡 A 这套生活 ≈ 9.1 个月（手算 1,000,000 ÷ 1,317,000/年）',
       `text="${runway.replace(/\n/g, ' ').trim()}"`,
+    );
+  }
+
+  // ── 步骤 0.5：首页英文态（SSR 直接产出）──
+  await page.goto(`${BASE}/?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const homeEn = await page.content();
+  check(/<html[^>]*lang="en"/.test(homeEn), 'i18n：首页 ?lang=en 时 <html lang> 是 en', '');
+  check(
+    homeEn.includes('See the cost first. Then do the math.'),
+    'i18n：首页英文 H1 由 SSR 渲染',
+    '',
+  );
+  if (claimEnabled) {
+    const claimEn = await page
+      .locator('section[aria-labelledby="claim-heading"]')
+      .innerText();
+    check(
+      claimEn.includes('Claim your first million') &&
+        claimEn.includes('not your real assets') &&
+        !/[一-鿿]/.test(claimEn),
+      'i18n：领钱入口英文态整段无中文',
+      `text=${claimEn.replace(/\n/g, ' ').slice(0, 60)}`,
     );
   }
 

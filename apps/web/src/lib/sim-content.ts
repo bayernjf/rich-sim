@@ -1,5 +1,12 @@
 import type { Assumptions, Catalog, CatalogOption, LifeChoice } from '@rich-sim/core';
-import { burdenStatus, scenarioAnnualCost } from '@rich-sim/core';
+import {
+  burdenStatus,
+  dimensionLabel as coreDimensionLabel,
+  optionLabel as coreOptionLabel,
+  scenarioAnnualCost,
+} from '@rich-sim/core';
+import type { Locale } from './i18n';
+import { t } from './messages';
 
 /**
  * F5 最小版 · 卡 A（`simulation-gameplay.md` §4.4 定稿，`m2-decisions.md` D1 拍板）。
@@ -74,14 +81,15 @@ export type Bill = {
 export function cardBills(
   choices: LifeChoice,
   catalog: Catalog,
+  locale: Locale = 'zh',
 ): Bill[] {
   return choices
     .map((choice) => {
       const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
       const option = dimension?.options.find((o) => o.id === choice.optionId);
       return {
-        dimensionLabel: dimension?.label ?? choice.dimension,
-        optionLabel: option?.label ?? choice.optionId,
+        dimensionLabel: dimension ? coreDimensionLabel(dimension, locale) : choice.dimension,
+        optionLabel: option ? coreOptionLabel(option, locale) : choice.optionId,
         annualCost: option?.annualCost ?? 0,
         monthlyCost: Math.round((option?.annualCost ?? 0) / 12),
         source: option?.source,
@@ -322,12 +330,16 @@ export type ClaimBillRow = { label: string; annualCost: number; source?: string 
  * 第二拍的三行真实账单（§4）：豪宅的税和维护、私人飞机年运营、全顶档生活。
  * 金额与来源链接全部取自目录，UI 层不复制任何数字。
  */
-export function claimBillRows(catalog: Catalog, assumptions: Assumptions): ClaimBillRow[] {
+export function claimBillRows(
+  catalog: Catalog,
+  assumptions: Assumptions,
+  locale: Locale = 'zh',
+): ClaimBillRow[] {
   const picks: LifeChoice = [
     { dimension: 'living', optionId: 'luxury-mansion' },
     { dimension: 'transport', optionId: 'private-jet' },
   ];
-  const bills = cardBills(picks, catalog).map((bill) => ({
+  const bills = cardBills(picks, catalog, locale).map((bill) => ({
     label: bill.optionLabel,
     annualCost: bill.annualCost,
     source: bill.source,
@@ -335,7 +347,7 @@ export function claimBillRows(catalog: Catalog, assumptions: Assumptions): Claim
   return [
     ...bills,
     {
-      label: '全顶档生活（每个维度都选最贵）',
+      label: t('claim.topTier', locale),
       annualCost: cardAnnualCost(topTierChoices(catalog), catalog, assumptions),
     },
   ];
