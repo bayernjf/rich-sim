@@ -20,9 +20,19 @@
  *   - 未配置端点时完全等同 M1（只存本机）。
  * 四个调用点（designer:select / finance:update / results:view / currency:switch）
  * 无需改动。
+ *
+ * 冒烟合成流量的自标记：收集端只存 `{ts, day, event}`、不存任何标识符，所以
+ * 「我们自己的验证跑」和「真实访客」在库里长得一模一样。真实流量为零的现在，
+ * 往生产跑一次冒烟就会把「有没有人来过」这个唯一信号污染掉。因此 URL 带
+ * `?smoke=1` 时事件名一律加 `smoke:` 前缀，合成流量可以在查询侧整段滤掉。
+ * 本地 dev 跑不受影响——没配端点，事件本来就发不出去。
  */
 
 export const EVENTS_KEY = 'rich-sim:events:v1';
+/** 冒烟运行的事件名前缀；worker 闸门 `/^[a-z][a-z0-9:_-]{0,63}$/` 天然放行。 */
+export const SMOKE_PREFIX = 'smoke:';
+/** 一次冒烟要跳好几个 URL，标记落在 sessionStorage（同标签页 sticky）。 */
+export const SMOKE_FLAG_KEY = 'rich-sim:smoke';
 const MAX_EVENTS = 200;
 const FLUSH_BATCH = 50;
 const FLUSH_DELAY_MS = 3000;
@@ -62,6 +72,44 @@ export function defaultDeps(): AnalyticsDeps {
   return { endpoint, storage, beacon };
 }
 
+/** 只认 `smoke=1` 这一个值，避免手滑把真实访客流量也打上标。 */
+export function isSmokeParam(search: string): boolean {
+  return new URLSearchParams(search).get('smoke') === '1';
+}
+
+/**
+ * 这一趟浏览器会话是不是冒烟运行。URL 带参 -> 记进 sessionStorage 并返回 true；
+ * URL 没带但此前带过 -> 仍是 true（一次冒烟要跳好几个 URL，不能只认第一个）。
+ * 存储不可用（隐私模式 / 配额）时按 false 走：宁可少打标，也不在这里抛错。
+ */
+export function detectSmokeRun(
+  search: string,
+  session: Pick<Storage, 'getItem' | 'setItem'> | null,
+): boolean {
+  try {
+    if (isSmokeParam(search)) {
+      session?.setItem(SMOKE_FLAG_KEY, '1');
+      return true;
+    }
+    return session?.getItem(SMOKE_FLAG_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** 事件名解析：冒烟运行一律加 `smoke:` 前缀。 */
+export function resolveEventName(event: string, smoke: boolean): string {
+  return smoke ? `${SMOKE_PREFIX}${event}` : event;
+}
+
+let smokeRun = false;
+if (typeof window !== 'undefined') {
+  smokeRun = detectSmokeRun(
+    window.location.search,
+    typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+  );
+}
+
 /**
  * 记录一个埋点事件。SSR 安全（无 window/localStorage 时静默跳过）；
  * 任何写入失败（隐私模式 / 配额满）都静默吞掉，绝不影响主流程。
@@ -69,10 +117,11 @@ export function defaultDeps(): AnalyticsDeps {
 export function track(event: string, props?: AnalyticsProps): void {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   try {
-    console.debug('[analytics]', event, props ?? {});
+    const name = resolveEventName(event, smokeRun);
+    console.debug('[analytics]', name, props ?? {});
     const raw = localStorage.getItem(EVENTS_KEY);
     const queue: QueuedEvent[] = raw ? (JSON.parse(raw) as QueuedEvent[]) : [];
-    queue.push({ event, props, at: new Date().toISOString() });
+    queue.push({ event: name, props, at: new Date().toISOString() });
     while (queue.length > MAX_EVENTS) queue.shift();
     localStorage.setItem(EVENTS_KEY, JSON.stringify(queue));
     scheduleFlush();

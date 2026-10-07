@@ -3,7 +3,16 @@
  * 不依赖真实浏览器）。
  */
 import { describe, expect, it, vi } from 'vitest';
-import { defaultDeps, EVENTS_KEY, flushQueue, track } from './analytics';
+import {
+  SMOKE_FLAG_KEY,
+  defaultDeps,
+  detectSmokeRun,
+  EVENTS_KEY,
+  flushQueue,
+  isSmokeParam,
+  resolveEventName,
+  track,
+} from './analytics';
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -126,5 +135,46 @@ describe('flushQueue', () => {
 describe('track (SSR safety)', () => {
   it('does not throw when window/localStorage are unavailable', () => {
     expect(() => track('results:view', { status: 'reachable' })).not.toThrow();
+  });
+});
+
+describe('冒烟合成流量自标记', () => {
+  it('只认 smoke=1 这一个值', () => {
+    expect(isSmokeParam('?smoke=1')).toBe(true);
+    expect(isSmokeParam('?yacht=1&smoke=1')).toBe(true);
+    expect(isSmokeParam('?smoke=0')).toBe(false);
+    expect(isSmokeParam('?smoke')).toBe(false);
+    expect(isSmokeParam('')).toBe(false);
+  });
+
+  it('带参时打标并记进 session；后续 URL 不带参也延续（一次冒烟跳好几个页）', () => {
+    const session = memoryStorage();
+    expect(detectSmokeRun('?smoke=1', session)).toBe(true);
+    expect(session.getItem(SMOKE_FLAG_KEY)).toBe('1');
+    expect(detectSmokeRun('', session)).toBe(true);
+    expect(detectSmokeRun('', memoryStorage())).toBe(false);
+  });
+
+  it('session 不可用（隐私模式）不抛错；没有 session 时单次带参仍然算', () => {
+    const throwing: Pick<Storage, 'getItem' | 'setItem'> = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    expect(detectSmokeRun('?smoke=1', throwing)).toBe(false);
+    expect(detectSmokeRun('?smoke=1', null)).toBe(true);
+  });
+
+  it('加前缀后的事件名仍然过 worker 的入库闸门', () => {
+    // 与 workers/analytics-collector/src/index.ts:46 同一个式子。这条测试防的是
+    // 「加了前缀结果被收集端静默 continue 掉」——丢弃发生在服务端，客户端看不出来。
+    const EVENT_NAME = /^[a-z][a-z0-9:_-]{0,63}$/;
+    expect(resolveEventName('sim:add', true)).toBe('smoke:sim:add');
+    expect(EVENT_NAME.test(resolveEventName('sim:add', true))).toBe(true);
+    expect(EVENT_NAME.test(resolveEventName('cart:to-goal', true))).toBe(true);
+    expect(resolveEventName('results:view', false)).toBe('results:view');
   });
 });

@@ -58,6 +58,13 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
 
+**合成流量自标记（2026-10-07）**：冒烟运行一律带 `?smoke=1`，此后同标签页的所有事件名加 `smoke:` 前缀（`apps/web/src/lib/analytics.ts` 的 `SMOKE_PREFIX`；标记落在 `sessionStorage`，一次冒烟跳多个 URL 也延续）。原因：库里只有 `{ts, day, event}` 三个字段，**冒烟行与真人行形状完全相同**，在真实流量为零时跑一次生产冒烟就会把「到底有没有人来过」这个唯一信号污染掉。带前缀后可以从查询侧整段滤掉：
+
+```sql
+-- 真人流量（排除我们自己的验证跑）
+SELECT event, COUNT(*) n FROM events WHERE event NOT LIKE 'smoke:%' GROUP BY event;
+```
+
 **打开读数的两步（2026-10-05 已全部完成）**：
 
 1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。✅ 已配。
@@ -65,7 +72,12 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。
 
-**验证**：浏览器走一遍设计器 → 财务 → 结果，然后 `curl -s -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"` 应看到上述事件有计数；或 `wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events GROUP BY event"`。
+**验证**：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（脚本自己给首个导航加 `?smoke=1`），然后查 D1：`wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events WHERE event LIKE 'smoke:%' GROUP BY event"`——冒烟验证要看到的是 **带 `smoke:` 前缀**的事件名；裸名（`NOT LIKE 'smoke:%'`）才是真人。等价的 HTTP 查法：`curl -s -x http://127.0.0.1:7900 -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"`。
+
+**两个会让验证误判的坑（2026-10-07 实测）**：
+
+1. **`sendBeacon` 返回 true 只代表「已入队」，不代表「已送达」**，而客户端据 true 裁剪本机队列——所以「队列清空」永远不等于「入库」（上面那条 sendBeacon 事故的同一结构性弱点，只是这次不是 Content-Type）。本机一次冒烟跑下来，队列里约 15 条事件最终只有 1 条进 D1。
+2. **这台机器直连 `*.workers.dev` 的 DNS 被污染**（解析到 108.160.163.106，`curl` 不带代理返回 000），浏览器走系统代理 `127.0.0.1:7900` 才通。所以「本地冒烟没进库」**不等于**线上埋点坏了——别照这个下结论。真要确认收集端收名，走带代理的 POST 探针 + D1 读回（M3 三个事件名就是这么确认的：`smoke:sim:add` / `smoke:sim:remove` / `smoke:cart:to-goal` 各 1 行入库，worker 零改动）。
 
 ### Cloudflare Web Analytics 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
 

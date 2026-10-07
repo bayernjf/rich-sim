@@ -7,6 +7,11 @@
 // 驱动：playwright-core + 系统 Chrome（channel:'chrome'），移动视口 390×844。
 // 断言用页面实际值互相校验（相对变化），避免脆死数；每步同时断言对应埋点事件
 // 已入 localStorage 队列（rich-sim:events:v1），末尾打印事件摘要作为可观测证据。
+//
+// 流量自标记：首个导航带 ?smoke=1，此后同标签页的所有事件名都加 `smoke:` 前缀
+// （apps/web/src/lib/analytics.ts 的 SMOKE_PREFIX）。收集端不存任何标识符，
+// 冒烟行和真人行形状完全相同；不打标的话，往生产跑一次冒烟就会污染
+// 「到底有没有人来过」这个唯一信号。跑生产时必须看得到 smoke: 前缀（脚本自检）。
 import pw from 'playwright-core';
 
 const { chromium } = pw;
@@ -17,6 +22,10 @@ const results = [];
 const check = (ok, label, detail = '') => {
   results.push({ ok, label, detail });
 };
+
+/** 冒烟运行的事件名一律带 `smoke:` 前缀（见文件头）；比对时都走这个函数。 */
+const NAME = (name) => `smoke:${name}`;
+const countEvent = (list, name) => list.filter((e) => e.event === NAME(name)).length;
 
 /** 从一段货币格式化文本里抠出第一个数字（含千分位逗号）。 */
 function parseAmount(text) {
@@ -44,13 +53,12 @@ const eventsSoFar = async () => {
   }
   return [];
 };
-const countEvent = (list, name) => list.filter((e) => e.event === name).length;
 
 try {
   // ── 步骤 0：首页 · S4 领钱入口 ──
   // 入口受 PUBLIC_HOMEPAGE_CLAIM 开关控制：没开就断言它确实不在，其余流程跳过
   // （这样同一份脚本既能跑开着的本地环境，也能跑默认关闭的生产）。
-  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/?smoke=1`, { waitUntil: 'networkidle' });
   check(
     await page.locator('a[href="/app/designer"]').count() === 1,
     '首页：原有主 CTA 仍在',
@@ -98,8 +106,8 @@ try {
     );
   }
 
-  // 干净起点
-  await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
+  // 干净起点（localStorage.clear() 只清队列，不动 sessionStorage 里的冒烟标记）
+  await page.goto(`${BASE}/app/designer?smoke=1`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
 
@@ -134,6 +142,16 @@ try {
 
   const evDesigner = await eventsSoFar();
   check(countEvent(evDesigner, 'designer:select') >= 4, '埋点：designer:select 已入队（≥4 次点选）', `count=${countEvent(evDesigner, 'designer:select')}`);
+
+  // 打标自检：此刻队列里的事件名必须全部带 smoke: 前缀。少一条就是打标失效——
+  // 那样每跑一次生产冒烟，都会把自己的流量混进「到底有没有真人来过」这个唯一
+  // 信号里，而且没人会发现（收集端不存标识符，冒烟行与真人行形状完全相同）。
+  const unmarked = evDesigner.filter((e) => !String(e.event).startsWith('smoke:'));
+  check(
+    evDesigner.length > 0 && unmarked.length === 0,
+    '冒烟打标：队列内事件名全部带 smoke: 前缀',
+    `total=${evDesigner.length} unmarked=${unmarked.map((e) => e.event).join(',') || '(无)'}`,
+  );
 
   // ── 步骤 1.5：换算条（S3）——未录入财务时不消失，改成 F2 引导句 ──
   const stickyText = await page.locator('[data-converter-line]').innerText();
@@ -221,10 +239,10 @@ try {
 
   // mount 首帧 profile 恒为 null，上报要等本机方案恢复完——否则已录入财务的人
   // 回访设计器会被记成 no-profile（漏斗上就是「有 profile 的人看不到换算条」）。
-  const idxFinance = evSwitch.findIndex((e) => e.event === 'finance:update');
+  const idxFinance = evSwitch.findIndex((e) => e.event === NAME('finance:update'));
   const converterAfterFinance = evSwitch
     .slice(idxFinance + 1)
-    .filter((e) => e.event === 'converter:view');
+    .filter((e) => e.event === NAME('converter:view'));
   check(
     converterAfterFinance.length >= 1 &&
       converterAfterFinance.every((e) => e.props?.status !== 'no-profile'),
