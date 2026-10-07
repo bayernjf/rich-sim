@@ -37,6 +37,9 @@ const ZH = {
   'locale.label': '语言',
   'converter.lifeTotal': '你选的这种生活',
   'converter.cartLife': '富豪购物车里的这套生活',
+  'converter.principalToggle': '想养住它，需要多少本金？',
+  'converter.principalAssumptionNote':
+    '这一句按你此刻的提取率与回报率算——两个数都能在测算结果页直接改。',
   'assumptions.title': '假设清单',
   'assumptions.returnRate': '年化投资回报率',
   'assumptions.withdrawalRate': '安全提取率',
@@ -269,6 +272,9 @@ const EN: Record<keyof typeof ZH, string> = {
   'locale.label': 'Language',
   'converter.lifeTotal': 'the life you designed',
   'converter.cartLife': 'the lifestyle in the sim cart',
+  'converter.principalToggle': 'What capital would carry it?',
+  'converter.principalAssumptionNote':
+    'This line uses your current withdrawal and return rates — both are editable on the projection page.',
   'assumptions.title': 'Assumptions',
   'assumptions.returnRate': 'Annual return rate',
   'assumptions.withdrawalRate': 'Safe withdrawal rate',
