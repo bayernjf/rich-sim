@@ -49,86 +49,123 @@ function seed(storage: Storage, n: number) {
 }
 
 describe('flushQueue', () => {
-  it('default beacon sends a plain string, never a JSON Blob (no-cors would block it)', () => {
-    const sent: unknown[] = [];
-    vi.stubGlobal('navigator', {
-      sendBeacon: (_url: string, body: unknown) => {
-        sent.push(body);
-        return true;
-      },
+  it('默认传输是 fetch keepalive + text/plain 字符串，不用 Blob', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return Promise.resolve(new Response(null, { status: 204 }));
     });
     try {
       const deps = defaultDeps();
-      expect(typeof deps.beacon).toBe('function');
-      const ok = deps.beacon?.('https://collect.example.com/events', '{"events":[]}');
+      expect(typeof deps.send).toBe('function');
+      const ok = await deps.send?.('https://collect.example.com/events', '{"events":[]}');
       expect(ok).toBe(true);
-      expect(sent).toHaveLength(1);
-      expect(typeof sent[0]).toBe('string');
-      expect(sent[0]).not.toBeInstanceOf(Blob);
+      expect(calls).toHaveLength(1);
+      const init = calls[0].init!;
+      // keepalive 让卸载时的请求也能发出去；text/plain 是简单请求，不触发 preflight。
+      expect(init.keepalive).toBe(true);
+      expect(init.method).toBe('POST');
+      expect(typeof init.body).toBe('string');
+      expect(init.body).not.toBeInstanceOf(Blob);
+      expect((init.headers as Record<string, string>)['Content-Type']).toBe(
+        'text/plain;charset=UTF-8',
+      );
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it('returns disabled and keeps the queue when no endpoint configured', () => {
+  it('非 2xx 不算送达（这条防的就是静默丢事件）', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response(null, { status: 403 })));
+    try {
+      const deps = defaultDeps();
+      expect(await deps.send?.('https://collect.example.com/events', '{}')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('returns disabled and keeps the queue when no endpoint configured', async () => {
     const storage = memoryStorage();
     seed(storage, 3);
-    const result = flushQueue({ endpoint: null, storage, beacon: null });
+    const result = await flushQueue({ endpoint: null, storage, send: null });
     expect(result).toBe('disabled');
     expect(JSON.parse(storage.getItem(EVENTS_KEY) as string)).toHaveLength(3);
   });
 
-  it('sends a batch and trims the queue when beacon succeeds', () => {
+  it('sends a batch and trims the queue only after a confirmed delivery', async () => {
     const storage = memoryStorage();
     seed(storage, 3);
-    const beacon = vi.fn<(url: string, body: string) => boolean>(() => true);
-    const result = flushQueue({ endpoint: 'https://collect.example.com/events', storage, beacon });
+    const send = vi.fn<(url: string, body: string) => Promise<boolean>>(async () => true);
+    const result = await flushQueue({
+      endpoint: 'https://collect.example.com/events',
+      storage,
+      send,
+    });
     expect(result).toBe('sent');
-    expect(beacon).toHaveBeenCalledTimes(1);
-    const [url, body] = beacon.mock.calls[0];
+    expect(send).toHaveBeenCalledTimes(1);
+    const [url, body] = send.mock.calls[0];
     expect(url).toBe('https://collect.example.com/events');
     const payload = JSON.parse(body) as { events: unknown[] };
     expect(payload.events).toHaveLength(3);
     expect(storage.getItem(EVENTS_KEY)).toBe('[]');
   });
 
-  it('retains the queue when beacon returns false', () => {
+  it('retains the queue when the send is not confirmed', async () => {
     const storage = memoryStorage();
     seed(storage, 3);
-    const beacon = vi.fn<(url: string, body: string) => boolean>(() => false);
-    const result = flushQueue({ endpoint: 'https://collect.example.com/events', storage, beacon });
+    const result = await flushQueue({
+      endpoint: 'https://collect.example.com/events',
+      storage,
+      send: async () => false,
+    });
     expect(result).toBe('retained');
     expect(JSON.parse(storage.getItem(EVENTS_KEY) as string)).toHaveLength(3);
   });
 
-  it('flushes at most FLUSH_BATCH (50) events per call', () => {
-    const storage = memoryStorage();
-    seed(storage, 60);
-    const beacon = vi.fn<(url: string, body: string) => boolean>(() => true);
-    const result = flushQueue({ endpoint: 'https://collect.example.com/events', storage, beacon });
-    expect(result).toBe('sent');
-    const body = beacon.mock.calls[0][1] as string;
-    expect(JSON.parse(body).events).toHaveLength(50);
-    expect(JSON.parse(storage.getItem(EVENTS_KEY) as string)).toHaveLength(10);
-  });
-
-  it('treats a thrown beacon as retained, never throws', () => {
+  it('retains the queue when the send rejects (network down)', async () => {
     const storage = memoryStorage();
     seed(storage, 2);
-    const beacon = vi.fn<(url: string, body: string) => boolean>(() => {
-      throw new Error('network down');
+    const result = await flushQueue({
+      endpoint: 'https://collect.example.com/events',
+      storage,
+      send: () => Promise.reject(new Error('network down')),
     });
-    const result = flushQueue({ endpoint: 'https://collect.example.com/events', storage, beacon });
     expect(result).toBe('retained');
     expect(JSON.parse(storage.getItem(EVENTS_KEY) as string)).toHaveLength(2);
   });
 
-  it('returns disabled for an empty queue', () => {
+  it('flushes at most FLUSH_BATCH (50) events per call', async () => {
     const storage = memoryStorage();
-    const beacon = vi.fn<(url: string, body: string) => boolean>(() => true);
-    const result = flushQueue({ endpoint: 'https://collect.example.com/events', storage, beacon });
+    seed(storage, 60);
+    const bodies: string[] = [];
+    const send = vi.fn<(url: string, body: string) => Promise<boolean>>(async (_url, body) => {
+      bodies.push(body);
+      return true;
+    });
+    const result = await flushQueue({
+      endpoint: 'https://collect.example.com/events',
+      storage,
+      send,
+    });
+    expect(result).toBe('sent');
+    expect(JSON.parse(bodies[0]).events).toHaveLength(50);
+    expect(JSON.parse(storage.getItem(EVENTS_KEY) as string)).toHaveLength(10);
+  });
+
+  it('returns disabled for an empty queue', async () => {
+    const storage = memoryStorage();
+    let called = 0;
+    const result = await flushQueue({
+      endpoint: 'https://collect.example.com/events',
+      storage,
+      send: async () => {
+        called += 1;
+        return true;
+      },
+    });
     expect(result).toBe('disabled');
-    expect(beacon).not.toHaveBeenCalled();
+    expect(called).toBe(0);
   });
 });
 

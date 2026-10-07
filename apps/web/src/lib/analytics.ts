@@ -5,21 +5,24 @@
  *   ① console.debug 打印（开发期可观测）；
  *   ② 追加到 localStorage 事件队列（key `rich-sim:events:v1`），上限 200 条。
  *
- * B2：配置了上报端点后，队列会批量 POST 出去：
+ * B2：配置了上报端点后，队列会批量发出去：
  *   - 端点由构建期环境变量 PUBLIC_ANALYTICS_ENDPOINT 指定（Umami / Plausible /
  *     自建 collect 等任意接受 JSON 的收集端；Cloudflare Web Analytics 只自动
  *     采集 PV，不提供通用自定义事件 API，故漏斗事件走本端点）；
- *   - 用 navigator.sendBeacon（页面隐藏/卸载也能发出），载荷 { events: [...] }；
- *     必须传单字符串（浏览器以 text/plain;charset=UTF-8 发送）：sendBeacon 固定走
- *     no-cors，application/json 不是其允许的安全 Content-Type，会在发出前被浏览器
- *     直接拦截（net::ERR_FAILED），而 sendBeacon 仍同步返回 true、队列照常裁剪——
- *     事件会静默丢失。collect 端 request.json() 不校验 Content-Type，text/plain
- *     载荷照常解析；
- *   - 发送成功才裁剪队列；失败（无端点 / beacon 返回 false / 存储异常）一律
- *     保留在本机，静默不抛错，绝不影响主流程；
+ *   - 传输用 `fetch(..., { keepalive: true })`：**收到 2xx 才裁剪本机队列**。
+ *     原先用 navigator.sendBeacon，而 beacon 返回 true 只代表「已入队」不代表
+ *     「已送达」，客户端却据此裁剪——2026-10-07 实测一次冒烟里约 15 条事件只有
+ *     1 条真到达收集端（快速翻页时 beacon 被丢），也就是静默丢事件。keepalive
+ *     的请求能活过卸载；确认回不来时队列保留，下次访问重发，所以**可能出重复行**
+ *     ——按 `{event, at}` 去重即可（`at` 是事件自己的时间戳，重复行该值相同）；
+ *   - Content-Type 用 text/plain：既是简单请求（不触发 preflight），也让 no-cors
+ *     时代那个坑不再存在（application/json 曾被浏览器在发出前直接拦掉，见
+ *     DEPLOYMENT.md 的 sendBeacon 事故）；collect 端 request.json() 不校验类型；
+ *   - 任何失败（无端点 / 非 2xx / 存储异常）一律保留在本机，静默不抛错，
+ *     绝不影响主流程；
  *   - 未配置端点时完全等同 M1（只存本机）。
- * 四个调用点（designer:select / finance:update / results:view / currency:switch）
- * 无需改动。
+ * 调用点（designer:select / finance:update / results:view / currency:switch /
+ * converter:view / claim:* / sim:* / cart:to-goal）无需改动。
  *
  * 冒烟合成流量的自标记：收集端只存 `{ts, day, event}`、不存任何标识符，所以
  * 「我们自己的验证跑」和「真实访客」在库里长得一模一样。真实流量为零的现在，
@@ -49,7 +52,8 @@ type QueuedEvent = {
 type AnalyticsDeps = {
   endpoint: string | null;
   storage: Storage | null;
-  beacon: ((url: string, body: string) => boolean) | null;
+  /** 发一批并等结果：resolve(true) = 收到 2xx，才允许裁剪本机队列。 */
+  send: ((url: string, body: string) => Promise<boolean>) | null;
 };
 
 export function defaultDeps(): AnalyticsDeps {
@@ -59,17 +63,18 @@ export function defaultDeps(): AnalyticsDeps {
     typeof window !== 'undefined' && typeof localStorage !== 'undefined'
       ? localStorage
       : null;
-  const beacon =
-    typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
-      ? (url: string, body: string) => {
-          try {
-            return navigator.sendBeacon(url, body);
-          } catch {
-            return false;
-          }
-        }
+  const send =
+    typeof fetch === 'function'
+      ? (url: string, body: string) =>
+          fetch(url, {
+            method: 'POST',
+            // 让请求活过页面卸载：卸载时的丢事件正是旧 beacon 方案的问题所在。
+            keepalive: true,
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body,
+          }).then((res) => res.ok)
       : null;
-  return { endpoint, storage, beacon };
+  return { endpoint, storage, send };
 }
 
 /** 只认 `smoke=1` 这一个值，避免手滑把真实访客流量也打上标。 */
@@ -143,17 +148,23 @@ function scheduleFlush(): void {
 }
 
 /**
- * 把队列前 FLUSH_BATCH 条发到上报端点；成功才从本机队列移除。
- * 返回 'sent'（已发并裁剪）/ 'retained'（发送失败，保留）/ 'disabled'（未配置）。
+ * 把队列前 FLUSH_BATCH 条发到上报端点；**只有收到 2xx 才从本机队列移除**。
+ * 返回 'sent'（已送达并裁剪）/ 'retained'（未确认，保留，下次重发）/ 'disabled'（未配置）。
  * 依赖可注入，便于单测。
+ *
+ * 至少一次语义：确认没回来就不裁，于是下一次翻页可能把同一批再发一遍——**库里
+ * 会有重复行**。2026-10-07 实测一次冒烟 15 个事件落成 62 行（约 4 倍冗余）。
+ * 这是「重复」与「静默丢」之间的取舍，选前者：重复行按 `{event, at}` 可完全去重
+ * （`at` 是事件自身的时间戳），而丢掉的数据再也补不回来。曾试过加同页 in-flight
+ * 闸门压重复，实测把投递从 62 行压到 5 行（keepalive 未确认时闸门一直不落），
+ * 反而造成大面积丢失，已撤回。
  */
-export function flushQueue(depsInput?: Partial<AnalyticsDeps>):
-  | 'sent'
-  | 'retained'
-  | 'disabled' {
+export async function flushQueue(depsInput?: Partial<AnalyticsDeps>): Promise<
+  'sent' | 'retained' | 'disabled'
+> {
   const deps: AnalyticsDeps = { ...defaultDeps(), ...depsInput };
-  const { endpoint, storage, beacon } = deps;
-  if (!endpoint || !storage || !beacon) return 'disabled';
+  const { endpoint, storage, send } = deps;
+  if (!endpoint || !storage || !send) return 'disabled';
 
   let queue: QueuedEvent[] = [];
   try {
@@ -167,7 +178,7 @@ export function flushQueue(depsInput?: Partial<AnalyticsDeps>):
   const batch = queue.slice(0, FLUSH_BATCH);
   let ok = false;
   try {
-    ok = beacon(endpoint, JSON.stringify({ events: batch }));
+    ok = await send(endpoint, JSON.stringify({ events: batch }));
   } catch {
     ok = false;
   }
@@ -177,20 +188,23 @@ export function flushQueue(depsInput?: Partial<AnalyticsDeps>):
     const remaining = queue.slice(batch.length);
     storage.setItem(EVENTS_KEY, JSON.stringify(remaining));
   } catch {
-    // 裁剪失败不影响已发出的事实；下次可能重发一批（最多一次）。
+    // 裁剪失败不影响已送达的事实；下次可能重发同一批（按 {event, at} 去重）。
   }
   return 'sent';
 }
 
 /**
  * 浏览器端一次性注册：页面隐藏 / 卸载前尽力把队列发出去。
- * 多次导入安全（模块级 guard）。SSR 下不注册。
+ * 卸载路径上的确认回调可能来不及执行，那批就留在本机下次重发——
+ * 重复行比静默丢失好，且 {event, at} 可辨。多次导入安全（模块级 guard）。
  */
 let registered = false;
 export function registerFlushTriggers(): void {
   if (registered || typeof window === 'undefined') return;
   registered = true;
-  const flush = () => flushQueue();
+  const flush = () => {
+    void flushQueue();
+  };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
   });

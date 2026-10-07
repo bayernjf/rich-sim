@@ -70,14 +70,19 @@ SELECT event, COUNT(*) n FROM events WHERE event NOT LIKE 'smoke:%' GROUP BY eve
 1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。✅ 已配。
 2. 触发构建：推一个提交，或 dashboard 对该 production 部署 Retry deployment。✅ 当天先 Retry 了 `cefaf27`（部署 `ca9de98d`）让变量进构建，随后主干的 beacon 修复又触发一次正式构建。
 
-**sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。
+**sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。**（2026-10-07 更新：这条已取代——beacon 本身在卸载路径上会随机丢，传输改为 `fetch` + keepalive，见下一节。本段的「必须看真实 200 + D1 读到行」这条验证纪律继续有效，而且正是它暴露了 beacon 的丢失率。）**
 
 **验证**：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（脚本自己给首个导航加 `?smoke=1`），然后查 D1：`wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events WHERE event LIKE 'smoke:%' GROUP BY event"`——冒烟验证要看到的是 **带 `smoke:` 前缀**的事件名；裸名（`NOT LIKE 'smoke:%'`）才是真人。等价的 HTTP 查法：`curl -s -x http://127.0.0.1:7900 -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"`。
 
-**两个会让验证误判的坑（2026-10-07 实测）**：
+**传输已改为 `fetch(..., { keepalive: true })` + 「确认才裁」（2026-10-07，实测驱动）**
 
-1. **`sendBeacon` 返回 true 只代表「已入队」，不代表「已送达」**，而客户端据 true 裁剪本机队列——所以「队列清空」永远不等于「入库」（上面那条 sendBeacon 事故的同一结构性弱点，只是这次不是 Content-Type）。本机一次冒烟跑下来，队列里约 15 条事件最终只有 1 条进 D1。
-2. **这台机器直连 `*.workers.dev` 的 DNS 被污染**（解析到 108.160.163.106，`curl` 不带代理返回 000），浏览器走系统代理 `127.0.0.1:7900` 才通。所以「本地冒烟没进库」**不等于**线上埋点坏了——别照这个下结论。真要确认收集端收名，走带代理的 POST 探针 + D1 读回（M3 三个事件名就是这么确认的：`smoke:sim:add` / `smoke:sim:remove` / `smoke:cart:to-goal` 各 1 行入库，worker 零改动）。
+`sendBeacon` 的两个弱点叠在一起：① 返回 true 只代表「已入队」，不代表「已送达」，而旧实现凭 true 就裁剪本机队列；② 快速翻页时，卸载路径上的 beacon 大量被浏览器直接丢弃。用本地 sink 实测一次冒烟：约 15 个事件**只有 1 条到达收集端**。也就是说线上 D1 的漏斗会系统性缺九成，而表面完全正常——比 10-05 那次更危险，因为它不是全丢，是**随机丢**。
+
+现在：`fetch` + `keepalive` 发批，**收到 2xx 才裁剪**；未确认就留在队列里，下次访问重发。代价是**至少一次**语义（同一事件可能落多行）：同一条冒烟 21 个事件落成 78 行、按 `(event, ts)` 去重后 20 个（约 3.9 倍冗余；仍差 1 条，是浏览器关闭前没来得及发的最后一个）。`ts` 存的就是事件自身的 `at`，所以重复行可以完全去重。收集端 `/summary` 的计数相应改成 `COUNT(DISTINCT event, ts)` —— **代码已改，要重新部署 worker 才生效**。
+
+**读数纪律**：对原始行直接 `COUNT(*)` 会高估数倍，任何计数都要先按 `(event, ts)` 去重。
+
+**一个与上面无关、但容易误判的本机现象**：这台机器直连 `*.workers.dev` 的 DNS 被污染（解析到 108.160.163.106，`curl` 不带代理返回 000），而浏览器走系统代理 `127.0.0.1:7900` 才通。所以「shell 里 curl 收集端失败」**不等于**埋点坏了。要确认收集端能不能收名，走带代理的 POST 探针 + D1 读回——M3 的三个事件名就是这么确认的（`smoke:sim:add` / `smoke:sim:remove` / `smoke:cart:to-goal` 各 1 行入库，worker 的收名正则零改动）。
 
 ### Cloudflare Web Analytics 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
 
