@@ -41,6 +41,38 @@ M4 与 M1–M3 最大的不同：**它第一次要碰「后端」和「收钱」
 | **S4** | **付费墙 + 支付**（视 G3/G4，**且被读数阻塞**） | 免费 / 付费分界按 G3 实现；支付按 G4 接通；**上线前必须有一个可读的付费意愿信号**（真收款或假信号） | L（阻塞） |
 | **S5** | 埋点 + 冒烟 | 新增事件（worker 事件名正则天然放行，无需改收集端）：如 `scenario:toggle` / `report:generate` / `report:export`；props 仍全丢；`e2e-smoke.mjs` 加情景与报告断言；更新 `DEPLOYMENT.md` 事件清单与断言数 | S–M |
 
+### S1 任务分解（F7 多情景推演 · 可立即开工）
+
+**为什么它不被阻塞**：F7 不需要后端、不需要改冻结契约、也不需要先定报告形态——它就是把**改过的 profile 再喂一遍**已有的纯函数 `computeResults(draft, catalog, locale)`（`apps/web/src/lib/results.ts`），然后展示差值。§0 的 G1–G4 都卡不到它。
+
+**情景口径（建议默认值，原型后可回调）**
+
+| 情景 | 怎么改 profile | 建议默认 |
+|---|---|---|
+| 涨薪 | `income × (1 + r)` | r = 10%，可改 |
+| 副业 | `income + m` | m = 500 / 月，可改 |
+| 失业 | `income = 0`，`expense` 不变 | 固定口径（不可调） |
+| 大额支出 | `savings − c`（一次性） | c = 20,000，可改 |
+
+- 幅度**全部可改**，默认值只作起点，**不得呈现为对用户的预测**（§1 规则 1）。
+- 失业必然落 `no-net-savings`（收入 0）——按一等状态给独立文案，不是错误分支。
+- 大额支出走「减 `savings`」而非「加 `expense`」：它是一次性支出、不是月度开支，**`Profile` 无需改**（G5 = 零契约改动）。
+
+**任务（T01–T08 × 3 Wave）**
+
+| # | 任务 | 完成判据 |
+|---|---|---|
+| T01 | 情景纯函数层 `apps/web/src/lib/scenarios.ts` | `Scenario` 类型 + `applyScenario(profile, scenario)` + `compareScenarios(draft, catalog, locale)`（基线 + 各情景的 `Results` 差值）；**复用 `computeResults`，不新造公式**；单测覆盖四种情景、幅度边界（0 / 负 / 极大）、失业落 `no-net-savings`、大额支出不改变 `expense` |
+| T02 | 情景面板岛 `ScenarioPanel.tsx` | 四个情景可开关、幅度可改（示例默认值）；每次改动**即时重算**并展示年限 / 差距 / 状态的**差值**（vs 基线）；键盘可达、44px 触摸目标、`aria-live`、`motion-reduce` |
+| T03 | 挂载到结果页 | 挂在 `/app/result` 页内（**不新增路由**）；SSR 首帧面板不渲染时，基线的假设清单与免责声明仍完整；`no-profile` / `no-draft` 空态不受影响 |
+| T04 | 文案（zh + en） | 全部走 `lib/messages.ts`，zh/en 两份齐全（类型闸门钉住）；措辞只陈述算术与状态 |
+| T05 | 移动端与可访问性 | 390×844 无溢出；键盘走通；对比度达标；`prefers-reduced-motion` 生效 |
+| T06 | 措辞与红线闸门 | 过 `copy-guard.test.ts`；情景文案不得像投资 / 职业建议——「失业后 60 年内到不了」是**算术陈述**，不是劝退 |
+| T07 | 埋点 | 新增事件（worker 事件名正则天然放行、收集端零改动）：如 `scenario:toggle` / `scenario:edit`；props 全丢 |
+| T08 | e2e 冒烟 | `e2e-smoke.mjs` 加情景断言（开失业 → 状态变 `no-net-savings` → 关掉回到基线）；更新 `DEPLOYMENT.md` 的断言数与事件清单 |
+
+**S1 明确不做**：情景**不持久化**（不进 `Draft`，G5 保持零契约改动；要持久化得单开一道闸门）；不做概率 / 蒙特卡洛 / 随机事件；不做服务端；不做报告。
+
 ## 3. 每片的验收通用项
 
 1. `npm test` 与 `npm run check` 绿；core 改动走 barrel 合并纪律。
@@ -68,7 +100,9 @@ M4 直接产出漏斗的**付费段**：`report:generate` / `report:export` / �
 
 ## 6. 待决项
 
-**需发起人拍板（阻塞开工）**：
+> **S1（F7 多情景推演）不受下面任何一条阻塞**——已细化为 §2 的 T01–T08，可单独开工。
+
+**需发起人拍板（阻塞 S2 及之后）**：
 
 - `待定` **G1 报告生成位置**：纯前端 vs 服务端（决定整份分解的形状与成本）
 - `待定` **G2 导出格式**：PDF / 分享链接 / 截图
