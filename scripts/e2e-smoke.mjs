@@ -190,6 +190,12 @@ try {
   // 干净起点（localStorage.clear() 只清队列，不动 sessionStorage 里的冒烟标记）
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
+  // 语言钉在中文：后面的断言用的是中文选择器与中文文案（换算条那句、阶梯目标、
+  // 购物车来源标签）。有些页面是点击跳过去的、带不上 ?lang=，所以钉 Cookie
+  // ——那也正是真实用户切语言时走的东西，比给每个 URL 加参数更贴近真实状态。
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=zh; path=/; max-age=3600';
+  });
   await page.reload({ waitUntil: 'networkidle' });
 
   // ── 步骤 1：设计器改 2 个选项，断言 sticky 年成本随之变化（再改回默认）──
@@ -385,6 +391,34 @@ try {
     '换算条：切币种后金额随币种变',
     `usd=${moneyOf(converterUsd)} cny=${moneyOf(converterCny)}`,
   );
+
+  // ── 步骤 5.6：结果页整页切英文（三状态、差距、阶梯目标都走词典）──
+  // 断言用「结果区里查不到一个汉字」这种形式：它同时覆盖漏译、硬编码残留
+  // 和 core 那句 action 混进来，而逐条文案对不对另有单测与词典测试。
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=en; path=/; max-age=3600';
+  });
+  await page.goto(`${BASE}/app/result?smoke=1`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-status]');
+  const enResults = await page.locator('[data-results-root]').innerText();
+  check(
+    /Enough line \(target capital\)/.test(enResults),
+    'i18n：结果页英文标题与够用线标签',
+    `text=${enResults.replace(/\n/g, ' ').slice(0, 60)}`,
+  );
+  check(
+    /Staged goals/.test(enResults) && /Stage 1/.test(enResults),
+    'i18n：阶梯目标走英文词典',
+    '',
+  );
+  check(
+    !/[一-鿿]/.test(enResults),
+    'i18n：英文结果页里查不到一个汉字',
+    `matched=${(enResults.match(/[一-鿿]+/g) || []).slice(0, 3).join(',')}`,
+  );
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=zh; path=/; max-age=3600';
+  });
 
   // ── 步骤 6：富豪模拟卡 A（F5 最小版，纯 SSR 页）──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });

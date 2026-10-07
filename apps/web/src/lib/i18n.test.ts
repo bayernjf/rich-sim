@@ -6,6 +6,7 @@
  * 英文界面里冒出一句中文，没人会专门去查。所以用类型 + 测试各钉一遍。
  */
 import { describe, expect, it } from 'vitest';
+import { buildMilestones, type FxSnapshot } from '@rich-sim/core';
 import { HTML_LANG, localeFromAcceptLanguage, parseCookie, resolveLocale, type Locale } from './i18n';
 import { MESSAGES, format, t, type MessageKey } from './messages';
 
@@ -91,4 +92,37 @@ describe('format', () => {
 it('<html lang> 用 BCP 47，不是内部枚举', () => {
   expect(HTML_LANG.en).toBe('en');
   expect(HTML_LANG.zh).toBe('zh-CN');
+});
+
+/**
+ * 阶梯目标的行动项由词典渲染（core 那句是中文），界面就不再显示 core 的字符串。
+ * 两处各写各的话，「示例路径，非承诺」这句合规措辞会悄悄和引擎脱钩——所以逐字钉住：
+ * 改 core 或改词典任意一边，这条就红。
+ */
+describe('词典与 core 的行动项文本一致', () => {
+  it('zh 的 result.action1..3 逐字等于 buildMilestones 返回的 action', () => {
+    const fx: FxSnapshot = {
+      base: 'USD',
+      rates: { USD: 1, EUR: 0.9, GBP: 0.8, JPY: 150, CNY: 7, HKD: 7.8 },
+      date: '2026-10-07',
+      source: 'static-snapshot',
+      version: 'test',
+    };
+    const milestones = buildMilestones(
+      { income: 15000, expense: 10000, savings: 100000, debt: 0, currency: 'USD' },
+      { kind: 'enough-line', value: 80_000 },
+      {
+        returnRate: 0.04,
+        withdrawalRate: 0.04,
+        inflation: 0.03,
+        assumptionsVersion: 'test',
+        fx,
+      },
+    );
+    expect(milestones.map((m) => m.action)).toEqual([
+      t('result.action1', 'zh'),
+      t('result.action2', 'zh'),
+      t('result.action3', 'zh'),
+    ]);
+  });
 });
