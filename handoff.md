@@ -35,7 +35,7 @@
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
-| `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G5 五个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约） | **S1（F7 多情景推演）已上线（PR #43 合并 main，2026-10-08 实测）**：T01–T08，零契约改动、不新增路由、情景不持久化。**S1.5（PRD §6.2 的两条「可调」补齐）代码完成（2026-10-08，§7）**：结果岛写 `draft.assumptions` 的 r 与提取率、即时重算、合规清单同步生效值，212 单测 / check 0 错 / 冒烟 92 条；**S2–S4 仍等 G1–G4 拍板**，其中 G1（报告生成在服务端还是纯前端）决定整份分解的形状 |
+| `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G5 五个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约） | **S1（F7 多情景推演）已上线（PR #43 合并 main，2026-10-08 实测）**：T01–T08，零契约改动、不新增路由、情景不持久化。**S1.5（PRD §6.2 的两条「可调」补齐）代码完成（2026-10-08，§7）**：结果岛写 `draft.assumptions` 的 r 与提取率、即时重算、合规清单同步生效值；**S1.6（F6 本机版测算历史）同日完成（§8）**：`Draft` 增可选 `history`，结果页每次测算落一条当日快照、回访时给「和上次比」的差值。实测 238 单测 / check 0 错 / 冒烟 107 条（开 `PUBLIC_HOMEPAGE_CLAIM`，关 101）。**S2–S4 仍等 G1–G4 拍板**，其中 G1（报告生成在服务端还是纯前端）决定整份分解的形状 |
 
 ## 已做的决策
 
@@ -54,6 +54,7 @@
 | **F5 排期** | **维持 P0，最小版从 M3 提到 M2**（1 个身份剧本 + 资产看板 + 持有成本 + 现金流波动，纯前端）；购物机制 / 六通道 / 原型卡 / 多剧本仍归 M3。M2 第一步是接度量而非写 F5（2026-10-05 拍板） | `docs/PRD.md` §13.7、§12 |
 | **M3 桥口径 G4** | 走方案 **(a)**：`Draft` 增可选 `goalOverride?: { annualCost, from: 'sim-cart' }`，一键成目标**只携带年成本一个数字**进 REAL（不带起始金、不带资产占比）；`choices` 仍写「每维最贵项」作展示回显。过 `draft.ts` 冻结闸门（2026-10-06 拍板） | `docs/m3-task-breakdown.md` §0 G4、§3 S4 |
 | **可调假设范围 M4 S1.5** | 只有 `returnRate`（`0–20%`）与 `withdrawalRate`（`1–20%`）可改，**`inflation` 保持只展示**——没有任何公式吃它，给一个不动数字的输入框等于骗人；越界**拒绝并说明区间、不静默夹紧**；提取率下限 > 0 是算术要求（够用线要除以它）。跨岛即时重算走 `writeDraft` 派发的同页事件 `rich-sim:draft-updated`（不是存储 key、不落盘，故不在冻结清单）；SSR 合规清单由岛按 `[data-assumption]` 钩子改成真正生效的数值（2026-10-08） | `docs/m4-task-breakdown.md` §7、`docs/PRD.md` §6.2 |
+| **F6 本机版 M4 S1.6** | 进度追踪**不做成完成度进度条**，只做「上一次测算 vs 这一次」的差值读数，且「什么都没变」照实说——形状来自 `product-concept.md` §3.2 的自我否定（净资产按月几乎不动，进度条看不见反而劝退）。快照**按历日一条**、当天覆盖；记的是**算出来的数**而不是输入（否则等于替昨天说一套它当时不成立的话）；跨币种**不给金额差**、年限仍比（齐次性已用 USD/CNY 双 profile 差分验证）；`Draft` 增可选 `history`（`schemaVersion` 不动，2026-10-07 口头批准）；`writeDraft` 对 `history` 隐式保留；`progress:view` 零 props，**不是回访率**（无分母，§11.2 死结未解） | `docs/m4-task-breakdown.md` §8、`CONVENTIONS.md` localStorage 节 |
 | **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`（2026-10-04 绑定，浏览器实测可达、canonical/robots/sitemap 同域、冒烟 15/15），落地页 `rich-sim.bayjf.com`；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`** | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
 
 ## 下一步
@@ -88,7 +89,9 @@
 
 **M4（F7 多情景推演 + §6.2 可调假设）**：**S1 已上线**——`41a8cc9` 随 **PR #43** 合并进 main（2026-10-08 现测 `git merge-base --is-ancestor 41a8cc9 origin/main` = yes）。**S1.5「假设可调」代码完成（2026-10-08，`632a28c` + `6420638` + `9c52265`）**：结果页新岛 `AssumptionsEditor.tsx` 直接写 `draft.assumptions.returnRate / withdrawalRate`，即时重算（跨岛靠 `writeDraft` 派发的同页事件），合规清单按 `[data-assumption]` 钩子同步成真正生效的数值；`inflation` 保持只展示（没有公式吃它）。零契约改动、不新增路由、事件不带数值。**本地实测**：212 单测绿（core 59 + web 153）、`astro check` 0 错、冒烟 92 条（开 `PUBLIC_HOMEPAGE_CLAIM`）/ 86 条（关）全过。理由、区间与验收见 `docs/m4-task-breakdown.md` §7。
 
-**这一片顺带解开的与留下的**：`comparison-converter.md` §2.2 的**本金口径**（「想养住它需要多少本金」+ `converter:expand`）此前卡在「两个率不可调」，现在前置条件已满足，仍未做；`AssumptionsPanel` 的**汇率行**仍是 SSR 印的静态快照，切币种后不改写（本片之前即如此）；`Goal: 'net-worth'` 引擎支持但无 UI 入口。**已知未自动化**：`prefers-reduced-motion` 与键盘走查（沿用 S1 的诚实记录）。设计器页没有任何按假设算出来的数字（sticky 只有年成本与纯除法的换算条），所以那一页只需要把底部的清单同步对，已由 `DesignerShell` 挂载时做掉。
+**这一片顺带解开的与留下的**：`comparison-converter.md` §2.2 的**本金口径**（「想养住它需要多少本金」+ `converter:expand`）此前卡在「两个率不可调」，现在前置条件已满足，仍未做；`AssumptionsPanel` 的**汇率行**仍是 SSR 印的静态快照，切币种后不改写（本片之前即如此）；`Goal: 'net-worth'` 引擎支持但无 UI 入口。**已知未自动化**：`prefers-reduced-motion` 与键盘走查（沿用 S1 的诚实记录）。设计器页没有任何按假设算出来的数字（sticky 只有年成本与纯除法的换算条，`grep -n enoughLine apps/web/src/components/DesignerShell.tsx` 无命中），所以那一页只需要把底部的清单同步对，已由 `DesignerShell` 挂载时做掉。
+
+**M4 S1.6（F6 本机版 · 测算历史与复盘）代码完成（2026-10-08）**：过 `draft.ts` 冻结闸门——`Draft` 增**可选** `history?: Snapshot[]`（发起人 2026-10-07 口头批的形态，`schemaVersion` 维持 1，旧草稿天然兼容）。结果页每次测算落一条**当日**快照（年限 / 三状态 / 年成本 / 够用线 / 净资产 / 币种），下一次进来给「和上一次比」的差值。**形状是被 `product-concept.md` §3.2 逼出来的**：那句话（净资产按月几乎不动，进度条看不见、反而劝退）成立，所以不做完成度百分比、只做两次读数之间的差，且「什么都没变」照实说。跨币种时金额不给差（不同单位相减无意义），年限仍然比——这条齐次性用 USD 与 CNY 两份 profile 各跑一遍引擎**差分验证**过。`writeDraft` 现在对 `history` 做隐式保留（写方全是重建整个字面量，逐条透传漏一处就静默抹历史）。埋点 `progress:view` 零 props：它计数的是「这台机器今天回来看过并且有至少两个历日的记录」，**不是回访率**（无分母、无标识符，§11.2 的死结没被解开，只是多了一个此前完全没有的计数）。**本地实测（现值）**：238 单测绿（core 59 + web 179）、`astro check` 0 错 0 警、冒烟 **107 条**（开 `PUBLIC_HOMEPAGE_CLAIM`）/ **101 条**（关）全过。见 `docs/m4-task-breakdown.md` §8、`CONVENTIONS.md` 的 `history` 例外纪律。
 
 ### 候选一口气任务（2026-10-04 盘点，均不需拍板、本地可完成）
 
