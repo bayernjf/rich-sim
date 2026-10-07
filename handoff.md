@@ -1,5 +1,5 @@
 先设计器（2026-10-07） | 、、 |
-| **M3 桥口径 G4** || **界面语言（M4-i18n）** | 双语 zh / en，**默认 en**，选择存 Cookie 并在 SSR 期生效（合规文本不能靠客户端改写）；目录英文名放 `catalog-data.ts` 的 `CATALOG_LABELS_EN` + 穷尽性测试，**不动冻结的 types.ts**；UI chrome 走 `lib/messages.ts`（`en` 用类型强制覆盖每一个 zh key）；逐页迁移：设计器、财务录入、结果页、首页与领钱入口已完成（2026-10-07）；卡 A 页已完成；购物区岛待做（2026-10-07） |
+| **M3 桥口径 G4** || **界面语言（M4-i18n）** | 双语 zh / en，**默认 en**，选择存 Cookie 并在 SSR 期生效（合规文本不能靠客户端改写）；目录英文名放 `catalog-data.ts` 的 `CATALOG_LABELS_EN` + 穷尽性测试，**不动冻结的 types.ts**；UI chrome 走 `lib/messages.ts`（`en` 用类型强制覆盖每一个 zh key）；逐页迁移：设计器、财务录入、结果页、首页与领钱入口已完成（2026-10-07）；六个界面全部迁移完毕（2026-10-07）；残留：目录项 costComponents 与 note 仍是中文（内容层） |
 | **M3 桥口径 G4** |# Handoff · rich-sim（财富模拟 · 产品）
 
 > 更新时间：2026-10-07

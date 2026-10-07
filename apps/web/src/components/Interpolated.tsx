@@ -14,10 +14,16 @@ export default function Interpolated({
   template,
   vars,
   className = 'font-mono tabular-nums text-ink',
+  dataAttr,
 }: {
   template: string;
   vars: Record<string, string | number>;
   className?: string;
+  /**
+   * 变量名 → data 属性名。句子翻成另一种语言时数字的位置会变，所以「给某个数字
+   * 挂一个稳定钩子」不能靠写死的 JSX 结构——冒烟就靠这两个钩子读购物车。
+   */
+  dataAttr?: Record<string, string>;
 }) {
   const parts: ReactNode[] = [];
   template.split(/(\{\w+\})/g).forEach((chunk, index) => {
@@ -26,8 +32,13 @@ export default function Interpolated({
       if (chunk) parts.push(<Fragment key={index}>{chunk}</Fragment>);
       return;
     }
+    const hook = dataAttr?.[name];
     parts.push(
-      <span key={index} className={className}>
+      <span
+        key={index}
+        className={className}
+        {...(hook ? { [hook]: '' } : {})}
+      >
         {name in vars ? vars[name] : chunk}
       </span>,
     );

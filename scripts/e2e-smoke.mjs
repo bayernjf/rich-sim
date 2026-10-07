@@ -479,6 +479,24 @@ try {
     `fictional=${simEn.includes('A fictional character')}`,
   );
 
+  // ── 步骤 7.6：购物区英文态（costComponents 仍是目录里的中文说明，所以不断言整块无中文）──
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const shopEn = await page.locator('[data-shopping-area]').innerText();
+  check(
+    shopEn.includes('The shopping area') &&
+      shopEn.includes('Add to cart') &&
+      shopEn.includes('Set this life as my goal') &&
+      shopEn.includes('Assets') &&
+      shopEn.includes('Experiences'),
+    'i18n：购物区英文态（分组、按钮、CTA）',
+    `text=${shopEn.replace(/\n/g, ' ').slice(0, 50)}`,
+  );
+  check(
+    shopEn.includes('Next bill preview') && shopEn.includes('Stretched'),
+    'i18n：购物车预览与负担率横幅走英文词典',
+    '',
+  );
+
   // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });

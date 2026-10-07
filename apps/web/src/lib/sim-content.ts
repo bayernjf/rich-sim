@@ -116,6 +116,16 @@ export function experienceLabel(option: CatalogOption, locale: Locale): string {
   return locale === 'en' ? (EXPERIENCE_LABELS_EN[option.id] ?? option.label) : option.label;
 }
 
+/**
+ * 购物池里的名字：先查体验项表，再退回 core 的目录表（目录项走 CATALOG_LABELS_EN，
+ * 未知 id 一律退回中文原文）。购物池是两种来源拼起来的，视图不该各自判一遍。
+ */
+export function poolOptionLabel(option: CatalogOption, locale: Locale): string {
+  const experience = EXPERIENCE_LABELS_EN[option.id];
+  if (locale === 'en' && experience) return experience;
+  return locale === 'en' ? (coreOptionLabel(option, 'en') ?? option.label) : option.label;
+}
+
 export type Bill = {
   dimensionLabel: string;
   optionLabel: string;

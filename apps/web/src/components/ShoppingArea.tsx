@@ -8,49 +8,56 @@
  * S2 只做「选了什么 / 年成本合计」；负担率变色、账单联动和配比提示是 S3。
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { CatalogOption } from '@rich-sim/core';
+import { dimensionLabel, type CatalogOption } from '@rich-sim/core';
+import Interpolated from './Interpolated';
 import {
   CARD_A,
   CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
   cartBurdenSummary,
+  poolOptionLabel,
   type ShoppingItem,
 } from '../lib/sim-content';
 import { type CartItem, readCart, saveCartItem } from '../lib/sim-draft';
 import { adoptCartAsGoal } from '../lib/sim-bridge';
+import { format, t } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
 type Props = {
   items: ShoppingItem[];
+  /** 界面语言（页面 SSR 解析后传入）。 */
+  locale?: Locale;
   /** 基线年成本（卡 A 当前生活），S3 账单预览在它之上累加。 */
   baselineAnnualCost: number;
 };
 
-const STATUS_BANNER: Record<
-  'green' | 'yellow' | 'red',
-  { label: string; cls: string; note: string }
-> = {
+/** 三档负担率横幅（文案与卡 A 页共用同一组 key，所以两页的说法不会各自漂移）。 */
+const statusBanner = (locale: Locale): Record<Band, { label: string; cls: string; note: string }> => ({
   green: {
-    label: '可负担',
+    label: t('sim.bannerGreen', locale),
     cls: 'border-accent bg-accent-soft text-ink',
-    note: '付完持有成本仍有 ≥40% 结余。',
+    note: t('sim.bannerGreenNote', locale),
   },
   yellow: {
-    label: '紧张',
+    label: t('sim.bannerYellow', locale),
     cls: 'border-line bg-panel text-ink',
-    note: '结余被压到 40% 以下——再加一件可能断裂。',
+    note: t('sim.bannerYellowNote', locale),
   },
   red: {
-    label: '断裂预警',
+    label: t('sim.bannerRed', locale),
     cls: 'border-danger bg-panel text-danger',
-    note: '当年持有成本超过年现金流：得变卖资产（75% 折价）或增加收入。',
+    note: t('sim.bannerRedNote', locale),
   },
-};
+});
+type Band = 'green' | 'yellow' | 'red';
 
-const KIND_GROUPS: { kind: CatalogOption['kind']; label: string; hint: string }[] = [
-  { kind: 'asset', label: '资产', hint: '大额、长期、不持有也在付费' },
-  { kind: 'consumer', label: '消费品', hint: '即时满足、会折旧、要维护' },
-  { kind: 'experience', label: '体验', hint: '一次性、情绪强、零持有负担' },
+const kindGroups = (
+  locale: Locale,
+): { kind: CatalogOption['kind']; label: string; hint: string }[] => [
+  { kind: 'asset', label: t('sim.kind.asset', locale), hint: t('sim.kind.assetHint', locale) },
+  { kind: 'consumer', label: t('sim.kind.consumer', locale), hint: t('sim.kind.consumerHint', locale) },
+  { kind: 'experience', label: t('sim.kind.experience', locale), hint: t('sim.kind.experienceHint', locale) },
 ];
 
 function money(value: number): string {
@@ -61,7 +68,7 @@ function itemKey(item: CartItem): string {
   return `${item.dimension}/${item.optionId}`;
 }
 
-export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
+export default function ShoppingArea({ items, baselineAnnualCost, locale = 'zh' }: Props) {
   const [mounted, setMounted] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -121,62 +128,66 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
   return (
     <section aria-labelledby="sim-shop-heading" className="mt-8" data-shopping-area>
       <h2 id="sim-shop-heading" className="text-base font-semibold text-ink">
-        富豪购物区
+        {t('sim.cart.h', locale)}
       </h2>
-      <p className="mt-1 text-sm text-muted">
-        价格标签是一次性的爽，持有成本是每年都来的账单。加入购物车看下一期会多贵。
-      </p>
+      <p className="mt-1 text-sm text-muted">{t('sim.cart.lead', locale)}</p>
 
       <p
         className="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink"
         aria-live="polite"
       >
-        已选{' '}
-        <span className="font-mono font-semibold tabular-nums" data-cart-count>
-          {cart.length}
-        </span>{' '}
-        件 ·
-        新增年成本{' '}
-        <span className="font-mono font-semibold tabular-nums" data-cart-added>
-          {money(summary.addedAnnualCost)}
-        </span>
-        /年
+        <Interpolated
+          template={t('sim.cart.selected', locale)}
+          vars={{ count: cart.length, amount: money(summary.addedAnnualCost) }}
+          dataAttr={{ count: 'data-cart-count', amount: 'data-cart-added' }}
+        />
       </p>
 
       <div
         role="status"
         data-cart-status={summary.status}
-        className={`mt-2 rounded-xl border px-4 py-3 ${STATUS_BANNER[summary.status].cls}`}
+        className={`mt-2 rounded-xl border px-4 py-3 ${statusBanner(locale)[summary.status].cls}`}
       >
         <p className="text-sm font-semibold">
-          下一期账单预览 · {STATUS_BANNER[summary.status].label}
+          {format(t('sim.cart.preview', locale), {
+            status: statusBanner(locale)[summary.status].label,
+          })}
           {summary.rate !== null && (
             <span className="ml-2 font-mono text-xs tabular-nums">
-              负担率 {Math.round(summary.rate * 100)}%
+              {format(t('sim.burdenRate', locale), {
+                rate: `${Math.round(summary.rate * 100)}%`,
+              })}
             </span>
           )}
         </p>
-        <p className="mt-1 text-xs leading-relaxed">{STATUS_BANNER[summary.status].note}</p>
+        <p className="mt-1 text-xs leading-relaxed">{statusBanner(locale)[summary.status].note}</p>
         <p className="mt-2 font-mono text-xs tabular-nums opacity-80">
-          {money(baselineAnnualCost)}（当前生活）+ {money(summary.addedAnnualCost)}（加购）=
-          {' '}{money(summary.totalAnnualCost)}/年 · 可支配现金流 {money(summary.cashflow)}
+          {format(t('sim.cart.formula', locale), {
+            base: money(baselineAnnualCost),
+            added: money(summary.addedAnnualCost),
+            total: money(summary.totalAnnualCost),
+            cashflow: money(summary.cashflow),
+          })}
         </p>
         {summary.ratioHint && (
           <p className="mt-2 rounded-lg border border-line bg-canvas px-2 py-1.5 text-xs leading-relaxed text-muted">
-            购物车里重资产有 {summary.assetCount} 件、体验只有 {summary.experienceCount} 件：
-            这个玩法默认 1:1 配（按购买次数，不按金额）——纯堆资产时每年的账单会涨得最快，
-            这只是算术呈现，不是建议你怎么花钱。
+            {format(t('sim.cart.ratio', locale), {
+              assets: summary.assetCount,
+              experiences: summary.experienceCount,
+            })}
           </p>
         )}
         {summary.status === 'red' && resellValue && (
           <p className="mt-2 rounded-lg border border-danger px-2 py-1.5 text-xs leading-relaxed">
-            变卖最贵的一项（{resellValue.label}）只能回笼 {money(resellValue.value)}（原价 75%）
-            ——在购物车里把它移出，下一期账单立即回落。
+            {format(t('sim.cart.resell', locale), {
+              item: resellValue.label,
+              amount: money(resellValue.value),
+            })}
           </p>
         )}
       </div>
 
-      {KIND_GROUPS.map((group) => {
+      {kindGroups(locale).map((group) => {
         const groupItems = items.filter((item) => item.option.kind === group.kind);
         if (groupItems.length === 0) return null;
         return (
@@ -193,13 +204,13 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
                   <li key={key} className="rounded-xl border border-line bg-panel px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm text-ink">{item.option.label}</p>
+                        <p className="text-sm text-ink">{poolOptionLabel(item.option, locale)}</p>
                         <p className="mt-0.5 text-xs text-muted">
-                          {item.dimensionLabel} ·{' '}
+                          {dimensionLabel({ id: item.dimension, label: item.dimensionLabel }, locale)} ·{' '}
                           <span className="font-mono tabular-nums">
                             {money(item.option.annualCost)}
                           </span>
-                          /年
+                          {locale === 'en' ? '/yr' : '/年'}
                         </p>
                         {item.option.costComponents && item.option.costComponents.length > 0 && (
                           <p className="mt-1 text-xs text-muted">
@@ -218,7 +229,7 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
                               : 'border border-accent bg-accent-soft text-accent hover:bg-accent/10'
                           }`}
                         >
-                          {inCart ? '移出购物车' : '加入购物车'}
+                          {inCart ? t('sim.cart.remove', locale) : t('sim.cart.add', locale)}
                         </button>
                         {item.option.source && (
                           <a
@@ -227,7 +238,7 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
                             rel="noopener"
                             target="_blank"
                           >
-                            来源
+                            {t('sim.source', locale)}
                           </a>
                         )}
                       </div>
@@ -240,19 +251,17 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
         );
       })}
 
-      <p className="mt-4 text-xs leading-relaxed text-muted">
-        全部商品为公开来源校准的档位（富豪极端档为行业公开估算），是虚构角色生活方式的
-        算术教具，不是真实报价、消费建议或投资建议。
-      </p>
+      <p className="mt-4 text-xs leading-relaxed text-muted">{t('sim.cart.note', locale)}</p>
 
       <div className="mt-5 rounded-xl border border-line bg-panel p-4">
-        <p className="text-sm font-medium text-ink">把这套生活设为我的目标</p>
+        <p className="text-sm font-medium text-ink">{t('sim.cart.ctaH', locale)}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          只把这套生活方式的<strong>年成本</strong>带进你的现实测算，不是你有这么多钱；
-          模拟领的起始金与资产占比不会带过去。
+          {t('sim.cart.ctaA', locale)}
+          <strong>{t('sim.cart.ctaBold', locale)}</strong>
+          {t('sim.cart.ctaB', locale)}
         </p>
         {cart.length === 0 ? (
-          <p className="mt-3 text-xs text-muted">先在上面加入至少一件，再设为目标。</p>
+          <p className="mt-3 text-xs text-muted">{t('sim.cart.ctaEmpty', locale)}</p>
         ) : (
           <button
             type="button"
@@ -264,7 +273,7 @@ export default function ShoppingArea({ items, baselineAnnualCost }: Props) {
             }}
             className="mt-3 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-on-accent transition-colors motion-reduce:transition-none hover:bg-accent/90"
           >
-            设为我的目标 →
+            {t('sim.cart.ctaBtn', locale)}
           </button>
         )}
       </div>
