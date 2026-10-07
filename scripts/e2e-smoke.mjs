@@ -609,6 +609,86 @@ try {
 
   const evGoal = await eventsSoFar();
   check(countEvent(evGoal, 'cart:to-goal') >= 1, '埋点：cart:to-goal 已入队', `count=${countEvent(evGoal, 'cart:to-goal')}`);
+  // ── 步骤 10：多情景推演（M4 S1）──────────────────────────────
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-scenario-panel]', { timeout: 5000 });
+
+  // 面板是客户端岛：SSR 源码里必须没有它，而假设清单/免责声明必须仍然完整
+  // （T03 判据——关 JS 时这一页依然是合规的完整页面）。
+  const ssrHtml = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
+  check(!ssrHtml.includes('data-scenario-panel'), '情景面板：SSR 源码里没有岛', '');
+  check(
+    ssrHtml.includes('假设清单') && ssrHtml.includes('免责声明'),
+    '情景面板：SSR 仍带假设清单与免责声明',
+    '',
+  );
+
+  // 失业：收入归零 → 一等状态，文案说状态而不是年限。
+  await page.check('[data-scenario-toggle="jobless"]');
+  await page.waitForSelector('[data-scenario-result="jobless"]');
+  const joblessLine = await page.locator('[data-scenario-result="jobless"]').innerText();
+  check(
+    joblessLine.includes('无净储蓄'),
+    '情景：失业落 no-net-savings 的独立文案',
+    `text="${joblessLine.trim()}"`,
+  );
+
+  // 涨薪：默认幅度也要即时出一个差值（不比大小，只比"有没有算出来"）。
+  await page.check('[data-scenario-toggle="raise"]');
+  await page.waitForSelector('[data-scenario-result="raise"]');
+  const raiseLine = await page.locator('[data-scenario-result="raise"]').innerText();
+  check(
+    raiseLine.trim().length > 0 && !/NaN|Infinity|undefined/.test(raiseLine),
+    '情景：涨薪即时重算出一个可读结果',
+    `text="${raiseLine.trim()}"`,
+  );
+
+  await page.uncheck('[data-scenario-toggle="jobless"]');
+  check(
+    await page.locator('[data-scenario-result="jobless"]').count() === 0,
+    '情景：关掉失业后该行消失，回到基线',
+    '',
+  );
+
+  // 移动端 390 宽不得横向溢出（视口本来就是 390×844）。
+  const overflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  check(
+    overflow.scrollWidth <= overflow.innerWidth + 1,
+    '情景面板：390 宽无横向溢出',
+    `scrollWidth=${overflow.scrollWidth} innerWidth=${overflow.innerWidth}`,
+  );
+
+  const evScenario = await eventsSoFar();
+  check(
+    countEvent(evScenario, 'scenario:toggle') >= 2,
+    '埋点：scenario:toggle 已入队',
+    `count=${countEvent(evScenario, 'scenario:toggle')}`,
+  );
+
+  // 英文态：面板标题、情景名与状态文案都走词典（全站双语，这块不能例外）。
+  await page.goto(`${BASE}/app/result?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-scenario-panel]');
+  const panelEn = await page.locator('[data-scenario-panel]').innerText();
+  check(
+    panelEn.includes('What-if scenarios') &&
+      panelEn.includes('Job loss') &&
+      panelEn.includes('Pay rise') &&
+      panelEn.includes('Large one-off expense'),
+    'i18n：情景面板英文态走词典',
+    `text=${panelEn.replace(/\n/g, ' ').slice(0, 46)}`,
+  );
+  await page.check('[data-scenario-toggle="jobless"]');
+  const joblessEn = await page.locator('[data-scenario-result="jobless"]').innerText();
+  check(
+    joblessEn.includes('no net savings') && !/[一-鿿]/.test(joblessEn),
+    'i18n：失业结果行也是英文',
+    `text="${joblessEn.trim()}"`,
+  );
+  await page.uncheck('[data-scenario-toggle="jobless"]');
+
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {
