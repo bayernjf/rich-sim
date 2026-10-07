@@ -106,13 +106,18 @@ async function summary(request: Request, env: Env): Promise<Response> {
   }
 
   const since = new URL(request.url).searchParams.get('since') ?? '2026-01-01';
+  // 客户端是**至少一次**投递（确认没回来就不裁队列，下次翻页重发），所以库里会有
+  // 重复行。`ts` 存的是事件自身的 `at`，重发的那条 ts 相同 -> 按 (event, ts) 去重
+  // 就是真实次数。直接 COUNT(*) 会高估数倍（2026-10-07 实测一次冒烟 15 个事件
+  // 落成 62 行）。同名同毫秒的两个事件会被并成一条，本表没有标识符，这个精度
+  // 对漏斗计数够用。
   const totals = await env.DB.prepare(
-    'SELECT event, COUNT(*) AS n FROM events WHERE day >= ? GROUP BY event ORDER BY n DESC',
+    'SELECT event, COUNT(*) AS n FROM (SELECT DISTINCT event, ts FROM events WHERE day >= ?) GROUP BY event ORDER BY n DESC',
   )
     .bind(since)
     .all<{ event: string; n: number }>();
   const daily = await env.DB.prepare(
-    'SELECT day, COUNT(*) AS n FROM events WHERE day >= ? GROUP BY day ORDER BY day',
+    'SELECT day, COUNT(*) AS n FROM (SELECT DISTINCT event, ts, day FROM events WHERE day >= ?) GROUP BY day ORDER BY day',
   )
     .bind(since)
     .all<{ day: string; n: number }>();

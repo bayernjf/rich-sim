@@ -1,4 +1,4 @@
-# rich-sim 漏斗事件收集端（给 `apps/web/src/lib/analytics.ts` 的 sendBeacon 用）。
+# rich-sim 漏斗事件收集端（接收 `apps/web/src/lib/analytics.ts` 的 fetch-keepalive 批量上报）。
 #
 # 为什么（隐私）：这个端点**只存事件名与时间**。客户端 props 一律丢弃——
 # finance:update 之类的事件里带着用户自己填的收入/支出金额，今天它们只存在

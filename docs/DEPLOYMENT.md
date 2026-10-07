@@ -56,16 +56,33 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **隐私三条（写在 `src/index.ts` 头，不要悄悄改）**：① 只入库 `event` 名与时间，`props` 一律丢弃（`finance:update` 带用户自填的收入/支出，上传即越过红线）；② 不写 IP / UA / 任何标识符，所以没有跨事件个体链路、不需要 consent 门槛，代价是只能做频次统计、做不了单用户转化漏斗；③ 来源白名单（`ALLOWED_ORIGINS`），未知 Origin 直接 403，绝不回显。
 
-**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
+**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`locale:switch`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
+
+**合成流量自标记（2026-10-07）**：冒烟运行一律带 `?smoke=1`，此后同标签页的所有事件名加 `smoke:` 前缀（`apps/web/src/lib/analytics.ts` 的 `SMOKE_PREFIX`；标记落在 `sessionStorage`，一次冒烟跳多个 URL 也延续）。原因：库里只有 `{ts, day, event}` 三个字段，**冒烟行与真人行形状完全相同**，在真实流量为零时跑一次生产冒烟就会把「到底有没有人来过」这个唯一信号污染掉。带前缀后可以从查询侧整段滤掉：
+
+```sql
+-- 真人流量（排除我们自己的验证跑）
+SELECT event, COUNT(*) n FROM events WHERE event NOT LIKE 'smoke:%' GROUP BY event;
+```
 
 **打开读数的两步（2026-10-05 已全部完成）**：
 
 1. Pages → 项目 `rich-sim` → Settings → Environment variables → Production 加 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect`（Preview 可不加）。Astro 在**构建期**内联 `PUBLIC_*`（见 `apps/web/src/components/Analytics.astro:14-16`），设完必须有一次新构建才生效。✅ 已配。
 2. 触发构建：推一个提交，或 dashboard 对该 production 部署 Retry deployment。✅ 当天先 Retry 了 `cefaf27`（部署 `ca9de98d`）让变量进构建，随后主干的 beacon 修复又触发一次正式构建。
 
-**sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。
+**sendBeacon 踩坑（2026-10-05，修在 `c6894a2`）**：变量打开后线上冒烟全过、本地事件队列也被清空，但 D1 一行都没进。根因是 `navigator.sendBeacon` **固定走 no-cors 模式**，而客户端最初用 `new Blob([body], { type: 'application/json' })` 把 Content-Type 设成了 JSON——`application/json` 不是 no-cors 允许的 safelisted type，Chrome 在请求发出前直接 `net::ERR_FAILED` 拦掉；但 `sendBeacon` 仍同步返回 `true`，客户端据此裁剪队列，于是事件**静默全丢**，表面无任何异常。修复：beacon 直接传单字符串，浏览器自动用 `text/plain;charset=UTF-8`（no-cors 放行）；collect 端 `request.json()` 不校验 Content-Type，故 worker 无需改动、无需重新部署。验证方式：headless Chrome 在生产页上下文发 `navigator.sendBeacon(endpoint, JSON.stringify(...))`，网络面板必须看到该 POST 真实 200，再到 D1 console 查到行——只看「beacon 返回 true / 本地队列清空」不算数。**（2026-10-07 更新：这条已取代——beacon 本身在卸载路径上会随机丢，传输改为 `fetch` + keepalive，见下一节。本段的「必须看真实 200 + D1 读到行」这条验证纪律继续有效，而且正是它暴露了 beacon 的丢失率。）**
 
-**验证**：浏览器走一遍设计器 → 财务 → 结果，然后 `curl -s -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"` 应看到上述事件有计数；或 `wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events GROUP BY event"`。
+**验证**：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（脚本自己给首个导航加 `?smoke=1`），然后查 D1：`wrangler d1 execute rich-sim-events --remote --command "SELECT event, COUNT(*) n FROM events WHERE event LIKE 'smoke:%' GROUP BY event"`——冒烟验证要看到的是 **带 `smoke:` 前缀**的事件名；裸名（`NOT LIKE 'smoke:%'`）才是真人。等价的 HTTP 查法：`curl -s -x http://127.0.0.1:7900 -H "Authorization: Bearer $READ_TOKEN" "https://rich-sim-collect.jiangfengkxi.workers.dev/summary?since=2026-10-01"`。
+
+**传输已改为 `fetch(..., { keepalive: true })` + 「确认才裁」（2026-10-07，实测驱动）**
+
+`sendBeacon` 的两个弱点叠在一起：① 返回 true 只代表「已入队」，不代表「已送达」，而旧实现凭 true 就裁剪本机队列；② 快速翻页时，卸载路径上的 beacon 大量被浏览器直接丢弃。用本地 sink 实测一次冒烟：约 15 个事件**只有 1 条到达收集端**。也就是说线上 D1 的漏斗会系统性缺九成，而表面完全正常——比 10-05 那次更危险，因为它不是全丢，是**随机丢**。
+
+现在：`fetch` + `keepalive` 发批，**收到 2xx 才裁剪**；未确认就留在队列里，下次访问重发。代价是**至少一次**语义（同一事件可能落多行）：同一条冒烟 21 个事件落成 78 行、按 `(event, ts)` 去重后 20 个（约 3.9 倍冗余；仍差 1 条，是浏览器关闭前没来得及发的最后一个）。`ts` 存的就是事件自身的 `at`，所以重复行可以完全去重。收集端 `/summary` 的计数相应改成 `COUNT(DISTINCT event, ts)` —— **代码已改，要重新部署 worker 才生效**。
+
+**读数纪律**：对原始行直接 `COUNT(*)` 会高估数倍，任何计数都要先按 `(event, ts)` 去重。
+
+**一个与上面无关、但容易误判的本机现象**：这台机器直连 `*.workers.dev` 的 DNS 被污染（解析到 108.160.163.106，`curl` 不带代理返回 000），而浏览器走系统代理 `127.0.0.1:7900` 才通。所以「shell 里 curl 收集端失败」**不等于**埋点坏了。要确认收集端能不能收名，走带代理的 POST 探针 + D1 读回——M3 的三个事件名就是这么确认的（`smoke:sim:add` / `smoke:sim:remove` / `smoke:cart:to-goal` 各 1 行入库，worker 的收名正则零改动）。
 
 ### Cloudflare Web Analytics 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
 
@@ -109,7 +126,7 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-  —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-06 M3 S5 后实测 **49 条**，新增购物区加购/幂等/同维多件、账单预览变色、1:1 配比、75% 折价、一键成目标单向桥与三个新埋点；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
+  —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-07 实测 **71 条**（开着 `PUBLIC_HOMEPAGE_CLAIM` 跑，否则领钱段整体跳过、断言不到 67）（含换算条与 i18n 的 SSR 语言断言），新增购物区加购/幂等/同维多件、账单预览变色、1:1 配比、75% 折价、一键成目标单向桥与三个新埋点；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
 5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（正式域为 `app.rich-sim.bayjf.com`）
 
 > **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。同日域名拍板并绑定后，第 4 / 5 条已在正式域 `app.rich-sim.bayjf.com` 重跑：冒烟 15/15、`robots.txt` 的 `Sitemap:` 与 `sitemap.xml` 的 4 个 `<loc>` 均为该域、每页 canonical 同域自洽。

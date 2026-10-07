@@ -1,5 +1,12 @@
 import type { Assumptions, Catalog, CatalogOption, LifeChoice } from '@rich-sim/core';
-import { burdenStatus, scenarioAnnualCost } from '@rich-sim/core';
+import {
+  burdenStatus,
+  dimensionLabel as coreDimensionLabel,
+  optionLabel as coreOptionLabel,
+  scenarioAnnualCost,
+} from '@rich-sim/core';
+import type { Locale } from './i18n';
+import { t } from './messages';
 
 /**
  * F5 最小版 · 卡 A（`simulation-gameplay.md` §4.4 定稿，`m2-decisions.md` D1 拍板）。
@@ -19,6 +26,11 @@ export type SimCard = {
   fictionNotice: string;
   assetStructure: { label: string; share: number }[];
   choices: LifeChoice;
+  /** 卡片的英文呈现（M4-i18n 内容层）。sim-l10n.test.ts 要求每张卡三样都有。 */
+  labelEn: string;
+  subtitleEn: string;
+  fictionNoticeEn: string;
+  assetStructureEn: string[];
 };
 
 export const CARD_A = {
@@ -26,10 +38,16 @@ export const CARD_A = {
   label: '科技独角兽创始人',
   subtitle: '新钱 · 高消费，愿为体验和地位付费，防御性配置弱。',
   fictionNotice: '虚构角色，不代表任何真实人物；资产结构为示意，不代表真实持仓。',
+  labelEn: 'Tech unicorn founder',
+  subtitleEn:
+    'New money · high spending, happy to pay for experience and status, defensively positioned.',
+  fictionNoticeEn:
+    'A fictional character, not any real person; the asset mix is illustrative, not real holdings.',
   assetStructure: [
     { label: '公司股权', share: 77.5 },
     { label: '现金 / 债券 / 不动产', share: 22.5 },
   ],
+  assetStructureEn: ['Company equity', 'Cash / bonds / property'],
   choices: [
     { dimension: 'living', optionId: 'luxury-mansion' },
     { dimension: 'transport', optionId: 'private-jet' },
@@ -62,6 +80,52 @@ export const SELL_DISCOUNT = 0.75;
 /** §2.4 参数 2：一次翻 4 张，按年成本从高到低。 */
 export const BILLS_PER_PAGE = 4;
 
+/**
+ * 卡片文案按语言取。缺英文字段时退回中文而不是抛错或返回空——
+ * 「虚构角色」那条标注是合规文本，宁可不翻也不能不出现在页面上。
+ * 每个字段都有是 sim-l10n.test.ts 的职责。
+ */
+export function cardView(card: SimCard, locale: Locale): {
+  label: string;
+  subtitle: string;
+  fictionNotice: string;
+  assetStructure: { label: string; share: number }[];
+} {
+  const en = locale === 'en';
+  return {
+    label: en ? card.labelEn : card.label,
+    subtitle: en ? card.subtitleEn : card.subtitle,
+    fictionNotice: en ? card.fictionNoticeEn : card.fictionNotice,
+    assetStructure: card.assetStructure.map((part, index) => ({
+      label: en ? (card.assetStructureEn[index] ?? part.label) : part.label,
+      share: part.share,
+    })),
+  };
+}
+
+/**
+ * 两个纯体验项刻意不进 core catalog（那边有每维 3–5 项、维内递增等契约），
+ * 所以它们的英文名也只能在这一侧——同样由 sim-l10n.test.ts 穷尽性钉住。
+ */
+export const EXPERIENCE_LABELS_EN: Record<string, string> = {
+  'exp-private-jet-world-tour': 'Private-jet world tour (26 days)',
+  'exp-met-gala-ticket': 'Met Gala charity gala, one seat',
+};
+
+export function experienceLabel(option: CatalogOption, locale: Locale): string {
+  return locale === 'en' ? (EXPERIENCE_LABELS_EN[option.id] ?? option.label) : option.label;
+}
+
+/**
+ * 购物池里的名字：先查体验项表，再退回 core 的目录表（目录项走 CATALOG_LABELS_EN，
+ * 未知 id 一律退回中文原文）。购物池是两种来源拼起来的，视图不该各自判一遍。
+ */
+export function poolOptionLabel(option: CatalogOption, locale: Locale): string {
+  const experience = EXPERIENCE_LABELS_EN[option.id];
+  if (locale === 'en' && experience) return experience;
+  return locale === 'en' ? (coreOptionLabel(option, 'en') ?? option.label) : option.label;
+}
+
 export type Bill = {
   dimensionLabel: string;
   optionLabel: string;
@@ -74,14 +138,15 @@ export type Bill = {
 export function cardBills(
   choices: LifeChoice,
   catalog: Catalog,
+  locale: Locale = 'zh',
 ): Bill[] {
   return choices
     .map((choice) => {
       const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
       const option = dimension?.options.find((o) => o.id === choice.optionId);
       return {
-        dimensionLabel: dimension?.label ?? choice.dimension,
-        optionLabel: option?.label ?? choice.optionId,
+        dimensionLabel: dimension ? coreDimensionLabel(dimension, locale) : choice.dimension,
+        optionLabel: option ? coreOptionLabel(option, locale) : choice.optionId,
         annualCost: option?.annualCost ?? 0,
         monthlyCost: Math.round((option?.annualCost ?? 0) / 12),
         source: option?.source,
@@ -322,12 +387,16 @@ export type ClaimBillRow = { label: string; annualCost: number; source?: string 
  * 第二拍的三行真实账单（§4）：豪宅的税和维护、私人飞机年运营、全顶档生活。
  * 金额与来源链接全部取自目录，UI 层不复制任何数字。
  */
-export function claimBillRows(catalog: Catalog, assumptions: Assumptions): ClaimBillRow[] {
+export function claimBillRows(
+  catalog: Catalog,
+  assumptions: Assumptions,
+  locale: Locale = 'zh',
+): ClaimBillRow[] {
   const picks: LifeChoice = [
     { dimension: 'living', optionId: 'luxury-mansion' },
     { dimension: 'transport', optionId: 'private-jet' },
   ];
-  const bills = cardBills(picks, catalog).map((bill) => ({
+  const bills = cardBills(picks, catalog, locale).map((bill) => ({
     label: bill.optionLabel,
     annualCost: bill.annualCost,
     source: bill.source,
@@ -335,7 +404,7 @@ export function claimBillRows(catalog: Catalog, assumptions: Assumptions): Claim
   return [
     ...bills,
     {
-      label: '全顶档生活（每个维度都选最贵）',
+      label: t('claim.topTier', locale),
       annualCost: cardAnnualCost(topTierChoices(catalog), catalog, assumptions),
     },
   ];

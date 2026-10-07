@@ -1,18 +1,28 @@
 ---
 import ResultsView from '../../components/ResultsView';
+import LocaleSwitcher from '../../components/LocaleSwitcher';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
+import { localeFromRequest } from '../../lib/i18n';
+import { t } from '../../lib/messages';
+
+const locale = localeFromRequest(Astro.request, Astro.url);
 ---
 
 <BaseLayout
-  title="测算结果 · 财富模拟"
-  description="基于你自己填写的假设做静态算术：够用线、差距、年限与阶梯目标。不预测、不承诺，不构成投资建议。"
+  title={t('result.metaTitle', locale)}
+  description={t('result.metaDesc', locale)}
+  locale={locale}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
-    <ResultsView catalog={initialCatalogUSD} client:load />
+    <div class="mb-4 flex justify-end">
+      <LocaleSwitcher client:load locale={locale} />
+    </div>
+
+    <ResultsView catalog={initialCatalogUSD} locale={locale} client:load />
 
     <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
-    <AssumptionsPanel />
+    <AssumptionsPanel locale={locale} />
   </main>
 </BaseLayout>

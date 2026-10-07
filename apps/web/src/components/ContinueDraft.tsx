@@ -7,22 +7,26 @@
  */
 import { useEffect, useState } from 'react';
 import { nextDraftStep, readDraft, type DraftStep } from '../lib/draft';
+import { format, t, type MessageKey } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale: Locale): string {
   const dt = new Date(iso);
   if (Number.isNaN(dt.getTime())) return '';
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
-  return `上次编辑 ${dt.getMonth() + 1}/${dt.getDate()} ${hh}:${mm}`;
+  return format(t('continue.stamp', locale), { date: `${dt.getMonth() + 1}/${dt.getDate()} ${hh}:${mm}` });
 }
 
-const LABELS: Record<DraftStep, string> = {
-  '/app/result': '继续查看测算结果',
-  '/app/finance': '继续填写财务信息',
-  '/app/designer': '继续富豪模拟',
+const STEP_KEYS: Record<DraftStep, MessageKey> = {
+  '/app/result': 'continue.result',
+  '/app/finance': 'continue.finance',
+  // nextDraftStep 在没有选择时返回设计器；原先这里写的是「继续富豪模拟」，
+  // 指向的却是 /app/designer。两种语言一起改对（无测试或文档钉过旧文案）。
+  '/app/designer': 'continue.designer',
 };
 
-export default function ContinueDraft() {
+export default function ContinueDraft({ locale = 'zh' }: { locale?: Locale }) {
   const [step, setStep] = useState<DraftStep | null>(null);
   const [when, setWhen] = useState('');
 
@@ -30,8 +34,8 @@ export default function ContinueDraft() {
     const draft = readDraft();
     if (!draft) return;
     setStep(nextDraftStep(draft));
-    if (draft.updatedAt) setWhen(formatTime(draft.updatedAt));
-  }, []);
+    if (draft.updatedAt) setWhen(formatTime(draft.updatedAt, locale));
+  }, [locale]);
 
   if (!step) return null;
 
@@ -41,9 +45,13 @@ export default function ContinueDraft() {
         href={step}
         className="inline-flex min-h-11 items-center rounded-full border border-line bg-accent-soft px-5 py-2.5 text-sm font-medium text-accent"
       >
-        {LABELS[step]} →
+        {t(STEP_KEYS[step], locale)} →
       </a>
-      {when ? <p className="text-xs text-muted">{when} · 草稿仅保存在本机</p> : null}
+      {when ? (
+        <p className="text-xs text-muted">
+          {when} · {t('continue.note', locale)}
+        </p>
+      ) : null}
     </div>
   );
 }

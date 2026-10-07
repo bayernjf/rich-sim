@@ -320,3 +320,66 @@ export const initialCatalogUSD: Catalog = {
     },
   ],
 };
+
+/**
+ * M4-i18n 切片一 · 目录内容的第二种显示语言。
+ *
+ * 为什么不是 `CatalogOption.labelEn` 字段：那要动冻结的 `types.ts`（契约闸门），
+ * 而「id -> 英文名」放在**同一模块**里、再由 `catalog-l10n.test.ts` 穷尽性钉死
+ * （每个维度/选项 id 必须有、且不允许多余 id），得到的防漂移能力是一样的——
+ * 新增选项忘了配英文名会直接红灯，而不是静默混着中英。`label` 仍是中文、
+ * 仍是唯一权威；这里只多提供一种显示语言，不参与任何计算。
+ */
+export type CatalogLocale = 'zh' | 'en';
+
+/** key = 维度 id 或选项 id（两者在本目录里不重名）。 */
+export const CATALOG_LABELS_EN: Record<string, string> = {
+  // 7 个维度
+  living: 'Housing',
+  transport: 'Transport',
+  family: 'Family & children',
+  travel: 'Travel',
+  'health-insurance': 'Insurance & medical',
+  'dining-daily': 'Food & daily life',
+  flexibility: 'Discretionary buffer',
+  // 23 个选项
+  'small-rental': 'Two-bedroom rental',
+  'owner-condo': 'Owned condo (mortgage, fees, utilities)',
+  'luxury-mansion': 'Single-family estate (property tax + upkeep)',
+  'public-transit': 'Subway / bus commute',
+  'car-loan': 'Family car (loan, insurance, fuel, service)',
+  'exotic-car': 'Luxury car (sports car or large SUV, steep depreciation)',
+  'private-jet': 'Private jet (full annual operating cost)',
+  'single-no-kids': 'Single / no children (gifts and gatherings)',
+  'one-child-public': 'One child (public school + everyday childcare)',
+  'two-children-private': 'Two children (private school + after-school)',
+  'elite-education': 'Elite boarding / international school + private tutors',
+  staycation: 'Domestic short trips',
+  international: 'One international holiday a year',
+  superyacht: 'Superyacht owned (full annual operating cost)',
+  'basic-insurance': 'Basic health cover + out-of-pocket clinics',
+  'family-insurance': 'Family private health cover (partner + children)',
+  'concierge-medical': 'Concierge medicine / longevity / global care',
+  'home-cooking': 'Mostly cooking at home (groceries + occasional eating out)',
+  'mixed-dining': 'Weekday convenience meals + weekend eating out',
+  'fine-dining': 'Fine dining, business banquets, private chef',
+  'modest-buffer': 'Small buffer (shopping, gifts, emergencies)',
+  'lifestyle-buffer': 'Medium buffer (upgrades, short treat trips)',
+  'discretionary-large': 'Large buffer (household staff, driver, collections, security)',
+};
+
+/**
+ * 结构型入参（`{ id, label }`）而不是 CatalogDimension / CatalogOption：
+ * 这样本文件不需要新增类型导入，web 侧那些「形状相同但不 import core 类型」的
+ * 本地对象也能直接复用同一个选择器。
+ */
+export function dimensionLabel(
+  dimension: { id: string; label: string },
+  locale: CatalogLocale,
+): string {
+  return locale === 'en' ? (CATALOG_LABELS_EN[dimension.id] ?? dimension.label) : dimension.label;
+}
+
+export function optionLabel(option: { id: string; label: string }, locale: CatalogLocale): string {
+  return locale === 'en' ? (CATALOG_LABELS_EN[option.id] ?? option.label) : option.label;
+}

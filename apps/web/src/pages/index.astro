@@ -5,27 +5,32 @@ import ClaimMillion from '../components/ClaimMillion';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
 import { SIM_STARTING_CAPITAL, annualDrawdown, claimBillRows } from '../lib/sim-content';
+import { localeFromRequest } from '../lib/i18n';
+import { t } from '../lib/messages';
 
 // §6 开关：未配置 PUBLIC_HOMEPAGE_CLAIM 时，这一屏必须完全不存在，
 // 且首页 HTML 与改动前逐字节相同（验收 #2）——所以下面那段连换行都不留，
 // 加在 ContinueDraft 同一行的末尾。
 const claimEnabled = import.meta.env.PUBLIC_HOMEPAGE_CLAIM === '1';
-const claimRows = claimEnabled ? claimBillRows(initialCatalogUSD, DEFAULT_ASSUMPTIONS) : [];
+const locale = localeFromRequest(Astro.request, Astro.url);
+const claimRows = claimEnabled
+  ? claimBillRows(initialCatalogUSD, DEFAULT_ASSUMPTIONS, locale)
+  : [];
 ---
 
-<BaseLayout title="财富模拟 · rich-sim">
+<BaseLayout title={t('home.metaTitle', locale)} locale={locale}>
   <main id="main" class="mx-auto max-w-3xl px-4 py-16">
-    <p class="text-xs font-medium uppercase tracking-widest text-accent">rich-sim · 财富模拟</p>
-    <h1 class="mt-3 text-3xl font-semibold tracking-tight">先看见，再算清。</h1>
+    <p class="text-xs font-medium uppercase tracking-widest text-accent">{t('home.eyebrow', locale)}</p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight">{t('home.h1', locale)}</h1>
     <p class="mt-3 text-base leading-relaxed text-muted">
-      设计你的理想生活，再用你自己的收入算出够用线、差距和年限。
+      {t('home.sub', locale)}
     </p>
     <a
       href="/app/designer"
       class="mt-8 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
     >
-      开始设计理想生活 →
+      {t('home.cta', locale)}
     </a>
-    <ContinueDraft client:load />{claimEnabled && (<ClaimMillion client:load capital={SIM_STARTING_CAPITAL} drawdown={annualDrawdown(SIM_STARTING_CAPITAL, DEFAULT_ASSUMPTIONS)} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} rows={claimRows} />)}
+    <ContinueDraft client:load locale={locale} />{claimEnabled && (<ClaimMillion client:load locale={locale} capital={SIM_STARTING_CAPITAL} rows={claimRows} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} drawdown={annualDrawdown(SIM_STARTING_CAPITAL, DEFAULT_ASSUMPTIONS)} />)}
   </main>
 </BaseLayout>

@@ -1,27 +1,42 @@
 ---
 import DesignerShell from '../../components/DesignerShell';
+import LocaleSwitcher from '../../components/LocaleSwitcher';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
+import { localeFromRequest } from '../../lib/i18n';
+import { t } from '../../lib/messages';
+
+/**
+ * M4-i18n 切片一：语言在 SSR 期解析（Cookie > ?lang= > Accept-Language，默认 en），
+ * 一路作为 prop 传给岛与合规面板——不能让客户端先渲染中文再改写，那样
+ * 「免责声明必须服务端可见」这条红线就打折了。
+ */
+const locale = localeFromRequest(Astro.request, Astro.url);
 ---
 
 <BaseLayout
-  title="设计理想生活 · 财富模拟"
-  description="在居住、出行、家庭等 7 个维度里选择你想要的生活，实时算出理想生活年成本。"
+  title={t('designer.metaTitle', locale)}
+  description={t('designer.metaDesc', locale)}
+  locale={locale}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8 pb-28">
-    <DesignerShell catalog={initialCatalogUSD} client:load />
+    <div class="mb-4 flex justify-end">
+      <LocaleSwitcher client:load locale={locale} />
+    </div>
+
+    <DesignerShell catalog={initialCatalogUSD} locale={locale} client:load />
 
     <div class="mt-8">
       <a
         href="/app/finance"
         class="inline-flex min-h-11 items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-opacity hover:opacity-90 focus-visible:outline-2"
       >
-        下一步：录入财务 →
+        {t('designer.nextStep', locale)}
       </a>
     </div>
 
     <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
-    <AssumptionsPanel />
+    <AssumptionsPanel locale={locale} />
   </main>
 </BaseLayout>

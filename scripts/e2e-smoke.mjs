@@ -6,7 +6,13 @@
 //
 // 驱动：playwright-core + 系统 Chrome（channel:'chrome'），移动视口 390×844。
 // 断言用页面实际值互相校验（相对变化），避免脆死数；每步同时断言对应埋点事件
-// 已入 localStorage 队列（rich-sim:events:v1），末尾打印事件摘要作为可观测证据。
+// 已产生（观测 = 已 POST 出去的载荷 + 本机队列 rich-sim:events:v1 的残留，两路合并），
+// 末尾打印事件摘要作为可观测证据。
+//
+// 流量自标记：首个导航带 ?smoke=1，此后同标签页的所有事件名都加 `smoke:` 前缀
+// （apps/web/src/lib/analytics.ts 的 SMOKE_PREFIX）。收集端不存任何标识符，
+// 冒烟行和真人行形状完全相同；不打标的话，往生产跑一次冒烟就会污染
+// 「到底有没有人来过」这个唯一信号。跑生产时必须看得到 smoke: 前缀（脚本自检）。
 import pw from 'playwright-core';
 
 const { chromium } = pw;
@@ -18,6 +24,10 @@ const check = (ok, label, detail = '') => {
   results.push({ ok, label, detail });
 };
 
+/** 冒烟运行的事件名一律带 `smoke:` 前缀（见文件头）；比对时都走这个函数。 */
+const NAME = (name) => `smoke:${name}`;
+const countEvent = (list, name) => list.filter((e) => e.event === NAME(name)).length;
+
 /** 从一段货币格式化文本里抠出第一个数字（含千分位逗号）。 */
 function parseAmount(text) {
   const m = text.replace(/,/g, '').match(/\d[\d.]*\d|\d/);
@@ -27,30 +37,111 @@ function parseAmount(text) {
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
+// 埋点观测不能依赖投递：analytics.ts 只要 sendBeacon 返回 true（= 已入队，不是已送达）
+// 就把那一批裁出本机队列，而翻页时的 beacon 实测大量丢失（2026-10-07：sink 只收到
+// 1 批 1 条）。所以这里在页面脚本之前挂钩 localStorage.setItem，把每一次写进队列的
+// 事件累积进 sessionStorage——它跨同标签页的多次导航存活，且完全不看网络。
+const CAPTURE_KEY = 'rich-sim:smoke-capture';
+await page.addInitScript(
+  ([queueKey, captureKey]) => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function patched(key, value) {
+      if (key === queueKey) {
+        try {
+          const batch = JSON.parse(value);
+          if (Array.isArray(batch)) {
+            // 捕获桶固定写 sessionStorage（this 是被调用的那个 Storage，可能是
+            // localStorage）；key 与队列不同，所以这次写入不会再进本挂钩。
+            const seen = JSON.parse(sessionStorage.getItem(captureKey) || '[]');
+            const ids = new Set(seen.map((e) => `${e.event}|${e.at}`));
+            for (const e of batch) {
+              const id = `${e.event}|${e.at}`;
+              if (!ids.has(id)) {
+                seen.push(e);
+                ids.add(id);
+              }
+            }
+            sessionStorage.setItem(captureKey, JSON.stringify(seen));
+          }
+        } catch {
+          // 挂钩本身绝不影响被测页面。
+        }
+      }
+      return orig.call(this, key, value);
+    };
+  },
+  [EVENTS_KEY, CAPTURE_KEY],
+);
+
+// 上报出去的载荷也收着（能看见就看得见，看不见也不影响判读）。
+const flushed = [];
+page.on('request', (req) => {
+  if (req.method() !== 'POST') return;
+  let body;
+  try {
+    body = req.postData();
+  } catch {
+    return;
+  }
+  if (!body) return;
+  try {
+    const parsed = JSON.parse(body);
+    if (Array.isArray(parsed?.events)) flushed.push(...parsed.events);
+  } catch {
+    // 不是埋点批次，忽略。
+  }
+});
+
+const identity = (e) => `${e.event}|${e.at}`;
+
 // 导航刚结束时 evaluate 可能撞上被销毁的执行上下文，重试两次再放弃。
-const eventsSoFar = async () => {
+const readObserved = async () => {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await page.evaluate((key) => {
-        try {
-          return JSON.parse(localStorage.getItem(key) || '[]');
-        } catch {
-          return [];
-        }
-      }, EVENTS_KEY);
+      return await page.evaluate(
+        ([key, captureKey]) => {
+          const parse = (raw) => {
+            try {
+              const v = JSON.parse(raw || '[]');
+              return Array.isArray(v) ? v : [];
+            } catch {
+              return [];
+            }
+          };
+          return [
+            ...parse(sessionStorage.getItem(captureKey)),
+            ...parse(localStorage.getItem(key)),
+          ];
+        },
+        [EVENTS_KEY, CAPTURE_KEY],
+      );
     } catch {
       await page.waitForTimeout(150);
     }
   }
   return [];
 };
-const countEvent = (list, name) => list.filter((e) => e.event === name).length;
+
+// 同名同毫秒的两条会并成一条；断言全是 >= 阈值，这点损耗不影响判读。
+const eventsSoFar = async () => {
+  const seen = new Set();
+  const merged = [];
+  for (const e of [...(await readObserved()), ...flushed]) {
+    const id = identity(e);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(e);
+  }
+  return merged;
+};
 
 try {
   // ── 步骤 0：首页 · S4 领钱入口 ──
   // 入口受 PUBLIC_HOMEPAGE_CLAIM 开关控制：没开就断言它确实不在，其余流程跳过
   // （这样同一份脚本既能跑开着的本地环境，也能跑默认关闭的生产）。
-  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  // 首页这一屏先钉中文：下面的断言读的是账单行的目录文案（「年运营全口径」），
+  // 那是 catalog 内容，两种语言都由 CATALOG_LABELS_EN 驱动，英文状态单独验。
   check(
     await page.locator('a[href="/app/designer"]').count() === 1,
     '首页：原有主 CTA 仍在',
@@ -98,9 +189,37 @@ try {
     );
   }
 
-  // 干净起点
-  await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
+  // ── 步骤 0.5：首页英文态（SSR 直接产出）──
+  await page.goto(`${BASE}/?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const homeEn = await page.content();
+  check(/<html[^>]*lang="en"/.test(homeEn), 'i18n：首页 ?lang=en 时 <html lang> 是 en', '');
+  check(
+    homeEn.includes('See the cost first. Then do the math.'),
+    'i18n：首页英文 H1 由 SSR 渲染',
+    '',
+  );
+  if (claimEnabled) {
+    const claimEn = await page
+      .locator('section[aria-labelledby="claim-heading"]')
+      .innerText();
+    check(
+      claimEn.includes('Claim your first million') &&
+        claimEn.includes('not your real assets') &&
+        !/[一-鿿]/.test(claimEn),
+      'i18n：领钱入口英文态整段无中文',
+      `text=${claimEn.replace(/\n/g, ' ').slice(0, 60)}`,
+    );
+  }
+
+  // 干净起点（localStorage.clear() 只清队列，不动 sessionStorage 里的冒烟标记）
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
+  // 语言钉在中文：后面的断言用的是中文选择器与中文文案（换算条那句、阶梯目标、
+  // 购物车来源标签）。有些页面是点击跳过去的、带不上 ?lang=，所以钉 Cookie
+  // ——那也正是真实用户切语言时走的东西，比给每个 URL 加参数更贴近真实状态。
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=zh; path=/; max-age=3600';
+  });
   await page.reload({ waitUntil: 'networkidle' });
 
   // ── 步骤 1：设计器改 2 个选项，断言 sticky 年成本随之变化（再改回默认）──
@@ -135,6 +254,29 @@ try {
   const evDesigner = await eventsSoFar();
   check(countEvent(evDesigner, 'designer:select') >= 4, '埋点：designer:select 已入队（≥4 次点选）', `count=${countEvent(evDesigner, 'designer:select')}`);
 
+  // 自标记自检：此刻观测到的事件名必须全部带 smoke: 前缀。少一条就是打标失效——
+  // 那样每跑一次生产冒烟，都会把自己的流量混进「到底有没有真人来过」这个唯一
+  // 信号里，而且没人会发现（收集端不存标识符，冒烟行与真人行形状完全相同）。
+  const unmarked = evDesigner.filter((e) => !String(e.event).startsWith('smoke:'));
+  check(
+    evDesigner.length > 0 && unmarked.length === 0,
+    '冒烟打标：观测到的事件名全部带 smoke: 前缀',
+    `total=${evDesigner.length} unmarked=${unmarked.map((e) => e.event).join(',') || '(无)'}`,
+  );
+
+  // ── 步骤 1.6：语言在 SSR 期生效（?lang=en 直接出英文界面，不是客户端改写）──
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const enHtml = await page.content();
+  check(/<html[^>]*lang="en"/.test(enHtml), 'i18n：?lang=en 时 <html lang> 是 en', '');
+  check(enHtml.includes('Design the life you want'), 'i18n：英文 H1 由 SSR 渲染', '');
+  check(
+    enHtml.includes('Disclaimer') && !enHtml.includes('设计你想过的生活'),
+    'i18n：英文页面的合规文本也是英文（不是中文兜过去）',
+    '',
+  );
+  // 切回中文继续——后面的断言用中文选择器与中文文案。
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+
   // ── 步骤 1.5：换算条（S3）——未录入财务时不消失，改成 F2 引导句 ──
   const stickyText = await page.locator('[data-converter-line]').innerText();
   check(
@@ -155,7 +297,25 @@ try {
   );
 
   // ── 步骤 2：财务录入 4 项 ──
-  await page.goto(`${BASE}/app/finance`, { waitUntil: 'networkidle' });
+  // 先验英文界面是 SSR 直接产出的：这一片的完成判据就是「英文页不再中英混排」，
+  // 而 label 由岛渲染，所以必须看真实浏览器里的 DOM，不是只看单测。
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const finEn = await page.content();
+  check(/<html[^>]*lang="en"/.test(finEn), 'i18n：财务页 ?lang=en 时 <html lang> 是 en', '');
+  check(
+    finEn.includes('Tell us where you stand financially') &&
+      finEn.includes('Monthly income') &&
+      !finEn.includes('月收入'),
+    'i18n：财务页英文界面不夹中文标签',
+    '',
+  );
+  check(
+    finEn.includes('never uploaded'),
+    'i18n：隐私说明（数据不出本机）在英文页也在',
+    '',
+  );
+
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.fill('#field-income', '15000');
   await page.fill('#field-expense', '8000');
   await page.fill('#field-savings', '100000');
@@ -209,7 +369,7 @@ try {
   );
 
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
-  await page.goto(`${BASE}/app/designer`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
   await page.waitForSelector('#display-currency:not([disabled])');
   await page.waitForTimeout(300);
@@ -221,10 +381,10 @@ try {
 
   // mount 首帧 profile 恒为 null，上报要等本机方案恢复完——否则已录入财务的人
   // 回访设计器会被记成 no-profile（漏斗上就是「有 profile 的人看不到换算条」）。
-  const idxFinance = evSwitch.findIndex((e) => e.event === 'finance:update');
+  const idxFinance = evSwitch.findIndex((e) => e.event === NAME('finance:update'));
   const converterAfterFinance = evSwitch
     .slice(idxFinance + 1)
-    .filter((e) => e.event === 'converter:view');
+    .filter((e) => e.event === NAME('converter:view'));
   check(
     converterAfterFinance.length >= 1 &&
       converterAfterFinance.every((e) => e.props?.status !== 'no-profile'),
@@ -256,6 +416,34 @@ try {
     `usd=${moneyOf(converterUsd)} cny=${moneyOf(converterCny)}`,
   );
 
+  // ── 步骤 5.6：结果页整页切英文（三状态、差距、阶梯目标都走词典）──
+  // 断言用「结果区里查不到一个汉字」这种形式：它同时覆盖漏译、硬编码残留
+  // 和 core 那句 action 混进来，而逐条文案对不对另有单测与词典测试。
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=en; path=/; max-age=3600';
+  });
+  await page.goto(`${BASE}/app/result?smoke=1`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-status]');
+  const enResults = await page.locator('[data-results-root]').innerText();
+  check(
+    /Enough line \(target capital\)/.test(enResults),
+    'i18n：结果页英文标题与够用线标签',
+    `text=${enResults.replace(/\n/g, ' ').slice(0, 60)}`,
+  );
+  check(
+    /Staged goals/.test(enResults) && /Stage 1/.test(enResults),
+    'i18n：阶梯目标走英文词典',
+    '',
+  );
+  check(
+    !/[一-鿿]/.test(enResults),
+    'i18n：英文结果页里查不到一个汉字',
+    `matched=${(enResults.match(/[一-鿿]+/g) || []).slice(0, 3).join(',')}`,
+  );
+  await page.evaluate(() => {
+    document.cookie = 'rich-sim-locale=zh; path=/; max-age=3600';
+  });
+
   // ── 步骤 6：富豪模拟卡 A（F5 最小版，纯 SSR 页）──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
   const simText = await page.locator('#main').innerText();
@@ -272,6 +460,42 @@ try {
   check(redSim.includes('断裂预警') && redSim.includes('负担率 399%'), '账单日：加游艇后断裂预警（负担率 399%）', '');
   check(redSim.includes('$4,050,000'), '账单日：变卖回笼 = 原价 75% = $4,050,000', 'superyacht 5,400,000 × 0.75');
   check(redSim.includes('第 2 页'), '账单日：一页 4 张，出现第 2 页', '');
+
+  // ── 步骤 7.5：卡 A 页英文态（SSR 直接产出；购物区尚未迁移，所以不断言整页无中文）──
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const simEn = await page.locator('#main').innerText();
+  check(
+    simEn.includes('Tech unicorn founder') &&
+      simEn.includes('What it costs to hold for a year') &&
+      simEn.includes('Bill day'),
+    'i18n：卡 A 页标题与分区走英文词典',
+    `text=${simEn.replace(/\n/g, ' ').slice(0, 50)}`,
+  );
+  check(
+    simEn.includes('Stretched') &&
+      simEn.includes('burden rate 78%') &&
+      simEn.includes('A fictional character'),
+    'i18n：负担率横幅与虚构标注在英文页也在',
+    `fictional=${simEn.includes('A fictional character')}`,
+  );
+
+  // ── 步骤 7.6：购物区英文态（costComponents 仍是目录里的中文说明，所以不断言整块无中文）──
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const shopEn = await page.locator('[data-shopping-area]').innerText();
+  check(
+    shopEn.includes('The shopping area') &&
+      shopEn.includes('Add to cart') &&
+      shopEn.includes('Set this life as my goal') &&
+      shopEn.includes('Assets') &&
+      shopEn.includes('Experiences'),
+    'i18n：购物区英文态（分组、按钮、CTA）',
+    `text=${shopEn.replace(/\n/g, ' ').slice(0, 50)}`,
+  );
+  check(
+    shopEn.includes('Next bill preview') && shopEn.includes('Stretched'),
+    'i18n：购物车预览与负担率横幅走英文词典',
+    '',
+  );
 
   // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });

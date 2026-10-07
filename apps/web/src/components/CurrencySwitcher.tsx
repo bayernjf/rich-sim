@@ -3,6 +3,8 @@ import { convert, type Currency, type FxSnapshot, type Profile } from '@rich-sim
 import { readDraft, writeDraft } from '../lib/draft';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
 import { SUPPORTED_CURRENCIES } from '../lib/fx';
+import { format, t } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
 /**
@@ -26,6 +28,8 @@ type CurrencySwitcherProps = {
   fx: FxSnapshot;
   /** 切换成功后回调，父组件更新展示状态。 */
   onChanged: (currency: Currency, fx: FxSnapshot) => void;
+  /** 界面语言（页面 SSR 解析后传下来；省略即中文，保持旧调用点可用）。 */
+  locale?: Locale;
 };
 
 /** 用新快照把 profile 各金额从旧币种换算到新币种（旧==profile.currency）。 */
@@ -43,6 +47,7 @@ export default function CurrencySwitcher({
   currency,
   fx,
   onChanged,
+  locale = 'zh',
 }: CurrencySwitcherProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +94,7 @@ export default function CurrencySwitcher({
         htmlFor="display-currency"
         className="text-xs font-medium text-muted"
       >
-        显示币种
+        {t('currency.label', locale)}
       </label>
       <div className="mt-1 flex items-center gap-2">
         <select
@@ -106,11 +111,11 @@ export default function CurrencySwitcher({
           ))}
         </select>
         <span className="text-xs text-muted">
-          {busy ? '切换中…' : `汇率：${fx.source} · ${fx.date}`}
+          {busy ? t('currency.busy', locale) : format(t('currency.fxLine', locale), { source: fx.source, date: fx.date })}
         </span>
       </div>
       {error ? (
-        <p className="mt-1 text-xs text-danger" role="alert">切换失败：{error}</p>
+        <p className="mt-1 text-xs text-danger" role="alert">{format(t('currency.failed', locale), { error })}</p>
       ) : null}
     </div>
   );
