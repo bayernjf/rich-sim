@@ -123,3 +123,67 @@ describe('writeDraft broadcasts to the same tab', () => {
     }
   });
 });
+
+/**
+ * `history` 只由结果页那一个岛追加，但每个调用点都是**重建整个 Draft**。
+ * 不显式透传就会静默抹掉用户的历史，所以 writeDraft 统一保留——这几条钉住
+ * 「不传 = 不动」「传 [] = 主动清空」两半语义。
+ */
+describe('writeDraft keeps the local history', () => {
+  const stored = new Map<string, string>();
+  const g = globalThis as Record<string, unknown>;
+
+  function withStorage(run: () => void) {
+    const saved = { localStorage: g.localStorage, window: g.window };
+    // 三条用例共用一个 Map：不清空的话，上一条留下的草稿会被下一条的
+    // 「不传 history 就保留」逻辑读进去，测出来的行为是真的、前提却是假的。
+    stored.clear();
+    g.localStorage = {
+      getItem: (k: string) => stored.get(k) ?? null,
+      setItem: (k: string, v: string) => void stored.set(k, v),
+      removeItem: (k: string) => void stored.delete(k),
+    };
+    g.window = { dispatchEvent: () => true };
+    try {
+      run();
+    } finally {
+      g.localStorage = saved.localStorage;
+      g.window = saved.window;
+    }
+  }
+
+  const snapshot = {
+    at: '2026-10-01T00:00:00.000Z',
+    currency: 'USD' as const,
+    status: 'reachable' as const,
+    years: 20,
+    annualCost: 80_000,
+    enoughLine: 2_000_000,
+    netWorth: 100_000,
+  };
+
+  it('a writer that does not mention history leaves it intact', () => {
+    withStorage(() => {
+      writeDraft(makeDraft({ profile: fullProfile, history: [snapshot] }));
+      // 设计器式的写法：整个 Draft 重建，只有 choices 变了。
+      writeDraft(makeDraft({ profile: fullProfile, choices: [{ dimension: 'living', optionId: 'opt' }] }));
+      const raw = JSON.parse(stored.get('rich-sim:plan:v1') ?? 'null');
+      expect(raw.history).toEqual([snapshot]);
+    });
+  });
+
+  it('an explicit empty array is a deliberate wipe, not an omission', () => {
+    withStorage(() => {
+      writeDraft(makeDraft({ profile: fullProfile, history: [snapshot] }));
+      writeDraft(makeDraft({ profile: fullProfile, history: [] }));
+      expect(JSON.parse(stored.get('rich-sim:plan:v1') ?? 'null').history).toEqual([]);
+    });
+  });
+
+  it('a fresh plan carries no history key at all (old drafts stay valid)', () => {
+    withStorage(() => {
+      writeDraft(makeDraft({ profile: fullProfile }));
+      expect('history' in JSON.parse(stored.get('rich-sim:plan:v1') ?? '{}')).toBe(false);
+    });
+  });
+});
