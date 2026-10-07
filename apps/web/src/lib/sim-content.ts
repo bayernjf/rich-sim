@@ -26,7 +26,7 @@ export type SimCard = {
   fictionNotice: string;
   assetStructure: { label: string; share: number }[];
   choices: LifeChoice;
-  /** 卡片的英文呈现（M4-i18n 内容层）。sim-l10n.test.ts 要求每张卡三样都有。 */
+  /** 卡片的英文呈现（i18n 切片 内容层）。sim-l10n.test.ts 要求每张卡三样都有。 */
   labelEn: string;
   subtitleEn: string;
   fictionNoticeEn: string;

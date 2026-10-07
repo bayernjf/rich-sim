@@ -17,7 +17,7 @@ import { track } from '../lib/analytics';
  * - 金额一律按 draft.currency 格式化，等宽数字，币种标签始终可见。
  * - 假设清单与免责声明由 result.astro 的 <AssumptionsPanel /> 纯 SSR 渲染，
  *   不依赖本岛。
- * - 文案走 messages（M4-i18n 切片三）。阶梯目标的行动项**由词典渲染**而不是
+ * - 文案走 messages（i18n 切片三）。阶梯目标的行动项**由词典渲染**而不是
  *   直接用 core 返回的 `m.action`：core 那句是中文。两边不能各写一份还指望它们
  *   一致，所以 i18n.test.ts 有一条「zh 词典必须逐字等于 core 的 action」的测试，
  *   改一边就红另一边。未知阶段号才退回 `m.action`。

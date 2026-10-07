@@ -8,7 +8,7 @@ import { localeFromRequest } from '../../lib/i18n';
 import { t } from '../../lib/messages';
 
 /**
- * M4-i18n 切片一：语言在 SSR 期解析（Cookie > ?lang= > Accept-Language，默认 en），
+ * i18n 切片一：语言在 SSR 期解析（Cookie > ?lang= > Accept-Language，默认 en），
  * 一路作为 prop 传给岛与合规面板——不能让客户端先渲染中文再改写，那样
  * 「免责声明必须服务端可见」这条红线就打折了。
  */

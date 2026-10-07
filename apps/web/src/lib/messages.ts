@@ -1,7 +1,7 @@
 import type { Locale } from './i18n';
 
 /**
- * M4-i18n · 界面文案词典（UI chrome，不含目录内容）。
+ * i18n 切片 · 界面文案词典（UI chrome，不含目录内容）。
  *
  * `en` 被标注成 `Record<keyof typeof ZH, string>`：**少翻一个键就编译不过**，
  * 所以这里不会出现「英文界面里静默夹一句中文」的状态（目录内容的英文名在 core 的
