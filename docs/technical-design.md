@@ -64,12 +64,14 @@
 | 认证 | MVP 免登录 → **Supabase Auth** | 与数据库同源，免自建账号体系 | Auth.js / Clerk |
 | 存储 | **Supabase Storage**（P1 起） | 与数据库同源，少一个服务 | Cloudflare R2 |
 | 支付 | `待定` | 取决于市场：大陆微信/支付宝，海外 Stripe/Paddle | — |
-| 分析 | **Umami / PostHog** | 轻量，可自托管，验证三数够用 | Plausible |
+| 分析 | **自建 Cloudflare Worker + D1**（`workers/analytics-collector`，端点 `.../collect`；只存 `{ts, day, event}`，props 全丢）；CF Web Analytics 的 `PUBLIC_CF_WEB_ANALYTICS_TOKEN` 2026-10-05 起暂缓 | 2026-10-05 拍板自建，理由：**红线要求上传侧不留任何用户数据**，第三方分析默认留标识符与画像，配置成不留反而没人能验证；自建端点的收名正则与丢弃规则是可审计的代码。原设想 Umami / PostHog 见 `docs/DEPLOYMENT.md` 分析埋点节 | Umami / PostHog / Plausible |
 | 错误监控 | **Sentry** | 标准方案 | — |
 | 测试 | **Vitest**（引擎）+ **Playwright**（关键流程） | 计算引擎**必须**单测；主流程必须有 e2e | — |
-| 托管 | **Cloudflare（应用 SSR + 营销 / 边缘一体）**；Vercel 作为服务端变重时的触发选项 | 见 §9 |
+| 托管 | **Cloudflare（应用 SSR + 营销 / 边缘一体）**；Vercel 作为服务端变重时的触发选项 | 见 §9 | — |
 
-> 只引入当前需要的依赖。上表里 Drizzle / Auth.js / Sentry / Playwright 都属于 **P1 才装**，MVP 不装。
+> 只引入当前需要的依赖。上表里 Drizzle / Auth.js / Sentry 属于 **P1 才装**，MVP 不装；
+> **Playwright 已经装了**（`playwright-core` + 系统 Chrome，驱动 `scripts/e2e-smoke.mjs` 的移动端冒烟，
+> 2026-10-04 起随 M1 验收引入）——旧说法「Playwright 也 P1 才装」已作废。
 
 ---
 
@@ -283,7 +285,7 @@ Supabase 底层就是 PostgreSQL。大陆没有 Supabase / D1 的等价物，阶
 | **M1**（核心闭环） | **纯前端**：Astro + React 岛 + `@rich-sim/core`，方案存 `localStorage`。**无后端、无数据库、无账号。** |
 | **M2**（度量 + **F5 最小版** + 保存/回访） | F5 最小版仍是**纯前端**（读 catalog 展示资产看板 / 持有成本 / 现金流波动，不引入后端）；埋点接通只加 Cloudflare 环境变量。**只有「账号体系」这一步**引入认证（Auth.js）+ PostgreSQL（Drizzle）+ `/api/*`，而它尚未立项 |
 | **M3**（富豪模拟**完整化**） | 购物机制、六通道体验、原型卡、多剧本：新增模拟状态模块（仍是前端计算为主） |
-| **M4**（报告/支付） | 服务端报告生成 + 支付渠道 + 快照历史 |
+| **M4**（报告/支付） | 服务端报告生成 + 支付渠道 + 快照历史。<br>**2026-10-08 修订**：**快照历史已做，但不需要任何架构变化**——它是 `rich-sim:plan:v1` 里的一个可选字段（`Draft.history`，一天一条本机快照），不建表、不加 API、不出设备（`docs/m4-task-breakdown.md` §8）。**服务端报告生成这一条本身也待拍板**：M4 的闸门 G1 就是「报告在服务端生成还是纯前端生成」，选前端则这一行的后端承诺不成立（`docs/m4-task-breakdown.md` §0）。支付渠道仍等 #7 与付费意愿读数 |
 
 **关键点**：M1 刻意不引入后端，是最快验证、成本最低的路径。
 
