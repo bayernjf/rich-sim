@@ -7,10 +7,18 @@
  */
 import { useEffect, useState } from 'react';
 import { readDraft } from '../lib/draft';
+import { format, t } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 
 export type SimBill = { optionLabel: string; annualCost: number };
 
-export default function SimRealityCompare({ bills }: { bills: SimBill[] }) {
+export default function SimRealityCompare({
+  bills,
+  locale = 'zh',
+}: {
+  bills: SimBill[];
+  locale?: Locale;
+}) {
   const [income, setIncome] = useState<number | null>(null);
 
   useEffect(() => {
@@ -21,9 +29,9 @@ export default function SimRealityCompare({ bills }: { bills: SimBill[] }) {
   if (income === null) {
     return (
       <p className="mt-4 rounded-lg border border-line bg-panel px-3 py-2 text-xs leading-relaxed text-muted">
-        先填 4 个数，这些账单就能换算成「你几个月工资」。
+        {t('sim.realityNudge', locale)}
         <a className="ml-1 text-accent underline-offset-2 hover:underline" href="/app/finance">
-          去录入 →
+          {t('designer.gotoFinance', locale)}
         </a>
       </p>
     );
@@ -37,7 +45,9 @@ export default function SimRealityCompare({ bills }: { bills: SimBill[] }) {
         return (
           <li key={bill.optionLabel} className="flex items-baseline justify-between gap-3">
             <span>{bill.optionLabel}</span>
-            <span className="font-mono tabular-nums">≈ 你 {shown} 个月工资</span>
+            <span className="font-mono tabular-nums">
+              {format(t('sim.realityMonths', locale), { n: shown })}
+            </span>
           </li>
         );
       })}

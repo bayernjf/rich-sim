@@ -26,6 +26,11 @@ export type SimCard = {
   fictionNotice: string;
   assetStructure: { label: string; share: number }[];
   choices: LifeChoice;
+  /** 卡片的英文呈现（M4-i18n 内容层）。sim-l10n.test.ts 要求每张卡三样都有。 */
+  labelEn: string;
+  subtitleEn: string;
+  fictionNoticeEn: string;
+  assetStructureEn: string[];
 };
 
 export const CARD_A = {
@@ -33,10 +38,16 @@ export const CARD_A = {
   label: '科技独角兽创始人',
   subtitle: '新钱 · 高消费，愿为体验和地位付费，防御性配置弱。',
   fictionNotice: '虚构角色，不代表任何真实人物；资产结构为示意，不代表真实持仓。',
+  labelEn: 'Tech unicorn founder',
+  subtitleEn:
+    'New money · high spending, happy to pay for experience and status, defensively positioned.',
+  fictionNoticeEn:
+    'A fictional character, not any real person; the asset mix is illustrative, not real holdings.',
   assetStructure: [
     { label: '公司股权', share: 77.5 },
     { label: '现金 / 债券 / 不动产', share: 22.5 },
   ],
+  assetStructureEn: ['Company equity', 'Cash / bonds / property'],
   choices: [
     { dimension: 'living', optionId: 'luxury-mansion' },
     { dimension: 'transport', optionId: 'private-jet' },
@@ -68,6 +79,42 @@ export const CARD_A_LAST_YEAR_COST = 1_317_000;
 export const SELL_DISCOUNT = 0.75;
 /** §2.4 参数 2：一次翻 4 张，按年成本从高到低。 */
 export const BILLS_PER_PAGE = 4;
+
+/**
+ * 卡片文案按语言取。缺英文字段时退回中文而不是抛错或返回空——
+ * 「虚构角色」那条标注是合规文本，宁可不翻也不能不出现在页面上。
+ * 每个字段都有是 sim-l10n.test.ts 的职责。
+ */
+export function cardView(card: SimCard, locale: Locale): {
+  label: string;
+  subtitle: string;
+  fictionNotice: string;
+  assetStructure: { label: string; share: number }[];
+} {
+  const en = locale === 'en';
+  return {
+    label: en ? card.labelEn : card.label,
+    subtitle: en ? card.subtitleEn : card.subtitle,
+    fictionNotice: en ? card.fictionNoticeEn : card.fictionNotice,
+    assetStructure: card.assetStructure.map((part, index) => ({
+      label: en ? (card.assetStructureEn[index] ?? part.label) : part.label,
+      share: part.share,
+    })),
+  };
+}
+
+/**
+ * 两个纯体验项刻意不进 core catalog（那边有每维 3–5 项、维内递增等契约），
+ * 所以它们的英文名也只能在这一侧——同样由 sim-l10n.test.ts 穷尽性钉住。
+ */
+export const EXPERIENCE_LABELS_EN: Record<string, string> = {
+  'exp-private-jet-world-tour': 'Private-jet world tour (26 days)',
+  'exp-met-gala-ticket': 'Met Gala charity gala, one seat',
+};
+
+export function experienceLabel(option: CatalogOption, locale: Locale): string {
+  return locale === 'en' ? (EXPERIENCE_LABELS_EN[option.id] ?? option.label) : option.label;
+}
 
 export type Bill = {
   dimensionLabel: string;

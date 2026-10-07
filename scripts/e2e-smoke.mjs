@@ -461,6 +461,24 @@ try {
   check(redSim.includes('$4,050,000'), '账单日：变卖回笼 = 原价 75% = $4,050,000', 'superyacht 5,400,000 × 0.75');
   check(redSim.includes('第 2 页'), '账单日：一页 4 张，出现第 2 页', '');
 
+  // ── 步骤 7.5：卡 A 页英文态（SSR 直接产出；购物区尚未迁移，所以不断言整页无中文）──
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const simEn = await page.locator('#main').innerText();
+  check(
+    simEn.includes('Tech unicorn founder') &&
+      simEn.includes('What it costs to hold for a year') &&
+      simEn.includes('Bill day'),
+    'i18n：卡 A 页标题与分区走英文词典',
+    `text=${simEn.replace(/\n/g, ' ').slice(0, 50)}`,
+  );
+  check(
+    simEn.includes('Stretched') &&
+      simEn.includes('burden rate 78%') &&
+      simEn.includes('A fictional character'),
+    'i18n：负担率横幅与虚构标注在英文页也在',
+    `fictional=${simEn.includes('A fictional character')}`,
+  );
+
   // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });

@@ -3,8 +3,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import SimRealityCompare from '../../components/SimRealityCompare';
 import ClaimRunway from '../../components/ClaimRunway';
 import ShoppingArea from '../../components/ShoppingArea';
-import { initialCatalogUSD } from '@rich-sim/core';
+import { dimensionLabel, optionLabel, initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
+import { localeFromRequest } from '../../lib/i18n';
+import { format, t } from '../../lib/messages';
 import {
   BILLS_PER_PAGE,
   CARD_A,
@@ -16,10 +18,14 @@ import {
   cardAnnualCost,
   cardBurden,
   cardBills,
+  cardView,
   shoppingPool,
 } from '../../lib/sim-content';
 
 const catalog = initialCatalogUSD;
+/** 页面语言在 SSR 期解析（Cookie / ?lang= / Accept-Language），与其余页同一套。 */
+const locale = localeFromRequest(Astro.request, Astro.url);
+const card = cardView(CARD_A, locale);
 const annualCost = cardAnnualCost(CARD_A.choices, catalog, DEFAULT_ASSUMPTIONS);
 const pool = shoppingPool(catalog);
 
@@ -29,7 +35,7 @@ const simCost = cardAnnualCost(simChoices, catalog, DEFAULT_ASSUMPTIONS);
 const simCashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
 const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS);
 
-const bills = cardBills(simChoices, catalog);
+const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
 const page = Math.min(
   Math.max(Number.parseInt(Astro.url.searchParams.get('page') ?? '1', 10) || 1, 1),
@@ -38,9 +44,9 @@ const page = Math.min(
 const pageBills = bills.slice((page - 1) * BILLS_PER_PAGE, page * BILLS_PER_PAGE);
 
 const banner = {
-  green: { label: '可负担', note: '付完持有成本仍有 ≥40% 结余。', cls: 'border-accent bg-accent-soft text-accent' },
-  yellow: { label: '紧张', note: '结余被压到 40% 以下——再加一件可能断裂。', cls: 'border-line bg-panel text-ink' },
-  red: { label: '断裂预警', note: '当年持有成本超过年现金流：必须变卖资产（75% 折价）或增加收入。', cls: 'border-danger bg-panel text-danger' },
+  green: { label: t('sim.bannerGreen', locale), note: t('sim.bannerGreenNote', locale), cls: 'border-accent bg-accent-soft text-accent' },
+  yellow: { label: t('sim.bannerYellow', locale), note: t('sim.bannerYellowNote', locale), cls: 'border-line bg-panel text-ink' },
+  red: { label: t('sim.bannerRed', locale), note: t('sim.bannerRedNote', locale), cls: 'border-danger bg-panel text-danger' },
 }[status];
 
 const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}`;
@@ -48,13 +54,17 @@ const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}`
 const rows = CARD_A.choices.map((choice) => {
   const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
   const option = dimension?.options.find((o) => o.id === choice.optionId);
-  return { dimensionLabel: dimension?.label ?? choice.dimension, option };
+  return {
+    dimensionLabel: dimension ? dimensionLabel(dimension, locale) : choice.dimension,
+    optionLabel: option ? optionLabel(option, locale) : '',
+    option,
+  };
 });
 
 const fmt = (value: number) =>
   `$${value.toLocaleString('en-US')}`;
 
-const assetBars = CARD_A.assetStructure.map((part, index) => ({
+const assetBars = card.assetStructure.map((part, index) => ({
   ...part,
   width: `${part.share}%`,
   tone: index === 0 ? 'bg-accent' : 'bg-ink/25',
@@ -62,23 +72,23 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
 ---
 
 <BaseLayout
-  title="卡 A · 富豪模拟 · 财富模拟"
-  description="虚构身份的资产结构与年度持有成本。价格标签是假的爽，持有成本是真的痛。财商模拟教育工具，不构成投资建议。"
+  title={t('sim.metaTitle', locale)}
+  description={t('sim.metaDesc', locale)}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
-    <p class="text-xs font-medium uppercase tracking-widest text-accent">富豪模拟 · F5 最小版</p>
-    <h1 class="mt-2 text-2xl font-semibold tracking-tight">{CARD_A.label}</h1>
-    <p class="mt-1 text-sm leading-relaxed text-muted">{CARD_A.subtitle}</p>
+    <p class="text-xs font-medium uppercase tracking-widest text-accent">{t('sim.eyebrow', locale)}</p>
+    <h1 class="mt-2 text-2xl font-semibold tracking-tight">{card.label}</h1>
+    <p class="mt-1 text-sm leading-relaxed text-muted">{card.subtitle}</p>
 
     <p class="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-xs leading-relaxed text-muted">
-      {CARD_A.fictionNotice}
+      {card.fictionNotice}
     </p>
 
     <section aria-labelledby="sim-assets-heading" class="mt-8">
-      <h2 id="sim-assets-heading" class="text-base font-semibold text-ink">资产结构</h2>
+      <h2 id="sim-assets-heading" class="text-base font-semibold text-ink">{t('sim.assetsH', locale)}</h2>
       <div
         role="img"
-        aria-label={CARD_A.assetStructure.map((part) => `${part.label} ${part.share}%`).join('，')}
+        aria-label={card.assetStructure.map((part) => `${part.label} ${part.share}%`).join(locale === 'en' ? ', ' : '，')}
         class="mt-3 flex h-3 w-full overflow-hidden rounded-full"
       >
         {assetBars.map((part) => <div class={part.tone} style={`width:${part.width}`}></div>)}
@@ -97,14 +107,14 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
     </section>
 
     <section aria-labelledby="sim-cost-heading" class="mt-8">
-      <h2 id="sim-cost-heading" class="text-base font-semibold text-ink">一年的持有成本</h2>
-      <p class="mt-1 text-sm text-muted">价格标签是一次性的，这些账单每年都来。</p>
+      <h2 id="sim-cost-heading" class="text-base font-semibold text-ink">{t('sim.costH', locale)}</h2>
+      <p class="mt-1 text-sm text-muted">{t('sim.costLead', locale)}</p>
 
       <dl class="mt-3 divide-y divide-line rounded-2xl border border-line bg-panel px-4">
         {rows.map((row) => (
           <div class="flex items-baseline justify-between gap-3 py-3">
             <dt class="text-sm text-muted">
-              {row.option?.label}
+              {row.optionLabel}
               <span class="ml-1 text-xs text-muted/70">{row.dimensionLabel}</span>
             </dt>
             <dd class="font-mono tabular-nums text-ink">
@@ -115,14 +125,14 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
                   href={row.option.source}
                   rel="noopener"
                 >
-                  来源
+                  {t('sim.source', locale)}
                 </a>
               )}
             </dd>
           </div>
         ))}
         <div class="flex items-baseline justify-between gap-3 py-4">
-          <dt class="text-sm font-semibold text-ink">合计（每年）</dt>
+          <dt class="text-sm font-semibold text-ink">{t('sim.total', locale)}</dt>
           <dd class="font-mono text-4xl font-semibold tabular-nums tracking-tight text-ink">
             {fmt(annualCost)}
           </dd>
@@ -134,40 +144,38 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
         client:load
         annualCost={simCost}
         initialCapital={Astro.url.searchParams.get('claim') === '1' ? SIM_STARTING_CAPITAL : null}
+        locale={locale}
       />
 
       <p class="mt-4 text-xs leading-relaxed text-muted">
-        以上为<strong>年持有成本</strong>的静态展示：数值来自公开来源校准的目录（富豪极端档为行业公开估算），
-        不代表任何真实人物的持仓，也不构成投资建议或真实报价。
-        资产结构占比为示意，不参与任何计算。
+        {t('sim.costNoteA', locale)}<strong>{t('sim.costNoteBold', locale)}</strong>{t('sim.costNoteB', locale)}
       </p>
     </section>
 
     <section aria-labelledby="sim-bill-heading" class="mt-8">
-      <h2 id="sim-bill-heading" class="text-base font-semibold text-ink">账单日</h2>
+      <h2 id="sim-bill-heading" class="text-base font-semibold text-ink">{t('sim.billH', locale)}</h2>
       <p class="mt-1 text-sm text-muted">
-        游戏内时间轴：进剧本先看今年的账单，一年一翻。
-        {yacht ? '本年度你把一艘超级游艇加进了这份生活。' : '试着把一艘超级游艇加进来 →'}
+        {t('sim.billLead', locale)}
+        {yacht ? t('sim.yachtOn', locale) : t('sim.yachtOff', locale)}
         {!yacht && (
-          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1">加购游艇</a>
+          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1">{t('sim.yachtLink', locale)}</a>
         )}
       </p>
 
       <div class={`mt-3 rounded-2xl border p-4 ${banner.cls}`} role="status">
         <p class="text-sm font-semibold">
-          {banner.label} · 负担率 {rate === null ? '—' : `${Math.round(rate * 100)}%`}
+          {banner.label} · {format(t('sim.burdenRate', locale), { rate: rate === null ? '—' : `${Math.round(rate * 100)}%` })}
         </p>
         <p class="mt-1 text-xs leading-relaxed">{banner.note}</p>
         <p class="mt-2 text-xs leading-relaxed text-muted">
-          年持有成本 {fmt(simCost)} ÷ 可支配现金流 {fmt(simCashflow)}
-          （= 税后收入 {fmt(CARD_A_ANNUAL_INCOME)} − 上一年 {fmt(CARD_A_LAST_YEAR_COST)}，示意）
+          {format(t('sim.cashflowLine', locale), { cost: fmt(simCost), cashflow: fmt(simCashflow) })}
+          {format(t('sim.cashflowDerivation', locale), { income: fmt(CARD_A_ANNUAL_INCOME), last: fmt(CARD_A_LAST_YEAR_COST) })}
         </p>
       </div>
 
       {status === 'red' && (
         <p class="mt-3 rounded-lg border border-danger px-3 py-2 text-xs leading-relaxed text-danger">
-          断裂后果：变卖最贵的一项（{bills[0]?.optionLabel}）只能回笼{' '}
-          {fmt(Math.round((bills[0]?.annualCost ?? 0) * SELL_DISCOUNT))}（原价 75%）——资产不是原价变现。
+          {format(t('sim.breakNote', locale), { item: bills[0]?.optionLabel ?? '', amount: fmt(Math.round((bills[0]?.annualCost ?? 0) * SELL_DISCOUNT)) })}
         </p>
       )}
 
@@ -176,15 +184,15 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
           <li class="rounded-xl border border-line bg-panel px-4 py-3">
             <div class="flex items-baseline justify-between gap-3">
               <span class="text-sm text-ink">{bill.optionLabel}</span>
-              <span class="font-mono tabular-nums text-ink">{fmt(bill.annualCost)}/年</span>
+              <span class="font-mono tabular-nums text-ink">{format(t('sim.perYear', locale), { amount: fmt(bill.annualCost) })}</span>
             </div>
             <div class="mt-1 flex items-baseline justify-between gap-3">
               <span class="text-xs text-muted">
-                {bill.dimensionLabel} · 每月 ≈ {fmt(bill.monthlyCost)}
+                {format(t('sim.perMonth', locale), { dimension: bill.dimensionLabel, amount: fmt(bill.monthlyCost) })}
               </span>
               {bill.source && (
                 <a class="text-xs text-accent underline-offset-2 hover:underline" href={bill.source} rel="noopener">
-                  来源
+                  {t('sim.source', locale)}
                 </a>
               )}
             </div>
@@ -193,14 +201,14 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
       </ul>
 
       {pageCount > 1 && (
-        <nav aria-label="账单翻页" class="mt-3 flex gap-2">
+        <nav aria-label={t('sim.pagerLabel', locale)} class="mt-3 flex gap-2">
           {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
             <a
               aria-current={p === page ? 'page' : undefined}
               class={`rounded-full px-3 py-1 text-xs ${p === page ? 'bg-ink text-canvas' : 'border border-line text-muted hover:text-ink'}`}
               href={pageHref(p)}
             >
-              第 {p} 页
+              {format(t('sim.page', locale), { n: p })}
             </a>
           ))}
         </nav>
@@ -208,6 +216,7 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
 
       <SimRealityCompare
         client:load
+        locale={locale}
         bills={pageBills.map((bill) => ({ optionLabel: bill.optionLabel, annualCost: bill.annualCost }))}
       />
     </section>
@@ -217,15 +226,15 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
         普通链接继续现实测算主线，不在此处假装有购物车目标。 */}
     <noscript>
       <section class="mt-8 rounded-2xl border border-line bg-panel p-4">
-        <h2 class="text-base font-semibold text-ink">富豪购物区需要开启 JavaScript</h2>
+        <h2 class="text-base font-semibold text-ink">{t('sim.noscriptH', locale)}</h2>
         <p class="mt-1 text-xs leading-relaxed text-muted">
-          购物车与一键成目标是交互功能。不开脚本也可以直接走现实测算主线。
+          {t('sim.noscriptBody', locale)}
         </p>
         <a
           href="/app/finance"
           class="mt-3 inline-flex min-h-11 items-center rounded-full border border-accent px-5 py-3 text-sm font-medium text-accent"
         >
-          继续到财务录入 →
+          {t('sim.noscriptCta', locale)}
         </a>
       </section>
     </noscript>
@@ -234,7 +243,7 @@ const assetBars = CARD_A.assetStructure.map((part, index) => ({
       href="/"
       class="mt-8 inline-flex min-h-11 items-center rounded-full border border-line-strong px-5 py-3 text-sm font-medium text-ink transition-colors hover:bg-panel-2"
     >
-      ← 回首页，算你自己的生活
+      {t('sim.backHome', locale)}
     </a>
   </main>
 </BaseLayout>
