@@ -38,7 +38,7 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 ## 设计令牌与 UI 约定
 
 - 令牌复制自 `rich-sim-landing/src/styles/global.css`（canvas/panel/panel-2/line/line-strong/ink/muted/accent/accent-soft/on-accent；dark-first，`prefers-color-scheme` 浅色自适应）。**禁止重靛/紫系配色。**
-- UI 语言：中文优先（PRD §9）；移动端优先（PRD §12）。
+- UI 语言：双语（zh / en），**默认 en**（PRD §9，2026-10-07 拍板：先海外，界面先英文、中文保留并逐页迁移）；移动端优先（PRD §12）。
 - 金额数字用等宽呈现（`font-mono` 或 `tabular-nums`），可读性优先。
 - 可访问性：标签在输入框上方、键盘可达、焦点可见（全局已设 `:focus-visible`）。
 

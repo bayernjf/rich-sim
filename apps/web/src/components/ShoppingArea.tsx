@@ -8,7 +8,7 @@
  * S2 只做「选了什么 / 年成本合计」；负担率变色、账单联动和配比提示是 S3。
  */
 import { useEffect, useMemo, useState } from 'react';
-import { dimensionLabel, type CatalogOption } from '@rich-sim/core';
+import { dimensionLabel, optionCostComponents, type CatalogOption } from '@rich-sim/core';
 import Interpolated from './Interpolated';
 import {
   CARD_A,
@@ -200,6 +200,7 @@ export default function ShoppingArea({ items, baselineAnnualCost, locale = 'zh' 
               {groupItems.map((item) => {
                 const key = itemKey({ dimension: item.dimension, optionId: item.option.id });
                 const inCart = selected.has(key);
+                const components = optionCostComponents(item.option, locale);
                 return (
                   <li key={key} className="rounded-xl border border-line bg-panel px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -212,10 +213,8 @@ export default function ShoppingArea({ items, baselineAnnualCost, locale = 'zh' 
                           </span>
                           {locale === 'en' ? '/yr' : '/年'}
                         </p>
-                        {item.option.costComponents && item.option.costComponents.length > 0 && (
-                          <p className="mt-1 text-xs text-muted">
-                            {item.option.costComponents.join(' · ')}
-                          </p>
+                        {components && components.length > 0 && (
+                          <p className="mt-1 text-xs text-muted">{components.join(' · ')}</p>
                         )}
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
