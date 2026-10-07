@@ -14,6 +14,7 @@ import {
 import { computeResults } from '../lib/results';
 import type { Results } from '../lib/results';
 import { format, t, type MessageKey } from '../lib/messages';
+import { fmtMoney, pct } from '../lib/format';
 import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
@@ -44,17 +45,6 @@ const STAGE_ACTION: Record<number, MessageKey> = {
   2: 'result.action2',
   3: 'result.action3',
 };
-
-function fmtMoney(n: number, c: Currency, locale: Locale): string {
-  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
-    style: 'currency',
-    currency: c,
-    currencyDisplay: 'narrowSymbol',
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export default function ResultsView({
   catalog,
