@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Currency, LifeChoice, Profile } from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
 import { DEFAULT_ASSUMPTIONS, DEFAULT_CURRENCY } from '../lib/defaults';
+import { format, t, type MessageKey } from '../lib/messages';
+import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
 /**
@@ -13,24 +15,24 @@ import { track } from '../lib/analytics';
  *   合法修改 → 立即经 lib/draft.ts 写回 localStorage（保留其余字段）。
  * - mount 时从 readDraft() 恢复已有 profile（数值合法才恢复）。
  * - 持久化一律走 readDraft / writeDraft，不绕过入口。
+ * - 文案全部走 messages（M4-i18n 切片二）：字段名、提示、示例值与错误文本
+ *   都随 locale 走，示例值里的 "如 / e.g." 也是文案，不是硬编码。
  */
 
 type FieldKey = 'income' | 'expense' | 'savings' | 'debt';
 
 const FIELD_KEYS: FieldKey[] = ['income', 'expense', 'savings', 'debt'];
 
-type FieldDef = {
-  key: FieldKey;
-  label: string;
-  hint: string;
-  placeholder: string;
-};
-
-const FIELDS: FieldDef[] = [
-  { key: 'income', label: '月收入', hint: '每月税后到手总收入', placeholder: '如 15000' },
-  { key: 'expense', label: '月支出', hint: '每月固定生活开销', placeholder: '如 8000' },
-  { key: 'savings', label: '现有存款', hint: '当前可动用的储蓄总额', placeholder: '如 100000' },
-  { key: 'debt', label: '负债', hint: '房贷 / 车贷 / 信用卡等欠款总额', placeholder: '如 0' },
+const FIELDS: { key: FieldKey; label: MessageKey; hint: MessageKey; ph: MessageKey }[] = [
+  { key: 'income', label: 'finance.income.label', hint: 'finance.income.hint', ph: 'finance.income.ph' },
+  { key: 'expense', label: 'finance.expense.label', hint: 'finance.expense.hint', ph: 'finance.expense.ph' },
+  {
+    key: 'savings',
+    label: 'finance.savings.label',
+    hint: 'finance.savings.hint',
+    ph: 'finance.savings.ph',
+  },
+  { key: 'debt', label: 'finance.debt.label', hint: 'finance.debt.hint', ph: 'finance.debt.ph' },
 ];
 
 type Validation = { ok: true; value: number } | { ok: false; reason: 'empty' | 'negative' | 'nan' };
@@ -43,10 +45,10 @@ function validate(raw: string): Validation {
   return { ok: true, value: n };
 }
 
-const ERROR_TEXT: Record<Exclude<Validation, { ok: true }>['reason'], string> = {
-  empty: '请输入数值',
-  negative: '不能为负数，请填 0 或更大的数',
-  nan: '请输入有效数字',
+const ERROR_KEYS: Record<Exclude<Validation, { ok: true }>['reason'], MessageKey> = {
+  empty: 'finance.error.empty',
+  negative: 'finance.error.negative',
+  nan: 'finance.error.nan',
 };
 
 /** 已存 profile 仅在四项均为有限非负数时才恢复。 */
@@ -69,7 +71,7 @@ const emptyTouched = (): Record<FieldKey, boolean> => ({
   debt: false,
 });
 
-export default function FinanceForm() {
+export default function FinanceForm({ locale = 'zh' }: { locale?: Locale }) {
   // SSR 确定性渲染：空输入 + 默认币种，SSR HTML 即含四个 label 与单位提示。
   const [text, setText] = useState<Record<FieldKey, string>>(emptyText);
   const [touched, setTouched] = useState<Record<FieldKey, boolean>>(emptyTouched);
@@ -95,7 +97,7 @@ export default function FinanceForm() {
   const handleChange = (key: FieldKey, raw: string) => {
     const nextText = { ...text, [key]: raw };
     setText(nextText);
-    setTouched((t) => ({ ...t, [key]: true }));
+    setTouched((prev) => ({ ...prev, [key]: true }));
 
     const res = validate(raw);
     if (!res.ok) {
@@ -148,10 +150,12 @@ export default function FinanceForm() {
   return (
     <section className="pb-24">
       <header>
-        <p className="text-xs font-medium uppercase tracking-widest text-accent">财务录入</p>
-        <h1 className="mt-2 text-2xl font-semibold">填一下你的财务现状</h1>
+        <p className="text-xs font-medium uppercase tracking-widest text-accent">
+          {t('finance.eyebrow', locale)}
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold">{t('finance.h1', locale)}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          只需要 4 个数，随时可以回来改。单位：{currency}（按月计）。
+          {format(t('finance.intro', locale), { currency })}
         </p>
       </header>
 
@@ -165,7 +169,7 @@ export default function FinanceForm() {
                 htmlFor={`field-${f.key}`}
                 className="block text-sm font-medium text-ink"
               >
-                {f.label}
+                {t(f.label, locale)}
               </label>
               <input
                 id={`field-${f.key}`}
@@ -173,7 +177,7 @@ export default function FinanceForm() {
                 min={0}
                 step={100}
                 inputMode="decimal"
-                placeholder={f.placeholder}
+                placeholder={t(f.ph, locale)}
                 value={text[f.key]}
                 onChange={(e) => handleChange(f.key, e.target.value)}
                 aria-invalid={showError}
@@ -184,10 +188,10 @@ export default function FinanceForm() {
                   showError ? 'border-accent' : 'border-line',
                 ].join(' ')}
               />
-              <p className="mt-1.5 text-xs text-muted">{f.hint}</p>
+              <p className="mt-1.5 text-xs text-muted">{t(f.hint, locale)}</p>
               {showError && (
                 <p id={`error-${f.key}`} role="alert" className="mt-1 text-xs text-accent">
-                  {ERROR_TEXT[res.reason]}
+                  {res.ok ? '' : t(ERROR_KEYS[res.reason], locale)}
                 </p>
               )}
             </div>
@@ -196,21 +200,23 @@ export default function FinanceForm() {
       </div>
 
       <p className="mt-4 text-xs text-muted" aria-live="polite">
-        {saved ? '已自动保存到本机' : '4 项填齐后自动保存到本机'}
+        {t(saved ? 'finance.saved' : 'finance.unfilled', locale)}
       </p>
+
+      <p className="mt-2 text-xs leading-relaxed text-muted">{t('finance.privacy', locale)}</p>
 
       <nav className="mt-8 grid gap-3 sm:grid-cols-2">
         <a
           href="/app/designer"
           className="flex min-h-11 items-center justify-center rounded-xl border border-line px-4 py-3 text-sm text-ink hover:border-line-strong"
         >
-          ← 上一步：设计理想生活
+          {t('finance.prev', locale)}
         </a>
         <a
           href="/app/result"
           className="flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-3 text-sm font-medium text-on-accent"
         >
-          下一步：看测算结果 →
+          {t('finance.next', locale)}
         </a>
       </nav>
     </section>
