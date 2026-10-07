@@ -383,3 +383,34 @@ export function dimensionLabel(
 export function optionLabel(option: { id: string; label: string }, locale: CatalogLocale): string {
   return locale === 'en' ? (CATALOG_LABELS_EN[option.id] ?? option.label) : option.label;
 }
+
+/**
+ * 持有成本拆项的英文。**只有带 `costComponents` 的选项**在这里出现（当前 3 个：
+ * 豪宅 / 私人飞机 / 超级游艇）——不像 labels 那样穷尽全目录，因为多数档位没有拆项。
+ * 中文 `costComponents` 仍是唯一权威；这里只多提供一种显示语言，不参与任何计算。
+ * `catalog-l10n.test.ts` 钉住：目录里凡带 costComponents 的选项，这里必须有对应项，
+ * 否则英文界面会静默露出中文拆项。
+ */
+export const CATALOG_COST_COMPONENTS_EN: Record<string, string[]> = {
+  'luxury-mansion': ['Property tax ~$40,000', 'Upkeep ~$80,000'],
+  'private-jet': [
+    'Crew ~$250,000',
+    'Hangar $70,000-150,000',
+    'Insurance (1-3% of price)',
+    'Fuel and maintenance',
+  ],
+  superyacht: [
+    'Crew (about 30-40%)',
+    'Hull upkeep (1-3% of price a year)',
+    'Berthing and insurance',
+    'Refit amortized over 5 years',
+  ],
+};
+
+export function optionCostComponents(
+  option: { id: string; costComponents?: string[] },
+  locale: CatalogLocale,
+): string[] | undefined {
+  if (locale !== 'en') return option.costComponents;
+  return CATALOG_COST_COMPONENTS_EN[option.id] ?? option.costComponents;
+}
