@@ -59,13 +59,13 @@ Necker 整岛包岛候选因媒体口径不一（$113k–140k/晚，且 7 晚起
 - 购物区岛接实时预览：`aria-live` 状态横幅显示「基线 + 加购 = 下一期」、负担率百分比与阈值说明；资产件数 > 体验件数时显示 1:1 配比**提示**（措辞声明只呈现算术、不是消费建议，copy-guard 绿）；红区给出最贵资产 75% 折价回笼提示并引导移出购物车（复用 M2 折价口径，未新造数字）。
 - 口径确认：基线卡 A 自身负担率 1,317,000 ÷ 1,683,000 ≈ 78%，空车即**黄**（与账单日横幅一致），测试按此钉住，不再假设基线为绿。
 
-**S4 进度（2026-10-06，代码完成待推送）**：✅ 一键成目标（SIM→REAL 单向桥，G4 方案 a）落地，本地 95 测试绿、check/构建/SSR 降级验证：
+**S4 进度（2026-10-06，已上线 · PR #35）**：✅ 一键成目标（SIM→REAL 单向桥，G4 方案 a）落地，本地 95 测试绿、check/构建/SSR 降级验证：
 - 过冻结闸门：`Draft` 增可选 `goalOverride?: { annualCost: number; from: 'sim-cart' }`（`draft.ts`），旧草稿天然兼容；`computeResults` 在 override 存在时目标年成本直接取它、不经过 `LifeChoice` 逐维求和（购物车同维多件装不进 choices），`choices` 仍写「每维最贵项」（`topTierChoices`）作展示回显；override 非法（NaN/错 from）退回 choices，由测试钉住。
 - 新模块 `sim-bridge.ts`：`cartGoalAnnualCost`（卡 A 基线 + 加购，复用 S3 `cartAddedAnnualCost`，基线项不双算）；`adoptCartAsGoal` 只写 `rich-sim:plan:v1`，保留已有 profile/currency/assumptions，无草稿则建最小合法草稿；按 profile 完整性返回落点 `/app/result` 或 `/app/finance`。结构性测试钉死：过桥后 sim key 原样、REAL 草稿不含 `startingCapital`、override 对象只有 `annualCost`+`from` 两个键。
 - UI：购物区岛底部「把这套生活设为我的目标」CTA（空车禁用态；文案重申「这是年成本不是你有这么多钱，起始金与资产占比不带过去」），点击写桥 + `track('cart:to-goal')` + 跳转；结果页核心数字卡显示「目标来自富豪模拟购物车」标签。
 - **关 JS 降级**：noscript 链接放在 `sim.astro` SSR 层而非岛内（岛首帧返回 null，岛内 noscript 永不出现——已实测修正），SSR 可见降级链接 1 处、岛交互态 0 处。
 
-**S5 进度（2026-10-06，代码完成待推送）**：✅ 埋点 + 冒烟落地，本地 96 测试绿、e2e 冒烟 **49/49** 实测通过：
+**S5 进度（2026-10-06，已上线 · PR #36）**：✅ 埋点 + 冒烟落地，本地 96 测试绿、e2e 冒烟 **49/49** 实测通过：
 - 埋点：购物区加购 / 移出分别 `track('sim:add')` / `track('sim:remove')`（只发事件名，无金额、档 id 等 props）；S4 CTA 的 `cart:to-goal` 已在 S4 埋上。三个事件名天然过 worker 正则，收集端零改动，props 入库时全丢。
 - `e2e-smoke.mjs` 步骤 8–9：购物区空车→加晚宴→幂等切换不叠加→加游艇（同维多件，新增 \$5,500,000、状态红）→移出游艇回落黄；一键成目标跳 `/app/result`、来源标签可见、sim 账本不变、REAL 只拿到 `goalOverride` 年成本（无起始金）。断言 37 → **49**。
 - **冒烟抓出一个 S2/S3 真实缺陷并修复**：没领过起始金（无 sim 账本）时，`saveCartItem` 每次从 `readSimState()?.cart` 重新派生车，连续加购各自从空车算起而互相覆盖。改为由调用方把当前车传入、`persistCart` 仍只在有 sim 账本时写（不凭空建账本）；无账本时购物车是纯内存会话态。新增 1 条单测钉住「无账本连续加购可累积」。
