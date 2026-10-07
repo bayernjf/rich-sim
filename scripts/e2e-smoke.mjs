@@ -368,6 +368,116 @@ try {
     `text="${converterUsd.trim()}"`,
   );
 
+  // ── 步骤 3.6：可调假设（M4 · PRD §6.2「必须显式展示为可调假设」）──
+  // 先验关 JS 的那一屏：编辑岛不在源码里，但提取率与免责声明必须还在。
+  const ssrAssumptions = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
+  check(
+    !ssrAssumptions.includes('data-assumptions-editor'),
+    '可调假设：SSR 源码里没有编辑岛',
+    '',
+  );
+  check(
+    /data-assumption="withdrawalRate"[^>]*>\d+(\.\d+)?%/.test(ssrAssumptions) &&
+      ssrAssumptions.includes('免责声明'),
+    '可调假设：SSR 仍印出提取率与免责声明',
+    '',
+  );
+
+  await page.waitForSelector('[data-assumptions-editor]', { timeout: 5000 });
+  const enoughNow = async () =>
+    parseAmount(await page.locator('[data-results-root] .font-mono.text-4xl').innerText());
+  const ddOf = (field) => page.locator(`[data-assumption="${field}"]`).innerText();
+  const inputOf = (field) => page.locator(`[data-assumption-input="${field}"]`).inputValue();
+  const baselineYearsOf = async () =>
+    Number((await page.locator('[data-scenario-baseline]').innerText()).match(/(\d+)/)?.[1] ?? NaN);
+
+  const enoughDefault = await enoughNow();
+  const yearsDefault = await baselineYearsOf();
+
+  // 提取率 4% -> 2%：够用线翻倍（纯除法）；情景面板的基线属于**另一个岛**，
+  // 它跟着变才证明 writeDraft 的同页广播真的接上了。
+  await page.fill('[data-assumption-input="withdrawalRate"]', '2');
+  await page.waitForTimeout(250);
+  const enoughHalf = await enoughNow();
+  const yearsAtTwo = await baselineYearsOf();
+  check(
+    Math.abs(enoughHalf - enoughDefault * 2) < 2,
+    '可调假设：提取率减半，够用线翻倍',
+    `before=${enoughDefault} after=${enoughHalf}`,
+  );
+  check(
+    Number.isFinite(yearsDefault) && Number.isFinite(yearsAtTwo) && yearsAtTwo > yearsDefault,
+    '可调假设：情景面板即时重算，年限变长',
+    `${yearsDefault} -> ${yearsAtTwo}`,
+  );
+  check(
+    (await ddOf('withdrawalRate')).trim() === '2%',
+    '可调假设：合规清单同步成真正在用的 2%',
+    `dd=${(await ddOf('withdrawalRate')).trim()}`,
+  );
+
+  // 刷新一次：假设必须落在本机 draft 里，且首帧就把 SSR 清单改成 2%。
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-assumptions-editor]');
+  check(
+    (await inputOf('withdrawalRate')) === '2' &&
+      (await ddOf('withdrawalRate')).trim() === '2%' &&
+      Math.abs((await enoughNow()) - enoughHalf) < 2,
+    '可调假设：刷新后仍是 2%（落盘 + 首帧同步清单）',
+    `input=${await inputOf('withdrawalRate')} dd=${(await ddOf('withdrawalRate')).trim()}`,
+  );
+
+  // 越界不写盘、不静默夹紧；失焦把输入拉回生效值。
+  await page.fill('[data-assumption-input="withdrawalRate"]', '30');
+  await page.waitForTimeout(200);
+  const overAlert = await page.locator('[data-assumptions-editor] [role="alert"]').innerText();
+  check(
+    overAlert.includes('20'),
+    '可调假设：越界报出允许区间，而不是偷偷夹紧',
+    `alert=${overAlert.trim()}`,
+  );
+  check(
+    (await ddOf('withdrawalRate')).trim() === '2%' &&
+      Math.abs((await enoughNow()) - enoughHalf) < 2,
+    '可调假设：非法输入不改测算、不落盘',
+    `dd=${(await ddOf('withdrawalRate')).trim()}`,
+  );
+  await page.locator('[data-assumption-input="withdrawalRate"]').press('Tab');
+  check(
+    (await inputOf('withdrawalRate')) === '2',
+    '可调假设：失焦把非法输入拉回生效值',
+    `input=${await inputOf('withdrawalRate')}`,
+  );
+
+  // 一键回到默认；回到默认后按钮消失（否则它一直在，像个摆设）。
+  await page.click('[data-assumption-reset]');
+  await page.waitForTimeout(250);
+  check(
+    Math.abs((await enoughNow()) - enoughDefault) < 2 &&
+      (await ddOf('withdrawalRate')).trim() === '4%' &&
+      (await page.locator('[data-assumption-reset]').count()) === 0,
+    '可调假设：恢复默认后测算与清单都回到 4%',
+    `dd=${(await ddOf('withdrawalRate')).trim()}`,
+  );
+
+  const evAssumptions = await eventsSoFar();
+  check(
+    countEvent(evAssumptions, 'assumptions:edit') >= 1 &&
+      countEvent(evAssumptions, 'assumptions:reset') >= 1,
+    '埋点：assumptions:edit / assumptions:reset 已入队',
+    `edit=${countEvent(evAssumptions, 'assumptions:edit')} reset=${countEvent(evAssumptions, 'assumptions:reset')}`,
+  );
+  // 红线：用户自己填的假设是财务数据，事件名可以走，数值不行。
+  const assumptionEvents = evAssumptions.filter(
+    (e) => e.event === NAME('assumptions:edit') || e.event === NAME('assumptions:reset'),
+  );
+  const leakedRate = assumptionEvents.find((e) => /\d/.test(JSON.stringify(e.props ?? {})));
+  check(
+    !leakedRate,
+    '红线：假设事件只带字段名，不带任何数值',
+    leakedRate ? JSON.stringify(leakedRate.props) : `n=${assumptionEvents.length}`,
+  );
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
