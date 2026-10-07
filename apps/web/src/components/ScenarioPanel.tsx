@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Catalog } from '@rich-sim/core';
 import { DRAFT_UPDATED_EVENT, readDraft, type Draft } from '../lib/draft';
-import { t, format, type MessageKey } from '../lib/messages';
+import { t, format } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
-import type { Results } from '../lib/results';
 import { track } from '../lib/analytics';
 import {
   SCENARIO_DEFAULTS,
@@ -106,7 +105,6 @@ export default function ScenarioPanel({
 
   const resultLine = (outcome: ScenarioOutcome): string => {
     if (outcome.results.status !== 'ok') return statusLabel(outcome);
-    const status = outcome.results.projection.status;
     if (outcome.yearsDelta === null) {
       // 状态变了，或两侧不全可比 —— 说状态，不说年限。
       return outcome.statusChanged
