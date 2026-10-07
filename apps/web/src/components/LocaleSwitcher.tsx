@@ -8,7 +8,7 @@ const OPTIONS: { value: Locale; text: string }[] = [
 ];
 
 /**
- * M4-i18n · 语言切换（client:load 岛）。
+ * i18n 切片 · 语言切换（client:load 岛）。
  *
  * 为什么写 Cookie 然后刷新，而不是在客户端就地改写文案：语言决定 `<html lang>`
  * 和**合规文本**（假设清单、免责声明是纯 SSR 的红线要求），客户端改写会先渲染

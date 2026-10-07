@@ -15,7 +15,7 @@ import { track } from '../lib/analytics';
  *   合法修改 → 立即经 lib/draft.ts 写回 localStorage（保留其余字段）。
  * - mount 时从 readDraft() 恢复已有 profile（数值合法才恢复）。
  * - 持久化一律走 readDraft / writeDraft，不绕过入口。
- * - 文案全部走 messages（M4-i18n 切片二）：字段名、提示、示例值与错误文本
+ * - 文案全部走 messages（i18n 切片二）：字段名、提示、示例值与错误文本
  *   都随 locale 走，示例值里的 "如 / e.g." 也是文案，不是硬编码。
  */
 

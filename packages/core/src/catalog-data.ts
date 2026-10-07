@@ -322,7 +322,7 @@ export const initialCatalogUSD: Catalog = {
 };
 
 /**
- * M4-i18n 切片一 · 目录内容的第二种显示语言。
+ * i18n 切片一 · 目录内容的第二种显示语言。
  *
  * 为什么不是 `CatalogOption.labelEn` 字段：那要动冻结的 `types.ts`（契约闸门），
  * 而「id -> 英文名」放在**同一模块**里、再由 `catalog-l10n.test.ts` 穷尽性钉死
