@@ -56,7 +56,7 @@ M2 收尾时搭的默认 collect 端点，给 `apps/web/src/lib/analytics.ts` �
 
 **隐私三条（写在 `src/index.ts` 头，不要悄悄改）**：① 只入库 `event` 名与时间，`props` 一律丢弃（`finance:update` 带用户自填的收入/支出，上传即越过红线）；② 不写 IP / UA / 任何标识符，所以没有跨事件个体链路、不需要 consent 门槛，代价是只能做频次统计、做不了单用户转化漏斗；③ 来源白名单（`ALLOWED_ORIGINS`），未知 Origin 直接 403，绝不回显。
 
-**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`locale:switch`、`sim:add`、`sim:remove`、`cart:to-goal`。后三个是 M3 漏斗段（加购 / 移出 / 一键成目标）；事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
+**当前事件清单**（与 `apps/web/src` 调用点一致，2026-10-06 M3 S5 清点）：`designer:select`、`converter:view`、`results:view`、`currency:switch`、`finance:update`、`claim:tap`、`claim:bill`、`claim:reveal`、`route:real`、`route:life`、`locale:switch`、`sim:add`、`sim:remove`、`cart:to-goal`、`scenario:toggle`、`scenario:edit`。`sim:*` 与 `cart:to-goal` 是 M3 漏斗段（加购 / 移出 / 一键成目标）；`scenario:*` 是 M4 S1 的情景段（开关系 / 改幅度，改幅度在 blur 时报一次，避免逐键刷屏）。事件名走 worker 既有正则 `/^[a-z][a-z0-9:_-]{0,63}$/`，无需改收集端。props 全丢后只剩频次（`cart:to-goal` 虽带件数，入库时同样丢弃）。
 
 **合成流量自标记（2026-10-07）**：冒烟运行一律带 `?smoke=1`，此后同标签页的所有事件名加 `smoke:` 前缀（`apps/web/src/lib/analytics.ts` 的 `SMOKE_PREFIX`；标记落在 `sessionStorage`，一次冒烟跳多个 URL 也延续）。原因：库里只有 `{ts, day, event}` 三个字段，**冒烟行与真人行形状完全相同**，在真实流量为零时跑一次生产冒烟就会把「到底有没有人来过」这个唯一信号污染掉。带前缀后可以从查询侧整段滤掉：
 
@@ -126,7 +126,7 @@ git push origin main              # 触发 Cloudflare 自动构建
 2. `/api/fx?base=CNY` 返回完整汇率快照（Frankfurter ECB；验证 SSR + `nodejs_compat`）
 3. `/app/result` 源码可见「假设清单 + 免责声明」（纯 SSR，不依赖 JS）
 4. 完整流程：设计器 → 财务录入 → 测算 → 切币种（真实浏览器冒烟一次）
-  —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-07 实测 **71 条**（开着 `PUBLIC_HOMEPAGE_CLAIM` 跑，否则领钱段整体跳过、断言不到 67）（含换算条与 i18n 的 SSR 语言断言），新增购物区加购/幂等/同维多件、账单预览变色、1:1 配比、75% 折价、一键成目标单向桥与三个新埋点；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
+  —— 第 4 条用仓库自带脚本，不要手点：`BASE_URL=https://app.rich-sim.bayjf.com node scripts/e2e-smoke.mjs`（断言数随片子增长——2026-10-07 实测 **80 条**（开着 `PUBLIC_HOMEPAGE_CLAIM` 跑，否则领钱段整体跳过、断言不到 67）（含换算条与 i18n 的 SSR 语言断言），新增购物区加购/幂等/同维多件、账单预览变色、1:1 配比、75% 折价、一键成目标单向桥与三个新埋点；headless Chrome 驱动系统 Chrome，退出前打印 `TOTAL n FAILS m` 与埋点事件摘要）。脚本含卡 A 与账单日的断言，所以老号线上的新分支会在这两项变红，属预期。
 5. `/sitemap.xml` / `/robots.txt` 返回 200，且其中域名与当前正式域名一致（正式域为 `app.rich-sim.bayjf.com`）
 
 > **2026-10-04 五条全部在生产实测通过**：标题 `财富模拟 · rich-sim`；`/api/fx?base=CNY` 返回 6 币种、`date=2026-10-02`、来源 Frankfurter (ECB)，与上游同一 URL 逐字段一致；`/app/result` 源码含假设清单与免责声明；冒烟 15/15；sitemap 与 robots 内域名均为当时的 `rich-sim.pages.dev`。同日域名拍板并绑定后，第 4 / 5 条已在正式域 `app.rich-sim.bayjf.com` 重跑：冒烟 15/15、`robots.txt` 的 `Sitemap:` 与 `sitemap.xml` 的 4 个 `<loc>` 均为该域、每页 canonical 同域自洽。

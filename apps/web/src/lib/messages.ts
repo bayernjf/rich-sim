@@ -192,6 +192,27 @@ const ZH = {
   'sim.kind.consumerHint': '即时满足、会折旧、要维护',
   'sim.kind.experience': '体验',
   'sim.kind.experienceHint': '一次性、情绪强、零持有负担',
+  'scenario.title': '多情景推演',
+  'scenario.intro': '一次只改一个变量，看它怎么改变达成年限。这是算术推演，不是对未来的预测。',
+  'scenario.raise': '涨薪',
+  'scenario.side': '副业',
+  'scenario.jobless': '失业',
+  'scenario.bigExpense': '大额支出',
+  'scenario.value': '幅度',
+  'scenario.percent': '%',
+  'scenario.perMonth': '/ 月',
+  'scenario.perOnce': '一次性',
+  'scenario.baselineYears': '基线：按你现在的数字，约 {n} 年达成。',
+  'scenario.shorter': '年限少 {n} 年',
+  'scenario.longer': '年限多 {n} 年',
+  'scenario.same': '年限不变',
+  'scenario.incomparable': '年限不可比',
+  'scenario.statusBecame': '状态变为「{status}」',
+  'scenario.status.reachable': '可达',
+  'scenario.status.unreachable': '不可达',
+  'scenario.status.no-net-savings': '无净储蓄',
+  'scenario.note':
+    '情景只改你的收入或一笔一次性支出，其余选择与假设保持不变；金额按当前币种与假设清单计算，不构成投资或职业建议。',
 };
 
 const EN: Record<keyof typeof ZH, string> = {
@@ -384,6 +405,28 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.kind.consumerHint': 'Instant gratification, depreciation, upkeep',
   'sim.kind.experience': 'Experiences',
   'sim.kind.experienceHint': 'One-off, emotionally strong, no holding burden',
+  'scenario.title': 'What-if scenarios',
+  'scenario.intro':
+    'Change one variable at a time and see how it moves the horizon. This is arithmetic, not a forecast.',
+  'scenario.raise': 'Pay rise',
+  'scenario.side': 'Side income',
+  'scenario.jobless': 'Job loss',
+  'scenario.bigExpense': 'Large one-off expense',
+  'scenario.value': 'Amount',
+  'scenario.percent': '%',
+  'scenario.perMonth': '/ month',
+  'scenario.perOnce': 'one-off',
+  'scenario.baselineYears': 'Baseline: with your current numbers, about {n} years.',
+  'scenario.shorter': '{n} years sooner',
+  'scenario.longer': '{n} years later',
+  'scenario.same': 'No change in horizon',
+  'scenario.incomparable': 'Horizon not comparable',
+  'scenario.statusBecame': 'Status becomes "{status}"',
+  'scenario.status.reachable': 'reachable',
+  'scenario.status.unreachable': 'unreachable',
+  'scenario.status.no-net-savings': 'no net savings',
+  'scenario.note':
+    'Scenarios change only your income or a single one-off expense; every other choice and assumption stays as it is. Figures follow the current currency and assumption list, and are not investment or career advice.',
 };
 
 export type MessageKey = keyof typeof ZH;
