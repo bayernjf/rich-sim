@@ -226,6 +226,19 @@ const ZH = {
   'scenario.status.no-net-savings': '无净储蓄',
   'scenario.note':
     '情景只改你的收入或一笔一次性支出，其余选择与假设保持不变；金额按当前币种与假设清单计算，不构成投资或职业建议。',
+  'progress.eyebrow': '和上一次测算比',
+  'progress.range': '{from} → {to}',
+  'progress.days': '相隔 {n} 天',
+  'progress.yearsEarlier': '达标年限 {from} 年 → {to} 年 · 提前 {n} 年',
+  'progress.yearsLater': '达标年限 {from} 年 → {to} 年 · 推迟 {n} 年',
+  'progress.yearsSame': '达标年限没变（{n} 年）',
+  'progress.status': '状态 {from} → {to}',
+  'progress.netUp': '净资产 +{amount}',
+  'progress.netDown': '净资产 −{amount}',
+  'progress.netSame': '净资产没变',
+  'progress.currencyNote':
+    '币种从 {from} 换成 {to}，金额不放在一起比（年限可以：两边按同一个因子一起缩放）',
+  'progress.note': '这是本机每次测算读数的对照，不是预测、不构成建议；有没有进展由你自己判断。',
 };
 
 const EN: Record<keyof typeof ZH, string> = {
@@ -457,6 +470,20 @@ const EN: Record<keyof typeof ZH, string> = {
   'scenario.status.no-net-savings': 'no net savings',
   'scenario.note':
     'Scenarios change only your income or a single one-off expense; every other choice and assumption stays as it is. Figures follow the current currency and assumption list, and are not investment or career advice.',
+  'progress.eyebrow': 'Versus your last calculation',
+  'progress.range': '{from} → {to}',
+  'progress.days': '{n} days apart',
+  'progress.yearsEarlier': 'Horizon {from} → {to} years · {n} years sooner',
+  'progress.yearsLater': 'Horizon {from} → {to} years · {n} years later',
+  'progress.yearsSame': 'Horizon unchanged ({n} years)',
+  'progress.status': 'Status {from} → {to}',
+  'progress.netUp': 'Net worth up {amount}',
+  'progress.netDown': 'Net worth down {amount}',
+  'progress.netSame': 'Net worth unchanged',
+  'progress.currencyNote':
+    'Currency changed from {from} to {to}, so the money figures are not compared side by side (the horizon is: both sides scale by the same factor)',
+  'progress.note':
+    'This is a comparison of what this page showed you on this device. It forecasts nothing, advises nothing, and judges nothing.',
 };
 
 export type MessageKey = keyof typeof ZH;

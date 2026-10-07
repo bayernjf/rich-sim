@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { Catalog, Currency } from '@rich-sim/core';
 import Interpolated from './Interpolated';
-import { DRAFT_UPDATED_EVENT, readDraft } from '../lib/draft';
+import { DRAFT_UPDATED_EVENT, readDraft, writeDraft } from '../lib/draft';
+import {
+  dayKey,
+  diffSnapshots,
+  previousDay,
+  snapshotOf,
+  upsertToday,
+  type ProgressDiff,
+  type Snapshot,
+} from '../lib/progress';
 import { computeResults } from '../lib/results';
 import type { Results } from '../lib/results';
 import { format, t, type MessageKey } from '../lib/messages';
@@ -26,6 +35,9 @@ import { track } from '../lib/analytics';
  */
 
 type View = Results | 'loading' | 'no-draft';
+
+/** 一次回访的对照读数：上一条（不是今天的最后一次测算）与本次。 */
+type Review = { previous: Snapshot; current: Snapshot; diff: ProgressDiff };
 
 const STAGE_ACTION: Record<number, MessageKey> = {
   1: 'result.action1',
@@ -53,6 +65,7 @@ export default function ResultsView({
 }) {
   // SSR 确定性渲染：加载占位（结果区挂载标记随之出现在源码里）。
   const [view, setView] = useState<View>('loading');
+  const [review, setReview] = useState<Review | null>(null);
 
   useEffect(() => {
     let tracked = false;
@@ -61,19 +74,42 @@ export default function ResultsView({
       const draft = readDraft();
       if (!draft) {
         setView('no-draft');
+        setReview(null);
         return;
       }
       const emit = (res: Results) => {
         setView(res);
-        // 一条访问只报一组：假设编辑器每改一次就重报 results:view / converter:view，
-        // 会把「看过结果」刷成「改了假设」——那一步有它自己的事件名。
-        if (!tracked) {
+
+        // F6（本机版）· 本次测算的读数与「和上一次比」。
+        const snap = draft.profile ? snapshotOf(res, draft.profile) : null;
+        const history = draft.history ?? [];
+        // previousDay 用**写盘前**的 history：今天这条不参与，比的是上一个历日。
+        const previous = snap ? previousDay(history, dayKey(snap.at)) : null;
+        setReview(previous && snap ? { previous, current: snap, diff: diffSnapshots(previous, snap) } : null);
+
+        // 一条访问只报一组：假设编辑器每改一次都会广播回来重算，若每次都会把
+        // 「看过结果」刷成「改了假设」（那一步有自己的事件名）。
+        const firstCompute = !tracked;
+        if (firstCompute) {
           tracked = true;
           track('results:view', {
             status: res.status === 'ok' ? res.projection.status : res.status,
             currency: res.status === 'ok' ? res.currency : undefined,
           });
           if (res.status === 'ok') track('converter:view', { status: res.converter.status });
+          // progress:view 没有任何 props。它存在本身就是一条读数：「这台机器今天
+          // 回来看过，而且手里有至少两个历日的记录」——在收集端不存标识符的前提下，
+          // 这是回访唯一能被**计数**的形式（不是回访率，见 PRD §11.2 的死结）。
+          if (previous) track('progress:view');
+        }
+
+        // 落一条本机快照：每次重算都覆盖**当天**那一条，所以存的就是这一屏此刻的
+        // 数——与用户看到的对比保持一致，而不是他进来那一刻的。写盘放在报点之后，
+        // tracked 已经落下来，因此那条写触发的重入只会重渲染、不会再报点。
+        // 值真的没变时 upsertToday 返回同一个数组，于是一个字节都不写。
+        if (snap) {
+          const next = upsertToday(history, snap);
+          if (next !== history) writeDraft({ ...draft, history: next });
         }
       };
       try {
@@ -200,6 +236,83 @@ export default function ResultsView({
               </>
             )}
           </div>
+
+          {/* F6（本机版）· 与上一次测算的对照。放在状态卡之后：它解释的就是上面这些数。 */}
+          {review && (
+            <div data-progress-note className="mt-4 rounded-2xl border border-line bg-panel px-6 py-4">
+              <p className="text-xs font-medium uppercase tracking-widest text-accent">
+                {t('progress.eyebrow', locale)}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                <span className="font-mono tabular-nums">
+                  {format(t('progress.range', locale), {
+                    // 两侧都走 dayKey：快照的 at 是 UTC 串，直接 slice 会在东八区晚上
+                    // 显示成前一天，而这一屏下面比的是本机历日。
+                    from: dayKey(review.previous.at),
+                    to: dayKey(review.current.at),
+                  })}
+                </span>
+                {' · '}
+                {format(t('progress.days', locale), { n: review.diff.daysBetween })}
+              </p>
+
+              <ul className="mt-2 space-y-1 text-sm leading-relaxed text-ink">
+                {review.diff.statusChanged && (
+                  <li data-progress-status>
+                    {format(t('progress.status', locale), {
+                      from: t(`scenario.status.${review.previous.status}` as 'scenario.status.reachable', locale),
+                      to: t(`scenario.status.${review.current.status}` as 'scenario.status.reachable', locale),
+                    })}
+                  </li>
+                )}
+                {review.diff.yearsDelta !== null && (
+                  <li data-progress-years>
+                    {format(
+                      t(
+                        review.diff.yearsDelta < 0
+                          ? 'progress.yearsEarlier'
+                          : review.diff.yearsDelta > 0
+                            ? 'progress.yearsLater'
+                            : 'progress.yearsSame',
+                        locale,
+                      ),
+                      {
+                        from: review.previous.years ?? '—',
+                        to: review.current.years ?? '—',
+                        n: Math.abs(review.diff.yearsDelta),
+                      },
+                    )}
+                  </li>
+                )}
+                {review.diff.netWorthDelta !== null && (
+                  <li data-progress-net>
+                    {format(
+                      t(
+                        review.diff.netWorthDelta > 0
+                          ? 'progress.netUp'
+                          : review.diff.netWorthDelta < 0
+                            ? 'progress.netDown'
+                            : 'progress.netSame',
+                        locale,
+                      ),
+                      { amount: money(Math.abs(review.diff.netWorthDelta), review.current.currency) },
+                    )}
+                  </li>
+                )}
+              </ul>
+
+              {!review.diff.sameCurrency && (
+                <p data-progress-currency-note className="mt-2 text-xs leading-relaxed text-muted">
+                  {format(t('progress.currencyNote', locale), {
+                    from: review.previous.currency,
+                    to: review.current.currency,
+                  })}
+                </p>
+              )}
+
+              <p className="mt-2 text-xs leading-relaxed text-muted">{t('progress.note', locale)}</p>
+            </div>
+          )}
 
           {/* gap 区 */}
           <div className="mt-4 rounded-2xl border border-line bg-panel p-6">
