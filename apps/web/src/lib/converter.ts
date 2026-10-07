@@ -1,20 +1,28 @@
 import {
+  convert,
+  enoughLine,
+  optionLabel,
+  project,
   wealthTimeEquivalent,
+  type Assumptions,
   type Catalog,
   type CatalogOption,
   type Currency,
   type FxSnapshot,
   type LifeChoice,
   type Profile,
+  type Projection,
   type TimeEquivalent,
 } from '@rich-sim/core';
+import { formatRate } from './assumptions';
 import type { Locale } from './i18n';
 
 /**
  * S3 · 换算条展示层（comparison-converter.md）。
  *
  * 这个模块只做两件事：挑换算对象、出文案。算术在 core 的
- * `wealthTimeEquivalent` 里（分子的币种换算在函数内部，调用方绕不过）。
+ * `wealthTimeEquivalent` / `enoughLine` / `project` 里（分子的币种换算在
+ * 函数内部，调用方绕不过）。
  *
  * 只读纪律：本模块不 import `lib/draft.ts`，也不写任何本机状态——换算条
  * 是一次性展示，不进方案（m2-task-breakdown.md S3「不写入 draft」）。
@@ -23,6 +31,10 @@ import type { Locale } from './i18n';
  *
  * 文案随 locale 走（i18n 切片）：主语始终是**这笔账的代价**，不是「他的拥有」，
  * 英文同样不出现 promise / you will 这类预测句式（§5 措辞纪律）。
+ *
+ * 对象名一律过 `optionLabel`：目录里的 `label` 是中文源文，直接插进英文句子
+ * 就是「英文页面夹一条中文账单」——这一条曾在 sticky 上真实发生过
+ * （`"自有公寓（房贷+物业+水电）" costs $27,000 a year`）。
  */
 
 /** 换算对象 = 当前选择里最贵的一项：它就是「他这一年的账单」中最荒谬的那笔。 */
@@ -42,6 +54,9 @@ const COPY: Record<Locale, {
   beyond: (item: string, money: string) => string;
   noNet: (item: string) => string;
   nudge: (item: string) => string;
+  principalReachable: (item: string, cost: string, rate: string, principal: string, duration: string) => string;
+  principalUnreachable: (item: string, cost: string, rate: string, principal: string) => string;
+  principalNoNet: (item: string, cost: string, rate: string, principal: string) => string;
 }> = {
   zh: {
     years: (item, money, d) => `「${item}」一年 ${money} = 你按现在的存法要存 ${d}。`,
@@ -49,6 +64,12 @@ const COPY: Record<Locale, {
     beyond: (item, money) => `「${item}」一年 ${money}，按你填的数已经算不出年数——量级差得太远。`,
     noNet: (item) => `「${item}」：按你填的数，目前每月没有净储蓄——这条先算不出年来。`,
     nudge: (item) => `先填 4 个数，就能把「${item}」换算成你要存多久。`,
+    principalReachable: (item, cost, rate, principal, d) =>
+      `养住「${item}」需要本金 ${principal}：一年 ${cost} ÷ 提取率 ${rate}。按你填的收入、支出与回报率，攒到这笔本金约 ${d}。`,
+    principalUnreachable: (item, cost, rate, principal) =>
+      `养住「${item}」需要本金 ${principal}（一年 ${cost} ÷ 提取率 ${rate}）。按你填的收入、支出与回报率，60 年内攒不到这笔本金。`,
+    principalNoNet: (item, cost, rate, principal) =>
+      `养住「${item}」需要本金 ${principal}（一年 ${cost} ÷ 提取率 ${rate}）。按你填的数，目前每月没有净储蓄——这笔本金攒不出来。`,
   },
   en: {
     years: (item, money, d) =>
@@ -61,6 +82,12 @@ const COPY: Record<Locale, {
       `"${item}": with the numbers you entered there is no monthly surplus, so this one cannot be turned into years.`,
     nudge: (item) =>
       `Fill in 4 numbers and "${item}" becomes how long it would take you to save for it.`,
+    principalReachable: (item, cost, rate, principal, d) =>
+      `Carrying "${item}" needs ${principal} of capital: ${cost} a year ÷ a ${rate} withdrawal rate. On the income, spending and return rate you entered, that capital takes about ${d}.`,
+    principalUnreachable: (item, cost, rate, principal) =>
+      `Carrying "${item}" needs ${principal} of capital (${cost} a year ÷ a ${rate} withdrawal rate). On the numbers you entered, it is out of reach within 60 years.`,
+    principalNoNet: (item, cost, rate, principal) =>
+      `Carrying "${item}" needs ${principal} of capital (${cost} a year ÷ a ${rate} withdrawal rate). With the numbers you entered there is no monthly surplus to save that capital from.`,
   },
 };
 
@@ -134,12 +161,104 @@ export function converterLine(
   const item = priciestSelection(catalog, choices);
   if (!item) return null;
   return converterForItem(
-    { label: item.label, annualCostUSD: item.annualCost },
+    { label: optionLabel(item, locale), annualCostUSD: item.annualCost },
     profile,
     fx,
     formatMoney,
     locale,
   );
+}
+
+/**
+ * §2.2 本金口径：把「一年要花多少」翻成「**养住它要有多少本金**」。
+ *
+ * 算术全部走 core 的公开函数，不新写复利求解（`yearsToTarget` / `MAX_YEARS`
+ * 是模块私有的，导出它们属于改契约）：
+ * - 本金 = `enoughLine(年成本本位币, a)` = 年成本 ÷ 提取率；
+ * - 年限 = `project(profile, { enough-line, 年成本本位币 }, a)`——它的目标本金
+ *   正是上面那个数，所以这一句里的两个数字**天然同源**，不会出现
+ *   「本金按 4%、年限按 3%」这种两套口径的走神。
+ *
+ * 因此这两个数**随假设而动**：用户在结果页改了提取率，这里必须跟着变
+ * （PRD §6.2 要求两个率显式可调，不是显式可看）。轻量口径那条纯除法不受影响。
+ */
+export type PrincipalFraming = {
+  /** 年成本换算到录入币种后的值（§3.1：分子必须先与分母同币种）。 */
+  annualCostLocal: number;
+  principal: number;
+  withdrawalRate: number;
+  status: Projection['status'];
+  years: number | null;
+};
+
+export function principalForItem(
+  annualCostUSD: number,
+  profile: Profile,
+  assumptions: Assumptions,
+): PrincipalFraming {
+  const annualCostLocal = convert(annualCostUSD, 'USD', profile.currency, assumptions.fx);
+  const projection = project(
+    profile,
+    { kind: 'enough-line', value: annualCostLocal },
+    assumptions,
+  );
+  return {
+    annualCostLocal,
+    principal: enoughLine(annualCostLocal, assumptions),
+    withdrawalRate: assumptions.withdrawalRate,
+    status: projection.status,
+    years: projection.status === 'reachable' ? projection.years : null,
+  };
+}
+
+export function principalCopy(
+  framing: PrincipalFraming,
+  itemLabel: string,
+  formatMoney: (localAmount: number) => string,
+  locale: Locale = 'zh',
+): string {
+  const copy = COPY[locale];
+  const cost = formatMoney(framing.annualCostLocal);
+  const principal = formatMoney(framing.principal);
+  const rate = formatRate(framing.withdrawalRate);
+  switch (framing.status) {
+    case 'no-net-savings':
+      return copy.principalNoNet(itemLabel, cost, rate, principal);
+    case 'unreachable':
+      return copy.principalUnreachable(itemLabel, cost, rate, principal);
+    case 'reachable':
+      return copy.principalReachable(
+        itemLabel,
+        cost,
+        rate,
+        principal,
+        formatDuration(framing.years ?? 0, locale),
+      );
+  }
+}
+
+/**
+ * sticky 条用的本金口径：对象与轻量口径**必须是同一项**，否则一屏里两句说的是
+ * 两笔钱。没录入 profile 时整块不出现（这一档必须有收入支出才能反解年限，
+ * 与轻量口径不同——那条还能给引导句）。
+ */
+export function principalLine(
+  catalog: Catalog,
+  choices: LifeChoice,
+  profile: Profile | null,
+  assumptions: Assumptions,
+  formatMoney: (localAmount: number, currency: Currency) => string,
+  locale: Locale = 'zh',
+): { sentence: string; item: string; framing: PrincipalFraming } | null {
+  const item = priciestSelection(catalog, choices);
+  if (!item || !profile) return null;
+  const framing = principalForItem(item.annualCost, profile, assumptions);
+  const label = optionLabel(item, locale);
+  return {
+    sentence: principalCopy(framing, label, (local) => formatMoney(local, profile.currency), locale),
+    item: label,
+    framing,
+  };
 }
 
 /**

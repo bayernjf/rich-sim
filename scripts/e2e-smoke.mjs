@@ -274,6 +274,25 @@ try {
     'i18n：英文页面的合规文本也是英文（不是中文兜过去）',
     '',
   );
+  // 换算条插的是**目录项名**（core 的内容层，不是界面 chrome），而 sticky 条由岛
+  // 渲染——所以只看 SSR HTML 抓不到它。这一条曾经真实红过：英文页显示
+  // `"自有公寓（房贷+物业+水电）" costs $27,000 a year`。
+  await page.waitForSelector('[data-converter-line]', { timeout: 5000 });
+  const stickyEn = await page.locator('[data-converter-line]').innerText();
+  check(
+    !/[\u4e00-\u9fff]/.test(stickyEn),
+    'i18n：英文设计器的换算条不夹中文项名',
+    `text="${stickyEn.trim().slice(0, 70)}"`,
+  );
+
+  // 本金口径（§2.2）在没录入财务时整块不出现：那一档要收入与支出才能反解年限，
+  // 留一个点开没内容的控件比没有控件更坏。
+  check(
+    (await page.locator('[data-converter-principal]').count()) === 0,
+    '本金口径：未录入财务时不出现展开位',
+    '',
+  );
+
   // 切回中文继续——后面的断言用中文选择器与中文文案。
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
 
@@ -478,6 +497,188 @@ try {
     leakedRate ? JSON.stringify(leakedRate.props) : `n=${assumptionEvents.length}`,
   );
 
+  // ── 步骤 3.7：本机测算历史（F6 本机版）——回访时看到的「和上次比」──
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-results-root]');
+  // 先验关 JS 的一屏：复盘块是岛渲染的，源码里不能有它。
+  const ssrProgress = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
+  check(
+    !ssrProgress.includes('data-progress-note'),
+    '测算历史：SSR 源码里没有复盘块',
+    '',
+  );
+
+  // 第一次访问：只该留下一条今天的记录，而且没有可比对象。
+  const histAfterFirstVisit = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}').history?.length ?? 0,
+  );
+  check(
+    histAfterFirstVisit === 1,
+    '测算历史：首次测算只落一条本机记录',
+    `count=${histAfterFirstVisit}`,
+  );
+  check(
+    (await page.locator('[data-progress-note]').count()) === 0,
+    '测算历史：没有上一条时不编造对比',
+    '',
+  );
+
+  // 反复刷新不得越刷越多：同一天覆盖当天那一条，而不是追加。
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-results-root]');
+  const histAfterReload = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}').history?.length ?? 0,
+  );
+  check(
+    histAfterReload === 1,
+    '测算历史：同一天反复测算不增长（写盘只发生在数字真的变了时）',
+    `count=${histAfterReload}`,
+  );
+
+  // 喂一条「3 天前」的记录：年限推后 5 年、净资产少 5 万——都是脚本自己写的数，
+  // 所以断言看得见「读的是本机历史、算的是差值」，而不是碰巧渲染了什么。
+  const yearsNow = Number(
+    (await page.locator('[data-status]').innerText()).match(/约\s*(\d+)\s*年/)?.[1] ?? NaN,
+  );
+  check(Number.isFinite(yearsNow), '测算历史：先从状态卡读到当前年限', `years=${yearsNow}`);
+
+  const seedHistory = (entries) =>
+    page.evaluate((raw) => {
+      const draft = JSON.parse(localStorage.getItem('rich-sim:plan:v1') || '{}');
+      draft.history = raw;
+      localStorage.setItem('rich-sim:plan:v1', JSON.stringify(draft));
+    }, entries);
+
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]', { timeout: 5000 });
+
+  const yearsLine = await page.locator('[data-progress-years]').innerText();
+  check(
+    yearsLine.includes(String(yearsNow + 5)) && yearsLine.includes(String(yearsNow)) && yearsLine.includes('提前 5 年'),
+    '复盘：上一条年限更大时，报「提前 5 年」',
+    `text="${yearsLine.trim()}"`,
+  );
+  const netLine = await page.locator('[data-progress-net]').innerText();
+  check(
+    netLine.includes('净资产') && netLine.includes('50,000'),
+    '复盘：同币种时给出净资产差值',
+    `text="${netLine.trim()}"`,
+  );
+  const progressNote = await page.locator('[data-progress-note]').innerText();
+  check(
+    /相隔 \d+ 天/.test(progressNote) && progressNote.includes('2026-'),
+    '复盘：说清两次测算的日期与间隔',
+    `text="${progressNote.replace(/\s+/g, ' ').trim().slice(0, 80)}"`,
+  );
+  check(
+    progressNote.includes('不是预测') && progressNote.includes('不构成建议'),
+    '复盘：合规措辞跟着走（这不是预测，也不是建议）',
+    '',
+  );
+
+  // 跨币种：金额不放在一起比，但年限仍然可比（递推的齐次性）。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'CNY',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 723_392,
+      enoughLine: 18_084_800,
+      netWorth: 356_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]');
+  check(
+    (await page.locator('[data-progress-net]').count()) === 0,
+    '复盘：跨币种时不给金额差（不同单位相减没有意义）',
+    '',
+  );
+  check(
+    (await page.locator('[data-progress-currency-note]').count()) === 1 &&
+      (await page.locator('[data-progress-years]').count()) === 1,
+    '复盘：跨币种改成明说「不放在一起比」，年限仍然比',
+    '',
+  );
+
+  // 状态跨档：三状态是一等状态，复盘要说状态而不是年限。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'no-net-savings',
+      years: null,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-status]');
+  const statusLine = await page.locator('[data-progress-status]').innerText();
+  check(
+    statusLine.includes('无净储蓄') && statusLine.includes('可达'),
+    '复盘：状态跨档说状态（复用三状态的词典，不另造说法）',
+    `text="${statusLine.trim()}"`,
+  );
+
+  const evProgress = await eventsSoFar();
+  check(
+    countEvent(evProgress, 'progress:view') >= 1,
+    '埋点：progress:view 已入队（回访且手里有上一条时才算一次）',
+    `count=${countEvent(evProgress, 'progress:view')}`,
+  );
+  const progressWithValues = (await eventsSoFar()).find(
+    (e) => e.event === NAME('progress:view') && /\d/.test(JSON.stringify(e.props ?? {})),
+  );
+  check(
+    !progressWithValues,
+    '红线：progress:view 一个 props 都不带',
+    progressWithValues ? JSON.stringify(progressWithValues.props) : '',
+  );
+
+  // 英文态同一块。eyebrow 有 CSS uppercase，innerText 拿到的是渲染后的大写形，
+  // 所以按小写比对——按原样字符串比会红在一个纯样式决定上。
+  // 此时手里那条是「无净储蓄」的记录，所以这块说的是状态而不是年限。
+  await page.goto(`${BASE}/app/result?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-progress-note]');
+  const progressEn = await page.locator('[data-progress-note]').innerText();
+  const progressEnLower = progressEn.toLowerCase();
+  check(
+    progressEnLower.includes('versus your last calculation') &&
+      /days apart/.test(progressEn) &&
+      progressEnLower.includes('no net savings') &&
+      progressEnLower.includes('forecasts nothing') &&
+      !/[\u4e00-\u9fff]/.test(progressEn),
+    'i18n：复盘块英文态不夹中文（含复用的三状态词）',
+    `text="${progressEn.replace(/\s+/g, ' ').trim().slice(0, 90)}"`,
+  );
+
+  // 留两条记录给后面的步骤：390 宽要带着这一块量一次不溢出（步骤 10 那条）。
+  await seedHistory([
+    {
+      at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      currency: 'USD',
+      status: 'reachable',
+      years: yearsNow + 5,
+      annualCost: 101_600,
+      enoughLine: 2_540_000,
+      netWorth: 50_000,
+    },
+  ]);
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
@@ -500,6 +701,88 @@ try {
       converterAfterFinance.every((e) => e.props?.status !== 'no-profile'),
     '换算条：录入财务后不再误报 no-profile',
     `statuses=${converterAfterFinance.map((e) => e.props?.status).join(',') || '(无)'} financeIdx=${idxFinance}`,
+  );
+
+  // ── 步骤 4.5：本金口径（§2.2，可展开）──
+  // 这一步在设计器页做：切完币种之后，金额已经是 CNY 口径，正好同时验币种通路。
+  await page.waitForSelector('[data-converter-principal]', { timeout: 5000 });
+
+  // 默认折叠是文档写死的形态（§2.2「默认折叠」），而且折叠时那句本金不该被读到。
+  const collapsed = await page.evaluate(
+    () => document.querySelector('[data-converter-principal]')?.open ?? null,
+  );
+  check(collapsed === false, '本金口径：默认折叠', `open=${String(collapsed)}`);
+
+  // 两个操作数从页面不同位置读，彼此核对，不吃实现输出：
+  //   本金（data 属性） ?= 年成本（同一行 data 属性）÷ 提取率（合规清单那一行）
+  const framing = await page.evaluate(() => {
+    const el = document.querySelector('[data-converter-principal]');
+    const rateText = document.querySelector('[data-assumption="withdrawalRate"]')?.textContent ?? '';
+    return {
+      annualCost: Number(el?.getAttribute('data-annual-cost')),
+      principal: Number(el?.getAttribute('data-principal')),
+      rateText: rateText.trim(),
+    };
+  });
+  const rateFromPage = Number.parseFloat(framing.rateText) / 100;
+  check(
+    Number.isFinite(framing.principal) &&
+      Number.isFinite(framing.annualCost) &&
+      rateFromPage > 0 &&
+      Math.abs(framing.principal - framing.annualCost / rateFromPage) < 1,
+    '本金口径：本金 = 页上所示年成本 ÷ 页上所示提取率',
+    `principal=${framing.principal} cost=${framing.annualCost} rate=${framing.rateText}`,
+  );
+
+  // 轻量口径那行与本金口径必须是**同一笔钱**（否则一屏两句各说各话）。
+  const lightCost = parseAmount(await page.locator('[data-converter-line]').innerText());
+  check(
+    Math.abs(lightCost - framing.annualCost) < 1,
+    '本金口径：展开位与换算条说的是同一个对象',
+    `light=${lightCost} framing=${framing.annualCost}`,
+  );
+
+  // 展开：句子里要出现本金那个数字（千分位形式），并且 converter:expand 只报一次。
+  //
+  // 先在测试里按住 Astro 的 dev toolbar：它在 dev 模式浮在视口底部，正好盖住
+  // sticky 条里的 <summary>，playwright 的真点击会一直等可点击性而超时
+  // （`<astro-dev-toolbar> intercepts pointer events`）。生产构建没有这个工具条，
+  // 所以这不是产品缺陷，而是只在 dev 冒烟里存在的遮挡——去掉它之后仍然走真点击，
+  // 不降级成 JS 派发，否则这一条就再也证明不了「用户点得动」。
+  await page.addStyleTag({ content: 'astro-dev-toolbar{display:none !important}' });
+  await page.click('[data-converter-principal] summary');
+  await page.waitForTimeout(200);
+  const principalText = await page.locator('[data-converter-principal]').innerText();
+  // 比的是**页上渲染出来的那位数**：data 属性存原始浮点，展示按 maximumFractionDigits: 0
+  // 取整，直接 toLocaleString 会把小数位一起带进比对（第一次红就是这么来的）。
+  check(
+    principalText.includes(Math.round(framing.principal).toLocaleString('en-US')) &&
+      principalText.includes('÷') &&
+      principalText.includes(framing.rateText),
+    '本金口径：展开后把除法本身写进句子里',
+    `text="${principalText.replace(/\s+/g, ' ').trim().slice(0, 90)}"`,
+  );
+
+  await page.click('[data-converter-principal] summary');
+  await page.waitForTimeout(150);
+  await page.click('[data-converter-principal] summary');
+  await page.waitForTimeout(200);
+  const evExpand = await eventsSoFar();
+  check(
+    countEvent(evExpand, 'converter:expand') === 1,
+    '埋点：converter:expand 一条访问只报一次（反复折叠不刷屏）',
+    `count=${countEvent(evExpand, 'converter:expand')}`,
+  );
+
+  // 展开后 390 宽仍不得横向溢出（这一段句子最长）。
+  const principalOverflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  check(
+    principalOverflow.scrollWidth <= principalOverflow.innerWidth + 1,
+    '本金口径：展开态在 390 宽不横向溢出',
+    `scrollWidth=${principalOverflow.scrollWidth} innerWidth=${principalOverflow.innerWidth}`,
   );
 
   // ── 步骤 5：复看结果页，金额随新币种（约 1800 万量级 CNY）──

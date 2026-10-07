@@ -3,6 +3,7 @@ import {
   convert,
   dimensionLabel,
   optionLabel,
+  type Assumptions,
   type Catalog,
   type Currency,
   type FxSnapshot,
@@ -11,8 +12,8 @@ import {
 } from '@rich-sim/core';
 import { readDraft, writeDraft } from '../lib/draft';
 import { patchAssumptionDisplay } from '../lib/assumptions';
-import { STATIC_FX_SNAPSHOT } from '../lib/defaults';
-import { converterLine } from '../lib/converter';
+import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
+import { converterLine, principalLine } from '../lib/converter';
 import { format, t } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
@@ -74,8 +75,13 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
 
   // T10 展示层状态：展示本位币 + 换算用 fx 快照（仅展示，不参与引擎计算）。
   // Catalog 以 USD 建模，展示时一律 convert(usdAmount, 'USD', currency, fx)。
+  //
+  // 2026-10-08：`fx` 状态换成整套 `assumptions`。本金口径（§2.2）要吃提取率与
+  // 回报率，而这两个数现在真的可改（结果页 AssumptionsEditor）——这一页若还只
+  // 带 fx，sticky 上就会按写死的 4% 算本金，与用户在下一页刚设的值打架。
   const [currency, setCurrency] = useState<Currency>('USD');
-  const [fx, setFx] = useState<FxSnapshot>(() => STATIC_FX_SNAPSHOT);
+  const [assumptions, setAssumptions] = useState<Assumptions>(DEFAULT_ASSUMPTIONS);
+  const fx = assumptions.fx;
   /** S3 换算条的分母（只读；换算条本身不写回任何本机状态）。 */
   const [profile, setProfile] = useState<Profile | null>(null);
   /** 本机方案是否已恢复过——换算条上报要等它，见下面的 tracker。 */
@@ -92,16 +98,16 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
     }
   }, [catalog]);
 
-  // 仅展示层：从 draft 恢复展示币种、fx 快照与已录入的财务现状
-  // （不动 choices 的选择/持久化逻辑）。
+  // 仅展示层：从 draft 恢复展示币种、整套假设（含 fx 快照与两个可改的率）与
+  // 已录入的财务现状（不动 choices 的选择/持久化逻辑）。
   // deps 带 currency：CurrencySwitcher 切换时会把 profile 各金额一并换算后写回
-  // draft，这里必须重读，否则换算条吃的还是旧币种的分母。不带 fx——它在每次
-  // readDraft 里都是新解析出来的对象身份，进 deps 会让本 effect 自己转成死循环。
+  // draft，这里必须重读，否则换算条吃的还是旧币种的分母。不带 assumptions——它在
+  // 每次 readDraft 里都是新解析出来的对象身份，进 deps 会让本 effect 自己转成死循环。
   useEffect(() => {
     const draft = readDraft();
     if (draft) {
       setCurrency(draft.currency ?? 'USD');
-      if (draft.assumptions?.fx) setFx(draft.assumptions.fx);
+      if (draft.assumptions) setAssumptions(draft.assumptions);
       setProfile(draft.profile ?? null);
       // 合规清单是 SSR 渲染的，只能印默认值；用户在本机改过假设后，那几个数字
       // 必须是真正在用的那一套，否则这一页在替一个不成立的假设背书。
@@ -113,7 +119,7 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
   /** 切换器切换成功回调：更新展示态（持久化已由 CurrencySwitcher 经 writeDraft 完成）。 */
   const handleCurrencyChanged = (next: Currency, nextFx: FxSnapshot) => {
     setCurrency(next);
-    setFx(nextFx);
+    setAssumptions((prev) => ({ ...prev, fx: nextFx }));
   };
 
   /** 把 Catalog 的 USD 年成本换算到展示本位币并格式化（等宽数字）。 */
@@ -153,7 +159,7 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
   // 金额已经在 profile 币种里（core 函数换算过），这里只加符号与千分位。
   const converter = useMemo(
     () =>
-      converterLine(catalog, choices, profile, fx, (local, c) =>
+      converterLine(catalog, choices, profile, assumptions.fx, (local, c) =>
         local.toLocaleString('en-US', {
           style: 'currency',
           currency: c,
@@ -161,8 +167,32 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
         }),
         locale,
       ),
-    [catalog, choices, profile, fx, locale],
+    [catalog, choices, profile, assumptions, locale],
   );
+
+  // §2.2 本金口径：同一个对象（当前选择里最贵那项）换一种问法——
+  // 「一年要花多少」翻成「养住它要有多少本金」。吃整套假设，所以它跟着
+  // 用户在结果页改的提取率与回报率动（§6.2 要求这两个数可**调**，不只是可看）。
+  const principal = useMemo(
+    () =>
+      principalLine(catalog, choices, profile, assumptions, (local, c) =>
+        local.toLocaleString('en-US', {
+          style: 'currency',
+          currency: c,
+          maximumFractionDigits: 0,
+        }),
+        locale,
+      ),
+    [catalog, choices, profile, assumptions, locale],
+  );
+
+  // 展开只报一次：反复折叠再打开不该把「看过本金口径」刷成好几次。
+  const expandedTracked = useRef(false);
+  const handleExpand = (open: boolean) => {
+    if (!open || expandedTracked.current) return;
+    expandedTracked.current = true;
+    track('converter:expand');
+  };
 
   // 一次页面访问只报一条 converter:view（随选择重算时不重复刷屏）。
   // 必须等 restored：mount 首帧 profile 恒为 null，否则每个已录入财务的用户
@@ -289,6 +319,28 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
                 </a>
               )}
             </p>
+          )}
+
+          {/* §2.2 本金口径：默认折叠，标题就是文档里那句话。用原生 <details>
+              而不是自建开合——键盘可达与「展开后才能读到」的语义是浏览器给的。
+              两个数字挂在 data-* 上：这一句的两个操作数（年成本、本金）要能和
+              轻量口径那行交叉对上，靠解析渲染文本做不到稳定（项名里可能有数字）。 */}
+          {principal && (
+            <details
+              data-converter-principal
+              data-annual-cost={principal.framing.annualCostLocal}
+              data-principal={principal.framing.principal}
+              className="mt-1.5 text-xs leading-relaxed text-muted"
+              onToggle={(e) => handleExpand((e.target as HTMLDetailsElement).open)}
+            >
+              <summary className="min-h-11 cursor-pointer list-none text-accent hover:underline">
+                {t('converter.principalToggle', locale)}
+              </summary>
+              <p className="pb-1 pt-1">{principal.sentence}</p>
+              <p className="pb-2 text-[11px] leading-relaxed opacity-80">
+                {t('converter.principalAssumptionNote', locale)}
+              </p>
+            </details>
           )}
         </div>
       </div>

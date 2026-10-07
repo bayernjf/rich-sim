@@ -1,4 +1,5 @@
 import type { Assumptions, Currency, LifeChoice, Profile } from '@rich-sim/core';
+import type { Snapshot } from './progress';
 
 /**
  * localStorage draft schema (frozen). MVP has no backend; the whole plan
@@ -30,6 +31,12 @@ export type Draft = {
    * （无起始金、无资产占比）。undefined = 普通设计器方案，旧草稿天然兼容。
    */
   goalOverride?: { annualCost: number; from: 'sim-cart' };
+  /**
+   * F6（本机版）· 测算历史快照，见 `lib/progress.ts`。
+   * undefined = 这台机器还没记过（旧草稿天然兼容）；`[]` = 主动清空。
+   * 只存派生数字与当时的净资产，不存任何输入原文之外的东西，且**永远不出本机**。
+   */
+  history?: Snapshot[];
   /** ISO timestamp. */
   updatedAt: string;
 };
@@ -47,9 +54,16 @@ export function readDraft(): Draft | null {
 }
 
 export function writeDraft(draft: Draft): void {
+  // `history` 是只追加的本机记录，写它的只有结果页那一个岛。其余调用点（设计器、
+  // 财务录入、币种切换、模拟购物车）都是**重建整个 draft**，不逐条透传就会把历史
+  // 抹掉——而且抹得很安静。所以这里统一保留：调用方不显式写 history 就等于不动它。
+  // 要清掉请显式传 `history: []`（当前只有 clearDraft 走整键删除）。
+  const previous = readDraft();
+  const merged =
+    draft.history === undefined && previous?.history ? { ...draft, history: previous.history } : draft;
   localStorage.setItem(
     DRAFT_KEY,
-    JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }),
+    JSON.stringify({ ...merged, updatedAt: new Date().toISOString() }),
   );
   // 同一页上有多个岛各读一份 draft（结果区、情景面板、假设编辑器）。任何一个
   // 写完，其余的必须重读重算，否则改完假设下面的数字还停在旧值上——那正是这一

@@ -9,9 +9,9 @@
 
 ## 布局
 
-- `packages/core` — `@rich-sim/core` 纯函数计算引擎（类型契约 + 5 引擎函数 + 汇率换算，Vitest）
+- `packages/core` — `@rich-sim/core` 纯函数计算引擎（类型契约 + `functions.ts` 的 8 个引擎函数：`enoughLine` / `scenarioAnnualCost` / `project` / `gap` / `buildMilestones` / `convert` / `burdenStatus` / `wealthTimeEquivalent`；目录与本地化在 `catalog-data.ts`，Vitest）
 - `apps/web` — Astro 5 + React 19 + Tailwind v4 应用（SSR）
-- `docs/` — 产品文档（product-concept / PRD / technical-design / simulation-gameplay / m1-task-breakdown / deferred-items）
+- `docs/` — 产品文档；**清单与每份状态只在 `handoff.md` 的文档表里维护**（这里不复制，复制过的那份会过期）
 
 ## 常用命令（仓库根目录）
 
