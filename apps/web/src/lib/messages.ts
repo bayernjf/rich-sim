@@ -228,6 +228,7 @@ const ZH = {
   'sim.kind.consumerHint': '即时满足、会折旧、要维护',
   'sim.kind.experience': '体验',
   'sim.kind.experienceHint': '一次性、情绪强、零持有负担',
+  'sim.cardSwitch': '换一张身份卡：',
   'invest.title': '把起始金放进资产类别',
   'invest.intro':
     '把这笔虚拟起始金分配到五个资产类别，自己填每个类别的年收益率假设，看它按你的假设滚 1 / 5 / 10 年。只有资产类别，没有任何具体标的；收益率是你的假设，不是承诺。',
@@ -559,6 +560,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.kind.consumerHint': 'Instant gratification, depreciation, upkeep',
   'sim.kind.experience': 'Experiences',
   'sim.kind.experienceHint': 'One-off, emotionally strong, no holding burden',
+  'sim.cardSwitch': 'Switch persona card:',
   'invest.title': 'Allocate your starting capital',
   'invest.intro':
     'Split this virtual capital across five asset classes, enter your own annual return assumption for each, and watch it compound over 1 / 5 / 10 years on your assumptions. Asset classes only - no tickers, no products. The returns are your assumptions, not promises.',

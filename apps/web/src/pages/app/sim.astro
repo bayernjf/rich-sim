@@ -10,10 +10,12 @@ import { localeFromRequest } from '../../lib/i18n';
 import { format, t } from '../../lib/messages';
 import {
   BILLS_PER_PAGE,
-  CARD_A,
-  CARD_A_ANNUAL_INCOME,
   CARD_A_BROKE,
+  SIM_CARDS,
+  CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
+  CARD_B_ANNUAL_INCOME,
+  CARD_B_LAST_YEAR_COST,
   SELL_DISCOUNT,
   capitalFromParam,
   cardAnnualCost,
@@ -26,15 +28,23 @@ import {
 const catalog = initialCatalogUSD;
 /** 页面语言在 SSR 期解析（Cookie / ?lang= / Accept-Language），与其余页同一套。 */
 const locale = localeFromRequest(Astro.request, Astro.url);
-const card = cardView(CARD_A, locale);
-const annualCost = cardAnnualCost(CARD_A.choices, catalog, DEFAULT_ASSUMPTIONS);
+const cardParam = Astro.url.searchParams.get('card');
+const activeCard = SIM_CARDS.find((c) => c.id === cardParam) ?? SIM_CARDS[0];
+const isCardA = activeCard.id === 'card-a';
+const cardIncome = isCardA ? CARD_A_ANNUAL_INCOME : CARD_B_ANNUAL_INCOME;
+const cardLastYearCost = isCardA ? CARD_A_LAST_YEAR_COST : CARD_B_LAST_YEAR_COST;
+const card = cardView(activeCard, locale);
+const annualCost = cardAnnualCost(activeCard.choices, catalog, DEFAULT_ASSUMPTIONS);
 const pool = shoppingPool(catalog);
 
-const yacht = Astro.url.searchParams.get('yacht') === '1';
-const simChoices = yacht ? CARD_A_BROKE : CARD_A.choices;
+const yacht = isCardA && Astro.url.searchParams.get('yacht') === '1';
+const simChoices = yacht ? CARD_A_BROKE : activeCard.choices;
 const simCost = cardAnnualCost(simChoices, catalog, DEFAULT_ASSUMPTIONS);
 const simCashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
-const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS);
+const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS, {
+  annualIncome: cardIncome,
+  lastYearCost: cardLastYearCost,
+});
 
 const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
@@ -50,9 +60,10 @@ const banner = {
   red: { label: t('sim.bannerRed', locale), note: t('sim.bannerRedNote', locale), cls: 'border-danger bg-panel text-danger' },
 }[status];
 
-const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}`;
+const cardQuery = isCardA ? '' : `&card=${activeCard.id}`;
+const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}${cardQuery}`;
 
-const rows = CARD_A.choices.map((choice) => {
+const rows = activeCard.choices.map((choice) => {
   const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
   const option = dimension?.options.find((o) => o.id === choice.optionId);
   return {
@@ -85,6 +96,24 @@ const assetBars = card.assetStructure.map((part, index) => ({
     <p class="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-xs leading-relaxed text-muted">
       {card.fictionNotice}
     </p>
+
+    <nav aria-label={t('sim.cardSwitch', locale)} class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <span class="text-muted">{t('sim.cardSwitch', locale)}</span>
+      {SIM_CARDS.map((c) => (
+        <a
+          href={`?card=${c.id}`}
+          aria-current={c.id === activeCard.id ? 'page' : undefined}
+          class:list={[
+            'inline-flex min-h-8 items-center rounded-full px-3 py-1 font-medium',
+            c.id === activeCard.id
+              ? 'bg-accent text-on-accent'
+              : 'border border-line text-ink hover:bg-panel-2',
+          ]}
+        >
+          {cardView(c, locale).label}
+        </a>
+      ))}
+    </nav>
 
     <section aria-labelledby="sim-assets-heading" class="mt-8">
       <h2 id="sim-assets-heading" class="text-base font-semibold text-ink">{t('sim.assetsH', locale)}</h2>
@@ -160,7 +189,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
         {t('sim.billLead', locale)}
         {yacht ? t('sim.yachtOn', locale) : t('sim.yachtOff', locale)}
         {!yacht && (
-          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1">{t('sim.yachtLink', locale)}</a>
+          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1&card=card-a">{t('sim.yachtLink', locale)}</a>
         )}
       </p>
 
@@ -171,7 +200,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
         <p class="mt-1 text-xs leading-relaxed">{banner.note}</p>
         <p class="mt-2 text-xs leading-relaxed text-muted">
           {format(t('sim.cashflowLine', locale), { cost: fmt(simCost), cashflow: fmt(simCashflow) })}
-          {format(t('sim.cashflowDerivation', locale), { income: fmt(CARD_A_ANNUAL_INCOME), last: fmt(CARD_A_LAST_YEAR_COST) })}
+          {format(t('sim.cashflowDerivation', locale), { income: fmt(cardIncome), last: fmt(cardLastYearCost) })}
         </p>
       </div>
 

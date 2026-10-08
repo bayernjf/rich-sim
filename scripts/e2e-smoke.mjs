@@ -1068,6 +1068,32 @@ try {
     '',
   );
 
+  // ── 步骤 7.7：卡 B（老钱继承人）——?card=card-b 切卡、年成本与绿区负担率、切换器 ──
+  await page.goto(`${BASE}/app/sim?card=card-b&lang=zh`, { waitUntil: 'networkidle' });
+  const cardBText = await page.locator('main').innerText();
+  check(
+    cardBText.includes('家族企业继承人') && cardBText.includes('$407,000'),
+    '卡 B：标题与年成本 $407,000',
+    '',
+  );
+  // 负担率 = 407,000 ÷ (8,000,000 − 407,000) ≈ 5.4% → 绿区「可负担」，与卡 A 的 78% 黄区同口径对照。
+  check(
+    cardBText.includes('可负担') && cardBText.includes('负担率 5%'),
+    '卡 B：负担率 ≈5% 绿区（vs 卡 A 78% 黄区，同一 4% 口径的对照课）',
+    '',
+  );
+  const activeCardLink = page.locator('nav[aria-label*="身份卡"] a[aria-current="page"], nav[aria-label*="persona"] a[aria-current="page"]');
+  check(
+    (await activeCardLink.count()) === 1 && (await activeCardLink.innerText()).includes('家族企业继承人'),
+    '卡 B：切换器存在且当前卡高亮',
+    '',
+  );
+  check(!cardBText.includes('加一艘超级游艇'), '卡 B：无游艇断裂开关（老钱刻意不持有）', '');
+  // 切回卡 A：切换器链接生效
+  await page.goto(`${BASE}/app/sim?lang=zh`, { waitUntil: 'networkidle' });
+  const cardAText = await page.locator('main').innerText();
+  check(cardAText.includes('科技独角兽创始人') && cardAText.includes('紧张'), '切回卡 A：默认卡与黄区负担率不变', '');
+
   // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });
