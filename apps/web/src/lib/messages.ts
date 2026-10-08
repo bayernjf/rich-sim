@@ -242,6 +242,14 @@ const ZH = {
   'report.generatedOn': '生成于 {date}',
   'report.note': '本报告是你所填假设下的算术快照，不构成投资、职业或理财建议。',
   'report.print': '打印 / 保存为 PDF',
+  'paywall.title': '想要更深入一步？',
+  'paywall.body':
+    '这只是一个意愿调查，不是付款——点一下，帮我们判断要不要做付费的深度版本。',
+  'paywall.tier.report': '解锁完整深度报告',
+  'paywall.tier.counsel': '加上一次针对买房 vs 租房的决策推演',
+  'paywall.cta': '我愿意解锁',
+  'paywall.thanks': '收到，谢谢！你选的是「{tier}」。',
+  'paywall.note': '此处不收款、不保存支付信息，只记录一次意愿。',
   'scenario.note':
     '情景只改你的收入或一笔一次性支出，其余选择与假设保持不变；金额按当前币种与假设清单计算，不构成投资或职业建议。',
   'progress.eyebrow': '和上一次测算比',
@@ -505,6 +513,14 @@ const EN: Record<keyof typeof ZH, string> = {
   'report.note':
     'This report is an arithmetic snapshot of the assumptions you entered. It is not investment, career or financial advice.',
   'report.print': 'Print / save as PDF',
+  'paywall.title': 'Want to go deeper?',
+  'paywall.body':
+    'This is an intent check, not a payment. One tap tells us whether a paid in-depth version is worth building.',
+  'paywall.tier.report': 'Unlock the full in-depth report',
+  'paywall.tier.counsel': 'Add a buy-vs-rent decision walkthrough',
+  'paywall.cta': "I'd unlock it",
+  'paywall.thanks': 'Got it, thanks! You chose "{tier}".',
+  'paywall.note': 'No charge and no payment details stored, just a one-tap signal.',
   'scenario.note':
     'Scenarios change only your income or a single one-off expense; every other choice and assumption stays as it is. Figures follow the current currency and assumption list, and are not investment or career advice.',
   'progress.eyebrow': 'Versus your last calculation',

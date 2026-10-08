@@ -4,6 +4,14 @@ import { DRAFT_UPDATED_EVENT, readDraft, type Draft } from '../lib/draft';
 import { t, format } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 import { buildReport } from '../lib/report';
+import {
+  PAYWALL_TIERS,
+  expressIntent,
+  intentProps,
+  thanksNameKey,
+  type PaywallState,
+} from '../lib/paywall-probe';
+import { track } from '../lib/analytics';
 
 /**
  * M4 S2 · T02 报告视图（React 岛，client:load，挂在 /app/result 页内）。
@@ -42,7 +50,18 @@ export default function ReportView({
     [draft, catalog, locale],
   );
 
+  // 假付费信号：状态只活在组件里，不进 Draft、不持久化。
+  const [paywall, setPaywall] = useState<PaywallState>({ status: 'idle' });
+
   if (!ready || !report) return null;
+
+  const onIntent = (tierId: string) => {
+    const tier = PAYWALL_TIERS.find((t) => t.id === tierId);
+    if (!tier) return;
+    const { event, next } = expressIntent(tier);
+    track(event, intentProps(tier.id)); // 只带档位 id，不带任何金额
+    setPaywall(next);
+  };
 
   return (
     <section
@@ -87,6 +106,44 @@ export default function ReportView({
             </dl>
           </section>
         ))}
+      </div>
+
+      {/* 假付费墙：不收款，只采集一次意愿（PRD §11.2 破环探针）。
+          打印时整个块随其它非报告正文内容一起隐藏（@media print 隐藏 button）。 */}
+      <div
+        data-paywall-probe
+        className="mt-6 rounded-xl border border-line bg-panel-2 p-4"
+      >
+        {paywall.status === 'idle' ? (
+          <>
+            <h3 className="text-sm font-medium text-ink">{t('paywall.title', locale)}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              {t('paywall.body', locale)}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {PAYWALL_TIERS.map((tier) => (
+                <button
+                  key={tier.id}
+                  type="button"
+                  data-paywall-tier={tier.id}
+                  onClick={() => onIntent(tier.id)}
+                  className="min-h-11 rounded-full border border-line-strong px-4 py-2 text-xs text-ink transition-colors hover:border-accent"
+                >
+                  {t(tier.nameKey, locale)}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p data-paywall-thanks className="text-sm text-ink">
+            {format(t('paywall.thanks', locale), {
+              tier: t(thanksNameKey(paywall.tier), locale),
+            })}
+          </p>
+        )}
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          {t('paywall.note', locale)}
+        </p>
       </div>
 
       <p className="mt-5 text-xs leading-relaxed text-muted">{t('report.note', locale)}</p>
