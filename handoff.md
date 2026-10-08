@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 15 份、表内 15 行
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 16 份、表内 16 行
 - **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -33,6 +33,7 @@
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
+| `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **新建（2026-10-08）**，未开工，等 Supabase 项目与密钥 |
 | `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G6 六个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约 / 报告挂载位） | **S1（F7）随 PR #43、S1.5 随 PR #44、S1.6（F6 本机版测算历史）、S1.7（本金口径）均已上线**（2026-10-08）。**S2（F8 报告 + 打印导出）已随 PR #47–#49 合并 main**：纯前端报告、`@media print` 样式与打印入口。**假付费信号已随 PR #51 上线**：报告页两个不收款选项（`paywall:intent:*`，props 只带档位），先攒 PRD §11.2 的付费意愿读数。**只剩 S4（付费墙 + 支付）**——M4 里唯一需要服务端的一片，等 G3 / G4 基于意愿读数拍板。现值（270 单测 / check 0 hint / 冒烟 127·121）统一写在 m4 分解顶部 |
 
 ## 已做的决策
@@ -45,10 +46,10 @@
 | 技术栈 | Astro + React 岛 + 独立纯函数计算引擎 | `technical-design.md` §3 |
 | 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
 | 托管 | 海外 MVP：应用 + 营销**全 Cloudflare**（一个平台管 DNS/CDN/WAF/部署）；Vercel 后置为触发选项（服务端变重时评估迁入） | `technical-design.md` §9 |
-| MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
+| MVP 形态 | ~~无后端，方案存 `localStorage`~~ **2026-10-08 翻转（发起人拍板：账号体系立项）**：localStorage 优先、不登录可全程使用；登录后草稿云端同步（Supabase Auth + Postgres）。红线不变：同步是**用户显式登录后的主动行为**，匿名分析与事件管道仍不碰财务数据 | `technical-design.md` §10、`docs/m5-task-breakdown.md` |
 | 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
 | 币种与汇率 | 计算在本位币、换算只在展示层；汇率 = 假设的一部分（快照进 Assumptions 并参与版本化）；M1 实时汇率（SSR 代理），M2 历史汇率 | `technical-design.md` §4.2 |
-| **M2 决策包 D1–D5** | **D1** F5 首个剧本 = 卡 A 科技独角兽创始人（年成本 $1,317,000，$1M 起始金只够 76%）；**D2** 六通道只做 看见 / 感受（账单日）/ 比较（换算器），购物与剧情与特权后置；**D3** F2 逐项支出移出 MVP 降 P2（撞 §3.2 Non-Goal）；**D4** 账号体系**暂不立项**，等同设备回访读数（≥15% 立项 / <5% 否）；**D5** 投资线、付费墙、支付渠道一起押后（2026-10-05 整包确认） | `docs/m2-decisions.md`、`docs/m2-task-breakdown.md` |
+| **M2 决策包 D1–D5** | **D1** F5 首个剧本 = 卡 A 科技独角兽创始人（年成本 $1,317,000，$1M 起始金只够 76%）；**D2** 六通道只做 看见 / 感受（账单日）/ 比较（换算器），购物与剧情与特权后置；**D3** F2 逐项支出移出 MVP 降 P2（撞 §3.2 Non-Goal）；**D4** ~~账号体系暂不立项，等同设备回访读数~~ **2026-10-08 翻转：发起人拍板立项**（读数为 0、判据短期读不出，发起人直接拍），实施分解见 `docs/m5-task-breakdown.md`；**D5** 投资线、付费墙、支付渠道一起押后（2026-10-05 整包确认） | `docs/m2-decisions.md`、`docs/m2-task-breakdown.md` |
 | **F5 排期** | **维持 P0，最小版从 M3 提到 M2**（1 个身份剧本 + 资产看板 + 持有成本 + 现金流波动，纯前端）；购物机制 / 六通道 / 原型卡 / 多剧本仍归 M3。M2 第一步是接度量而非写 F5（2026-10-05 拍板） | `docs/PRD.md` §13.7、§12 |
 | **M3 桥口径 G4** | 走方案 **(a)**：`Draft` 增可选 `goalOverride?: { annualCost, from: 'sim-cart' }`，一键成目标**只携带年成本一个数字**进 REAL（不带起始金、不带资产占比）；`choices` 仍写「每维最贵项」作展示回显。过 `draft.ts` 冻结闸门（2026-10-06 拍板） | `docs/m3-task-breakdown.md` §0 G4、§3 S4 |
 | **界面语言（i18n 切片）** | 双语 zh / en，**默认 en**，选择存 Cookie 并在 SSR 期生效（合规文本不能靠客户端改写）；目录英文名放 `catalog-data.ts` 的 `CATALOG_LABELS_EN` + 穷尽性测试，**不动冻结的 types.ts**；UI chrome 走 `lib/messages.ts`（`en` 用类型强制覆盖每一个 zh key）；逐页迁移：设计器、财务录入、结果页、首页与领钱入口已完成（2026-10-07）；六个界面全部迁移完毕（2026-10-07）；残留：目录项 `note` 仍是中文（内容层，且**当前无任何页面渲染它**）；会渲染的 `costComponents` 已于 2026-10-07 补英文（`CATALOG_COST_COMPONENTS_EN` + `optionCostComponents`） | `docs/PRD.md` §9、`apps/web/src/lib/i18n.ts`、`lib/messages.ts`、`packages/core/src/catalog-data.ts` |
