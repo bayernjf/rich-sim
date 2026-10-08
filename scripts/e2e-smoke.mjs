@@ -1180,6 +1180,50 @@ try {
 
   const evGoal = await eventsSoFar();
   check(countEvent(evGoal, 'cart:to-goal') >= 1, '埋点：cart:to-goal 已入队', `count=${countEvent(evGoal, 'cart:to-goal')}`);
+
+  // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──
+  // 步骤 1.5 的 localStorage.clear() 把 sim 账本清掉了，这里先补领 $10M。
+  await page.goto(`${BASE}/?lang=zh`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => {
+    localStorage.setItem('rich-sim:sim:v1', JSON.stringify({
+      schemaVersion: 1,
+      startingCapital: 10_000_000,
+      claimedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+  });
+  await page.goto(`${BASE}/app/sim?lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-invest-area]', { timeout: 5000 });
+  // SSR 源码里必须没有这块岛（关 JS 时卡 A 看板与免责标注仍是完整页面）。
+  const simSsr = await (await page.request.get(`${BASE}/app/sim?lang=zh`)).text();
+  check(!markupOnly(simSsr).includes('data-invest-area'), '投资线：SSR 源码里没有岛', '');
+  // 现金 60 / 债券 40；债券填 10%，现金留空（按 0% 并显式标注）。
+  const weightInputs = page.locator('[data-invest-area] input[type="number"]');
+  await weightInputs.nth(0).fill('60');
+  await weightInputs.nth(2).fill('40');
+  await weightInputs.nth(3).fill('10');
+  const investTotal = await page.locator('[data-invest-total]').innerText();
+  check(investTotal.includes('100%'), '投资线：权重合计 100%', investTotal.replace(/\s+/g, ' ').trim());
+  // $10M × 60% = $6,000,000（现金 0%）；$10M × 40% × 1.1 = $4,400,000 → 1 年合计 $10,400,000。
+  const investText = await page.locator('[data-invest-area]').innerText();
+  check(
+    investText.includes('$10,400,000') && investText.includes('你假设 债券 每年 10%') && investText.includes('你假设 现金 每年 0%'),
+    '投资线：1 年推演金额与假设清单逐字呈现',
+    investText.replace(/\s+/g, ' ').trim().slice(0, 200),
+  );
+  const simLedger = await page.evaluate(() => JSON.parse(localStorage.getItem('rich-sim:sim:v1') || 'null'));
+  check(
+    simLedger?.invest?.weights?.bond === 40 && simLedger?.invest?.returns?.bond === 10 &&
+      simLedger?.invest?.returns?.cash === null && simLedger?.schemaVersion === 1,
+    '投资线：配置持久化在 sim 账本可选字段（schemaVersion 仍为 1）',
+    JSON.stringify(simLedger?.invest),
+  );
+  // 红线源文本断言：界面上不存在任何具体标的/推荐配置控件。
+  check(
+    !/S&P|纳斯达克|基金|代码|推荐配置/.test(investText),
+    '投资线：无标的、无基金名、无"推荐配置"字样',
+    '',
+  );
   // ── 步骤 10：多情景推演（M4 S1）──────────────────────────────
   await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-scenario-panel]', { timeout: 5000 });

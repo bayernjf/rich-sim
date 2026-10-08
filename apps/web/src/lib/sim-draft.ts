@@ -26,6 +26,8 @@ export const SIM_UPDATED_EVENT = 'rich-sim:sim-updated';
  */
 export type CartItem = { dimension: string; optionId: string };
 
+import { sanitizeAllocation, type InvestAllocation } from './sim-invest';
+
 /** 虚拟起始金以 USD 计价并展示（卡 A 页的金额口径同样是 USD）。 */
 export type SimState = {
   schemaVersion: 1;
@@ -35,6 +37,11 @@ export type SimState = {
   claimedAt: string;
   /** 购物车；旧草稿（S2 之前写入）没有这个字段，按空车处理。 */
   cart?: CartItem[];
+  /**
+   * P3 投资线 · 起始金的资产类别配置（可选）。旧状态没有它，按「全部现金」处理；
+   * 收益率一律用户自填（缺失 = 该类别按 0% 推演），不存任何标的或策略。
+   */
+  invest?: InvestAllocation;
   /**
    * M5 S3 · 最后一次本机写入时刻（ISO，可选）：云同步的对时依据。
    * 旧状态没有它，对时时按 claimedAt 兜底（见 sync 的调用方）。
@@ -55,7 +62,7 @@ export function readSimState(): SimState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SimState;
     if (parsed && parsed.schemaVersion === 1 && Number.isFinite(parsed.startingCapital)) {
-      return { ...parsed, cart: sanitizeCart(parsed.cart) };
+      return { ...parsed, cart: sanitizeCart(parsed.cart), invest: sanitizeAllocation(parsed.invest) };
     }
     return null;
   } catch {
@@ -135,6 +142,27 @@ export function saveCartItem(cart: CartItem[], item: CartItem, add: boolean): Ca
 /** 读出当前购物车（无草稿/坏数据统一为空车）。 */
 export function readCart(): CartItem[] {
   return sanitizeCart(readSimState()?.cart);
+}
+
+/** 读出当前投资配置（无草稿 / 从未配置 / 坏数据统一为 undefined = 全部现金）。 */
+export function readInvest(): InvestAllocation | undefined {
+  return readSimState()?.invest;
+}
+
+/** 持久化投资配置（幂等覆盖；没领过起始金就没有 sim 账本，无处可挂，静默跳过）。 */
+export function saveInvest(invest: InvestAllocation): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const state = readSimState();
+    if (!state) return;
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({ ...state, invest, updatedAt: new Date().toISOString() }),
+    );
+    notifySimUpdated();
+  } catch {
+    // 与购物车一致：本机记账失败不阻断页面交互。
+  }
 }
 
 /** 领取（幂等）：同一笔起始金重复领取只是刷新 claimedAt。返回写下的状态。 */

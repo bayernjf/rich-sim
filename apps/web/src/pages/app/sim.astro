@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import SimRealityCompare from '../../components/SimRealityCompare';
 import ClaimRunway from '../../components/ClaimRunway';
 import ShoppingArea from '../../components/ShoppingArea';
+import InvestArea from '../../components/InvestArea';
 import { dimensionLabel, optionLabel, initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
 import { localeFromRequest } from '../../lib/i18n';
@@ -222,6 +223,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
     </section>
 
     <ShoppingArea client:load items={pool} baselineAnnualCost={annualCost} locale={locale} />
+    <InvestArea client:load locale={locale} />
     {/* S4 关 JS 降级：岛首帧为 null、无 JS 写不了购物车，给一个 SSR 可见的
         普通链接继续现实测算主线，不在此处假装有购物车目标。 */}
     <noscript>
