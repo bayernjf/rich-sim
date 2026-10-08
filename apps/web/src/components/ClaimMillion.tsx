@@ -23,10 +23,8 @@ import { format, t } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 
 type Props = {
-  /** 虚拟起始金（USD）。 */
-  capital: number;
-  /** capital × withdrawalRate：这笔本金一年能产出多少。 */
-  drawdown: number;
+  /** 虚拟起始金档位（USD，§9 #1 三档，2026-10-08 拍板）。 */
+  tiers: readonly number[];
   /** 假设的提取率（0.04），仅用于把它作为假设显式写出来。 */
   withdrawalRate: number;
   /** 三行真实账单（含 catalog 来源链接）。 */
@@ -47,13 +45,13 @@ function money(value: number): string {
 }
 
 export default function ClaimMillion({
-  capital,
-  drawdown,
+  tiers,
   withdrawalRate,
   rows,
   locale = 'zh',
 }: Props) {
   const [phase, setPhase] = useState<'idle' | 'granted' | 'bill'>('idle');
+  const [capital, setCapital] = useState<number>(tiers[1] ?? tiers[0]);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // 确定性伪随机（由索引推出）：每次渲染同一组落点，不依赖 Math.random，
@@ -80,7 +78,9 @@ export default function ClaimMillion({
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const handleClaim = (event: React.MouseEvent) => {
+  const drawdown = capital * withdrawalRate;
+
+  const handleClaim = (event: React.MouseEvent, chosen: number) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();
 
@@ -88,8 +88,9 @@ export default function ClaimMillion({
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    claimSim(capital);
-    track('claim:tap', { capital, reduced: reduce });
+    setCapital(chosen);
+    claimSim(chosen);
+    track('claim:tap', { capital: chosen, reduced: reduce });
 
     if (reduce) {
       setPhase('bill');
@@ -144,14 +145,23 @@ export default function ClaimMillion({
 
       <div aria-live="polite">
         {phase === 'idle' && (
-          <a
-            data-claim-cta
-            href="/app/sim?claim=1"
-            onClick={handleClaim}
-            className="mt-4 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
-          >
-            {format(t('claim.tap', locale), { money: money(capital) })}
-          </a>
+          <>
+            <p className="mt-3 text-xs text-muted">{t('claim.choose', locale)}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tiers.map((tier) => (
+                <a
+                  key={tier}
+                  data-claim-cta
+                  data-capital={tier}
+                  href={`/app/sim?claim=1&capital=${tier}`}
+                  onClick={(event) => handleClaim(event, tier)}
+                  className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
+                >
+                  {format(t('claim.tap', locale), { money: money(tier) })}
+                </a>
+              ))}
+            </div>
+          </>
         )}
 
         {phase !== 'idle' && (

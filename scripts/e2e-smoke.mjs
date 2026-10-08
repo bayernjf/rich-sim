@@ -163,8 +163,14 @@ try {
   if (!claimEnabled) {
     check(true, '领钱入口：开关未开时不出现（PUBLIC_HOMEPAGE_CLAIM≠1）→ 跳过该流程', 'skipped');
   } else {
-    check(await claimCta.getAttribute('href') === '/app/sim?claim=1', '领钱入口：SSR 出来就是可用链接（关 JS 也能走）', '');
-    await claimCta.click();
+    check(
+      (await claimCta.count()) === 3 &&
+        (await claimCta.nth(0).getAttribute('href')) === '/app/sim?claim=1&capital=100000' &&
+        (await claimCta.nth(2).getAttribute('href')) === '/app/sim?claim=1&capital=10000000',
+      '领钱入口：三档起始金，SSR 出来就是可用链接（关 JS 也能走）',
+      `count=${await claimCta.count()}`,
+    );
+    await claimCta.nth(2).click();
     const coinsAppeared = await page
       .waitForSelector('[data-claim-coins] .claim-coin', { timeout: 1200 })
       .then(() => true)
@@ -172,7 +178,11 @@ try {
     check(coinsAppeared, '领钱：第一拍有金币雨特效（§4 T+0.3s，P2）', '');
     await page.waitForSelector('[data-claim-route="life"]', { timeout: 3000 });
     const panel = await page.locator('section[aria-labelledby="claim-heading"]').innerText();
-    check(panel.includes('年运营全口径'), '领钱：第二拍含账单口径字样', '');
+    check(
+      panel.includes('年运营全口径') && panel.includes('$400,000'),
+      '领钱：第二拍含账单口径字样与所选档位的年产出（$10M × 4% = $400,000）',
+      '',
+    );
     check(
       await page.locator('section[aria-labelledby="claim-heading"] a[href^="http"]').count() >= 2,
       '领钱：第二拍每个金额带来源',
@@ -187,6 +197,11 @@ try {
       '领钱：只写模拟态账本，真实方案账本仍为空（验收 #1）',
       `sim=${!!ledger.sim} plan=${ledger.plan}`,
     );
+    check(
+      !!ledger.sim && JSON.parse(ledger.sim).startingCapital === 10_000_000,
+      '领钱：所选 $10M 档落进模拟账本',
+      `capital=${ledger.sim ? JSON.parse(ledger.sim).startingCapital : 'n/a'}`,
+    );
     const evClaim = await eventsSoFar();
     const claimEvents = ['claim:tap', 'claim:reveal', 'claim:bill'].map((n) => `${n}=${countEvent(evClaim, n)}`);
     check(
@@ -196,11 +211,13 @@ try {
     );
 
     // 关 JS 的那条路径（?claim=1）：这一行由 SSR 渲染，不依赖本机账本。
+    // 注意：上面已点过 $10M 档并落账，组件挂载后会读本机账本覆盖 URL 默认值，
+    // 所以这里按 $10M 校验（顺带钉住「账本覆盖 URL 默认档」这条行为）。
     await page.goto(`${BASE}/app/sim?claim=1`, { waitUntil: 'networkidle' });
     const runway = await page.locator('[data-claim-runway]').innerText();
     check(
-      runway.includes('9.1 个月'),
-      '领钱：$1M 撑卡 A 这套生活 ≈ 9.1 个月（手算 1,000,000 ÷ 1,317,000/年）',
+      runway.includes('7.6 年'),
+      '领钱：$10M 撑卡 A 这套生活 ≈ 7.6 年（手算 10,000,000 ÷ 1,317,000/年）',
       `text="${runway.replace(/\n/g, ' ').trim()}"`,
     );
   }

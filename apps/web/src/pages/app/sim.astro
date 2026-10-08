@@ -14,7 +14,7 @@ import {
   CARD_A_BROKE,
   CARD_A_LAST_YEAR_COST,
   SELL_DISCOUNT,
-  SIM_STARTING_CAPITAL,
+  capitalFromParam,
   cardAnnualCost,
   cardBurden,
   cardBills,
@@ -143,7 +143,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
       <ClaimRunway
         client:load
         annualCost={simCost}
-        initialCapital={Astro.url.searchParams.get('claim') === '1' ? SIM_STARTING_CAPITAL : null}
+        initialCapital={Astro.url.searchParams.get('claim') === '1' ? capitalFromParam(Astro.url.searchParams.get('capital')) : null}
         locale={locale}
       />
 
