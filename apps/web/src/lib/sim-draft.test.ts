@@ -8,10 +8,11 @@
  * 用 `Object.defineProperty` 而不是 jsdom：Node 环境本来没有 localStorage，
  * 而这两个模块的入口都有 `typeof localStorage` 守卫，注入实现就能测到真路径。
  */
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DRAFT_KEY } from './draft';
 import {
   SIM_KEY,
+  SIM_UPDATED_EVENT,
   addCartItem,
   claimSim,
   clearSimState,
@@ -208,5 +209,46 @@ describe('两本账的结构隔离', () => {
     const source = sources['./draft.ts'];
     expect(source).not.toMatch(/SIM_KEY/);
     expect(source).not.toMatch(/['"]rich-sim:sim:v1['"]/);
+  });
+});
+
+/**
+ * M5 S3 · 云同步的对时基础：每次本机写入都要刷新 updatedAt 并广播事件，
+ * 否则同步桥不知道本机变了（防抖上行订阅的就是它）。
+ */
+describe('updatedAt 与更新事件（M5 S3）', () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  it('领取时写下 updatedAt（与 claimedAt 同刻）', () => {
+    claimSim(1_000_000);
+    const state = readSimState();
+    expect(state?.updatedAt).toBe(state?.claimedAt);
+  });
+
+  it('加购刷新 updatedAt，比领取时新', () => {
+    claimSim(1_000_000);
+    const claimed = readSimState()!.updatedAt!;
+    // 保证时间戳必然前进（同毫秒 flake 防护）。
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 1000);
+    saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    vi.useRealTimers();
+    expect(Date.parse(readSimState()!.updatedAt!)).toBeGreaterThan(Date.parse(claimed));
+  });
+
+  it('领取与加购都广播 SIM_UPDATED_EVENT', () => {
+    const seen: string[] = [];
+    const g = globalThis as Record<string, unknown>;
+    const saved = g.window;
+    g.window = { dispatchEvent: (e: Event) => void seen.push(e.type) };
+    try {
+      claimSim(1_000_000);
+      saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    } finally {
+      g.window = saved;
+    }
+    expect(seen.filter((type) => type === SIM_UPDATED_EVENT)).toHaveLength(2);
   });
 });

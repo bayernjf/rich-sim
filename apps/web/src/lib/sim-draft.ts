@@ -14,6 +14,13 @@
 export const SIM_KEY = 'rich-sim:sim:v1';
 
 /**
+ * M5 S3 · 模拟态账本被改写的事件名（同 DRAFT_UPDATED_EVENT 的地位：不是存储
+ * key、不落盘，订阅方与写方只有本模块和 components 的岛）。云同步桥靠它
+ * 做防抖上行；改名要一起改。
+ */
+export const SIM_UPDATED_EVENT = 'rich-sim:sim-updated';
+
+/**
  * 购物车条目（G2 · m3-task-breakdown §1）。只记定位两件套，金额永远现查
  * 购物池，不把价格快照进本机账——目录校准时旧草稿不会携带过期价格。
  */
@@ -28,7 +35,18 @@ export type SimState = {
   claimedAt: string;
   /** 购物车；旧草稿（S2 之前写入）没有这个字段，按空车处理。 */
   cart?: CartItem[];
+  /**
+   * M5 S3 · 最后一次本机写入时刻（ISO，可选）：云同步的对时依据。
+   * 旧状态没有它，对时时按 claimedAt 兜底（见 sync 的调用方）。
+   */
+  updatedAt?: string;
 };
+
+function notifySimUpdated(): void {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event(SIM_UPDATED_EVENT));
+  }
+}
 
 export function readSimState(): SimState | null {
   try {
@@ -90,7 +108,11 @@ function persistCart(cart: CartItem[]): void {
     if (typeof localStorage === 'undefined') return;
     const state = readSimState();
     if (!state) return; // 没领过起始金就没有 sim 账本，购物车无处可挂。
-    localStorage.setItem(SIM_KEY, JSON.stringify({ ...state, cart }));
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({ ...state, cart, updatedAt: new Date().toISOString() }),
+    );
+    notifySimUpdated();
   } catch {
     // 与领取路径一致：本机记账失败不阻断页面交互。
   }
@@ -121,10 +143,12 @@ export function claimSim(startingCapital: number): SimState {
     schemaVersion: 1,
     startingCapital,
     claimedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(SIM_KEY, JSON.stringify(state));
+      notifySimUpdated();
     }
   } catch {
     // 写入失败（隐私模式 / 配额）：这一步只是本机记账，不该影响主流程。
