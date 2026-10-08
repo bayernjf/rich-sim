@@ -241,6 +241,7 @@ const ZH = {
   'report.total': '总额',
   'report.generatedOn': '生成于 {date}',
   'report.note': '本报告是你所填假设下的算术快照，不构成投资、职业或理财建议。',
+  'report.print': '打印 / 保存为 PDF',
   'scenario.note':
     '情景只改你的收入或一笔一次性支出，其余选择与假设保持不变；金额按当前币种与假设清单计算，不构成投资或职业建议。',
   'progress.eyebrow': '和上一次测算比',
@@ -503,6 +504,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'report.generatedOn': 'Generated {date}',
   'report.note':
     'This report is an arithmetic snapshot of the assumptions you entered. It is not investment, career or financial advice.',
+  'report.print': 'Print / save as PDF',
   'scenario.note':
     'Scenarios change only your income or a single one-off expense; every other choice and assumption stays as it is. Figures follow the current currency and assumption list, and are not investment or career advice.',
   'progress.eyebrow': 'Versus your last calculation',

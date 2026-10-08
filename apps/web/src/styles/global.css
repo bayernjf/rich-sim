@@ -86,3 +86,63 @@
     top: 12px;
   }
 }
+
+/*
+  M4 S2 · T05 打印样式（G2：用浏览器「打印为 PDF」导出报告）。
+  纸面上只留两样：报告（`[data-report]`）与合规面板（`[data-compliance]`，
+  即假设清单 + 免责声明）——报告自带口径，合规面板随它一起走。
+
+  注意：报告区块本身没有可折叠内容，所以「展开」在这里是平凡成立的；
+  若将来在会被打印的页面里加 `<details>`，它必须默认 `open`，否则纸面上看不到。
+*/
+@media print {
+  /* 深色主题不带进纸面：整套令牌翻成打印用的白底黑字。这样 Tailwind 的
+     bg-* / text-* / border-* 全部跟着变，不必逐条覆盖工具类。 */
+  :root {
+    color-scheme: light;
+    --c-canvas: #ffffff;
+    --c-panel: #ffffff;
+    --c-panel-2: #ffffff;
+    --c-line: #bbbbbb;
+    --c-line-strong: #888888;
+    --c-ink: #000000;
+    --c-muted: #444444;
+    --c-accent: #000000;
+    --c-accent-soft: transparent;
+    --c-on-accent: #ffffff;
+    --c-danger: #000000;
+  }
+
+  /* 导航 / 切换器 / 交互控件 / 报告已覆盖的结果区，都不进纸面 */
+  .skip-link,
+  [data-locale-switcher],
+  [data-currency-switcher],
+  [data-results-root],
+  [data-assumptions-editor],
+  [data-scenario-panel],
+  button,
+  input,
+  select,
+  textarea,
+  summary {
+    display: none !important;
+  }
+
+  /* 数字与单位不被分页切断；一节尽量留在同一页 */
+  [data-report] section,
+  [data-report] dl > div,
+  [data-compliance] section,
+  [data-compliance] li {
+    break-inside: avoid;
+  }
+
+  /* 去掉卡片底色与圆角，按文档排 */
+  [data-report],
+  [data-compliance] {
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

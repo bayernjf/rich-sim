@@ -1,6 +1,7 @@
 ---
 import ResultsView from '../../components/ResultsView';
 import ScenarioPanel from '../../components/ScenarioPanel';
+import ReportView from '../../components/ReportView';
 import AssumptionsEditor from '../../components/AssumptionsEditor';
 import LocaleSwitcher from '../../components/LocaleSwitcher';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
@@ -29,6 +30,9 @@ const locale = localeFromRequest(Astro.request, Astro.url);
 
     <!-- M4 S1 · T02/T03 情景面板（页内岛，不新增路由） -->
     <ScenarioPanel catalog={initialCatalogUSD} locale={locale} client:load />
+
+    <!-- M4 S2 · T02/T03 报告（页内区块，不新增路由；G6 默认取页内） -->
+    <ReportView catalog={initialCatalogUSD} locale={locale} client:load />
 
     <!-- 合规面板：纯 SSR 渲染，源码可见，不依赖客户端 JS -->
     <AssumptionsPanel locale={locale} />

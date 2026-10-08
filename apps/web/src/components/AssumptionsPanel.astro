@@ -40,7 +40,10 @@ const cnyText = Number.isFinite(cnyRate) ? cnyRate.toFixed(2) : '—';
 const eurText = Number.isFinite(eurRate) ? eurRate.toFixed(2) : '—';
 ---
 
-<aside class="mt-10 border-t border-line pt-6 text-xs leading-relaxed text-muted">
+<aside
+  data-compliance
+  class="mt-10 border-t border-line pt-6 text-xs leading-relaxed text-muted"
+>
   <section aria-labelledby="assumptions-heading">
     <h2 id="assumptions-heading" class="mb-2 text-[13px] font-medium text-ink">{t('assumptions.title', locale)}</h2>
     <dl class="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
