@@ -11,7 +11,6 @@
  * - **登出不清本机**：断同步而已（S3 语义，这里先就位）。
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Draft } from './draft';
 
 export type SyncDecision = 'push' | 'pull' | 'none';
 
@@ -33,28 +32,37 @@ export function decideSync(args: {
 }
 
 const TABLE = 'plans';
-const KIND = 'plan';
 
-/** 上行：整份 Draft 原样 upsert（updated_at 用客户端时间，与对时口径一致）。 */
-export async function pushDraft(supabase: SupabaseClient, userId: string, draft: Draft): Promise<boolean> {
+/** 账本种类：REAL 真实方案 / SIM 模拟态（两本账互不读写，云端同构）。 */
+export type LedgerKind = 'plan' | 'sim';
+
+/** 上行：整份账本原样 upsert（updated_at 用客户端时间，与对时口径一致）。 */
+export async function pushLedger(
+  supabase: SupabaseClient,
+  userId: string,
+  kind: LedgerKind,
+  payload: unknown,
+  updatedAt: string,
+): Promise<boolean> {
   const { error } = await supabase.from(TABLE).upsert(
-    { user_id: userId, kind: KIND, payload: draft, updated_at: draft.updatedAt },
+    { user_id: userId, kind, payload, updated_at: updatedAt },
     { onConflict: 'user_id,kind' },
   );
   return !error;
 }
 
-/** 下行：读云端那行；没有就是 null。 */
-export async function pullDraft(
+/** 下行：读云端那本账；没有就是 null。 */
+export async function pullLedger(
   supabase: SupabaseClient,
   userId: string,
-): Promise<{ payload: Draft; updated_at: string } | null> {
+  kind: LedgerKind,
+): Promise<{ payload: unknown; updated_at: string } | null> {
   const { data, error } = await supabase
     .from(TABLE)
     .select('payload, updated_at')
     .eq('user_id', userId)
-    .eq('kind', KIND)
+    .eq('kind', kind)
     .maybeSingle();
   if (error || !data) return null;
-  return data as { payload: Draft; updated_at: string };
+  return data as { payload: unknown; updated_at: string };
 }
