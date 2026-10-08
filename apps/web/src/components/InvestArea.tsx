@@ -17,6 +17,7 @@ import {
   type AssetClass,
   emptyAllocation,
   isComplete,
+  monteCarloRows,
   projectAllocation,
   weightTotal,
   type InvestAllocation,
@@ -29,6 +30,7 @@ import { track } from '../lib/analytics';
 type Props = { locale?: Locale };
 
 const PROJ_YEARS = [1, 5, 10];
+const MC_PATHS = 300;
 
 function money(value: number): string {
   return `$${Math.round(value).toLocaleString('en-US')}`;
@@ -37,6 +39,7 @@ function money(value: number): string {
 export default function InvestArea({ locale = 'zh' }: Props) {
   const [capital, setCapital] = useState<number | null>(null);
   const [alloc, setAlloc] = useState<InvestAllocation>(emptyAllocation());
+  const [seed, setSeed] = useState(42);
 
   useEffect(() => {
     const sim = readSimState();
@@ -53,6 +56,14 @@ export default function InvestArea({ locale = 'zh' }: Props) {
     () => (capital === null || over ? [] : projectAllocation(capital, alloc, PROJ_YEARS)),
     [capital, alloc, over],
   );
+  const hasVol = useMemo(
+    () => ASSET_CLASSES.some((cls) => alloc.weights[cls] > 0 && (alloc.volatility[cls] ?? 0) > 0),
+    [alloc],
+  );
+  const mcRows = useMemo(
+    () => (capital === null || over || !hasVol ? [] : monteCarloRows(capital, alloc, PROJ_YEARS, MC_PATHS, seed)),
+    [capital, alloc, over, hasVol, seed],
+  );
 
   if (capital === null) return null;
 
@@ -64,6 +75,18 @@ export default function InvestArea({ locale = 'zh' }: Props) {
   const setWeight = (cls: AssetClass, raw: string) => {
     const value = Number.parseFloat(raw);
     update({ ...alloc, weights: { ...alloc.weights, [cls]: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0 } });
+  };
+
+  const setVolatility = (cls: AssetClass, raw: string) => {
+    if (raw.trim() === '') {
+      update({ ...alloc, volatility: { ...alloc.volatility, [cls]: null } });
+      return;
+    }
+    const value = Number.parseFloat(raw);
+    update({
+      ...alloc,
+      volatility: { ...alloc.volatility, [cls]: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : alloc.volatility[cls] },
+    });
   };
 
   const setReturn = (cls: AssetClass, raw: string) => {
@@ -90,6 +113,7 @@ export default function InvestArea({ locale = 'zh' }: Props) {
               <th scope="col" className="px-4 py-2 font-medium"></th>
               <th scope="col" className="px-4 py-2 font-medium">{t('invest.weight', locale)}</th>
               <th scope="col" className="px-4 py-2 font-medium">{t('invest.return', locale)}</th>
+              <th scope="col" className="px-4 py-2 font-medium">{t('invest.vol', locale)}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -116,6 +140,16 @@ export default function InvestArea({ locale = 'zh' }: Props) {
                     onChange={(e) => setReturn(cls, e.target.value)}
                     onBlur={() => track('invest:edit')}
                     className="w-28 rounded-md border border-line bg-panel px-2 py-1 font-mono tabular-nums text-ink placeholder:text-xs placeholder:text-muted/70"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="number" min={0} max={100} step={1} inputMode="decimal"
+                    aria-label={`${t(`invest.cls.${cls}`, locale)} ${t('invest.vol', locale)}`}
+                    placeholder={t('invest.volBlank', locale)}
+                    value={alloc.volatility[cls] ?? ''}
+                    onChange={(e) => setVolatility(cls, e.target.value)}
+                    className="w-24 rounded-md border border-line bg-panel px-2 py-1 font-mono tabular-nums text-ink placeholder:text-xs placeholder:text-muted/70"
                   />
                 </td>
               </tr>
@@ -146,6 +180,36 @@ export default function InvestArea({ locale = 'zh' }: Props) {
               <div key={row.years} className="rounded-xl border border-line bg-panel px-4 py-3">
                 <dt className="text-xs text-muted">{format(t('invest.projYears', locale), { years: String(row.years) })}</dt>
                 <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">{money(row.total)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
+      {!over && hasVol && (
+        <div className="mt-4" data-invest-mc>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-ink">{t('invest.mcH', locale)}</h3>
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{t('invest.mcBadge', locale)}</span>
+            <button
+              type="button"
+              onClick={() => { setSeed((v) => v + 1); track('invest:resample'); }}
+              className="ml-auto inline-flex min-h-11 items-center rounded-full border border-line-strong px-3 py-1 text-xs font-medium text-ink transition-colors hover:bg-panel-2"
+            >
+              {t('invest.mcResample', locale)}
+            </button>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            {format(t('invest.mcLead', locale), { paths: String(MC_PATHS) })}
+          </p>
+          <dl className="mt-2 flex flex-wrap gap-3">
+            {mcRows.map((row) => (
+              <div key={row.years} className="rounded-xl border border-line bg-panel px-4 py-3">
+                <dt className="text-xs text-muted">{format(t('invest.projYears', locale), { years: String(row.years) })}</dt>
+                <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">{money(row.median)}</dd>
+                <dd className="mt-0.5 font-mono text-xs tabular-nums text-muted">
+                  {money(row.p10)} – {money(row.p90)}
+                </dd>
               </div>
             ))}
           </dl>

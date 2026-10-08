@@ -1246,10 +1246,11 @@ try {
   const simSsr = await (await page.request.get(`${BASE}/app/sim?lang=zh`)).text();
   check(!markupOnly(simSsr).includes('data-invest-area'), '投资线：SSR 源码里没有岛', '');
   // 现金 60 / 债券 40；债券填 10%，现金留空（按 0% 并显式标注）。
+  // 每行 3 个输入框（权重 / 收益率 / 波动率）：nth(0)=现金权重, nth(3)=债券权重, nth(4)=债券收益率。
   const weightInputs = page.locator('[data-invest-area] input[type="number"]');
   await weightInputs.nth(0).fill('60');
-  await weightInputs.nth(2).fill('40');
-  await weightInputs.nth(3).fill('10');
+  await weightInputs.nth(3).fill('40');
+  await weightInputs.nth(4).fill('10');
   const investTotal = await page.locator('[data-invest-total]').innerText();
   check(investTotal.includes('100%'), '投资线：权重合计 100%', investTotal.replace(/\s+/g, ' ').trim());
   // $10M × 60% = $6,000,000（现金 0%）；$10M × 40% × 1.1 = $4,400,000 → 1 年合计 $10,400,000。
@@ -1272,6 +1273,20 @@ try {
     '投资线：无标的、无基金名、无"推荐配置"字样',
     '',
   );
+
+  // 蒙特卡洛：债券波动率填 20% → MC 区块出现，带「随机模拟 · 非预测」常驻标注。
+  await weightInputs.nth(5).fill('20');
+  await page.waitForSelector('[data-invest-mc]', { timeout: 5000 });
+  const mcText = await page.locator('[data-invest-mc]').innerText();
+  check(
+    mcText.includes('蒙特卡洛路径') && mcText.includes('随机模拟 · 非预测') && mcText.includes('300 条随机路径'),
+    '投资线 MC：300 条路径 + 常驻非预测标注',
+    mcText.replace(/\s+/g, ' ').trim().slice(0, 200),
+  );
+  check(!/S&P|纳斯达克|基金|代码|推荐配置/.test(mcText), '投资线 MC：仍无标的、无推荐配置字样', '');
+  // 确定性推演仍在（波动率不改变「你假设 x%」的基准行）。
+  const investTextAfter = await page.locator('[data-invest-area]').innerText();
+  check(investTextAfter.includes('$10,400,000'), '投资线 MC：确定性基准行仍在', '');
   // ── 步骤 10：多情景推演（M4 S1）──────────────────────────────
   await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-scenario-panel]', { timeout: 5000 });
