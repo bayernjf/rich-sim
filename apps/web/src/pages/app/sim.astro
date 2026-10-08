@@ -10,13 +10,18 @@ import { localeFromRequest } from '../../lib/i18n';
 import { format, t } from '../../lib/messages';
 import {
   BILLS_PER_PAGE,
-  CARD_A,
-  CARD_A_ANNUAL_INCOME,
   CARD_A_BROKE,
+  SIM_CARDS,
+  CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
+  CARD_B_ANNUAL_INCOME,
+  CARD_B_LAST_YEAR_COST,
   SELL_DISCOUNT,
   capitalFromParam,
   cardAnnualCost,
+  fastForward,
+  poolOptionLabel,
+  swanBurden,
   cardBurden,
   cardBills,
   cardView,
@@ -26,15 +31,29 @@ import {
 const catalog = initialCatalogUSD;
 /** 页面语言在 SSR 期解析（Cookie / ?lang= / Accept-Language），与其余页同一套。 */
 const locale = localeFromRequest(Astro.request, Astro.url);
-const card = cardView(CARD_A, locale);
-const annualCost = cardAnnualCost(CARD_A.choices, catalog, DEFAULT_ASSUMPTIONS);
+const cardParam = Astro.url.searchParams.get('card');
+const activeCard = SIM_CARDS.find((c) => c.id === cardParam) ?? SIM_CARDS[0];
+const isCardA = activeCard.id === 'card-a';
+const cardIncome = isCardA ? CARD_A_ANNUAL_INCOME : CARD_B_ANNUAL_INCOME;
+const cardLastYearCost = isCardA ? CARD_A_LAST_YEAR_COST : CARD_B_LAST_YEAR_COST;
+const card = cardView(activeCard, locale);
+const annualCost = cardAnnualCost(activeCard.choices, catalog, DEFAULT_ASSUMPTIONS);
 const pool = shoppingPool(catalog);
 
-const yacht = Astro.url.searchParams.get('yacht') === '1';
-const simChoices = yacht ? CARD_A_BROKE : CARD_A.choices;
+const yacht = isCardA && Astro.url.searchParams.get('yacht') === '1';
+const simChoices = yacht ? CARD_A_BROKE : activeCard.choices;
 const simCost = cardAnnualCost(simChoices, catalog, DEFAULT_ASSUMPTIONS);
 const simCashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
-const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS);
+const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS, {
+  annualIncome: cardIncome,
+  lastYearCost: cardLastYearCost,
+});
+
+const swan = swanBurden(simCost, cardIncome, cardLastYearCost);
+const swanRate = swan.rate === null ? null : `${Math.round(swan.rate * 100)}%`;
+const nowRate = rate === null ? null : `${Math.round(rate * 100)}%`;
+const fastYears = [10, 20, 30].map((y) => ({ years: y, surplus: fastForward(cardIncome, simCost, y) }));
+const privilegeItems = pool.filter((item) => item.option.id.startsWith('exp-'));
 
 const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
@@ -50,9 +69,10 @@ const banner = {
   red: { label: t('sim.bannerRed', locale), note: t('sim.bannerRedNote', locale), cls: 'border-danger bg-panel text-danger' },
 }[status];
 
-const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}`;
+const cardQuery = isCardA ? '' : `&card=${activeCard.id}`;
+const pageHref = (target: number) => `?page=${target}${yacht ? '&yacht=1' : ''}${cardQuery}`;
 
-const rows = CARD_A.choices.map((choice) => {
+const rows = activeCard.choices.map((choice) => {
   const dimension = catalog.dimensions.find((d) => d.id === choice.dimension);
   const option = dimension?.options.find((o) => o.id === choice.optionId);
   return {
@@ -75,6 +95,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
 <BaseLayout
   title={t('sim.metaTitle', locale)}
   description={t('sim.metaDesc', locale)}
+  locale={locale}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
     <p class="text-xs font-medium uppercase tracking-widest text-accent">{t('sim.eyebrow', locale)}</p>
@@ -84,6 +105,24 @@ const assetBars = card.assetStructure.map((part, index) => ({
     <p class="mt-3 rounded-lg border border-line bg-panel px-3 py-2 text-xs leading-relaxed text-muted">
       {card.fictionNotice}
     </p>
+
+    <nav aria-label={t('sim.cardSwitch', locale)} class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <span class="text-muted">{t('sim.cardSwitch', locale)}</span>
+      {SIM_CARDS.map((c) => (
+        <a
+          href={`?card=${c.id}`}
+          aria-current={c.id === activeCard.id ? 'page' : undefined}
+          class:list={[
+            'inline-flex min-h-8 items-center rounded-full px-3 py-1 font-medium',
+            c.id === activeCard.id
+              ? 'bg-accent text-on-accent'
+              : 'border border-line text-ink hover:bg-panel-2',
+          ]}
+        >
+          {cardView(c, locale).label}
+        </a>
+      ))}
+    </nav>
 
     <section aria-labelledby="sim-assets-heading" class="mt-8">
       <h2 id="sim-assets-heading" class="text-base font-semibold text-ink">{t('sim.assetsH', locale)}</h2>
@@ -159,7 +198,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
         {t('sim.billLead', locale)}
         {yacht ? t('sim.yachtOn', locale) : t('sim.yachtOff', locale)}
         {!yacht && (
-          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1">{t('sim.yachtLink', locale)}</a>
+          <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1&card=card-a">{t('sim.yachtLink', locale)}</a>
         )}
       </p>
 
@@ -170,7 +209,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
         <p class="mt-1 text-xs leading-relaxed">{banner.note}</p>
         <p class="mt-2 text-xs leading-relaxed text-muted">
           {format(t('sim.cashflowLine', locale), { cost: fmt(simCost), cashflow: fmt(simCashflow) })}
-          {format(t('sim.cashflowDerivation', locale), { income: fmt(CARD_A_ANNUAL_INCOME), last: fmt(CARD_A_LAST_YEAR_COST) })}
+          {format(t('sim.cashflowDerivation', locale), { income: fmt(cardIncome), last: fmt(cardLastYearCost) })}
         </p>
       </div>
 
@@ -220,6 +259,59 @@ const assetBars = card.assetStructure.map((part, index) => ({
         locale={locale}
         bills={pageBills.map((bill) => ({ optionLabel: bill.optionLabel, annualCost: bill.annualCost }))}
       />
+    </section>
+
+    <section aria-labelledby="sim-life-heading" class="mt-8" data-sim-life>
+      <h2 id="sim-life-heading" class="text-base font-semibold text-ink">{t('sim.lifeH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.lifeLead', locale)}</p>
+      <ul class="mt-3 space-y-1">
+        {fastYears.map((row) => (
+          <li class="flex items-baseline justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-2 text-sm">
+            <span class="text-muted">
+              {format(t(row.surplus >= 0 ? 'sim.lifeSurplus' : 'sim.lifeDeficit', locale), {
+                years: String(row.years),
+                amount: '',
+              }).replace('{amount}', '')}
+            </span>
+            <span class={`font-mono tabular-nums ${row.surplus >= 0 ? 'text-ink' : 'text-danger'}`}>
+              {fmt(Math.abs(row.surplus))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sim-swan-heading" class="mt-8" data-sim-swan>
+      <h2 id="sim-swan-heading" class="text-base font-semibold text-ink">{t('sim.swanH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.swanLead', locale)}</p>
+      <p class:list={[
+        'mt-3 rounded-lg border px-3 py-2 text-sm',
+        swan.status === 'green' ? 'border-accent bg-accent-soft text-accent'
+          : swan.status === 'yellow' ? 'border-line bg-panel text-ink'
+          : 'border-danger bg-panel text-danger',
+      ]}>
+        {format(t('sim.swanResult', locale), { before: nowRate ?? '—', after: swanRate ?? '—' })}
+        {swan.status === 'red' && <span class="mt-1 block text-xs">{t('sim.swanBroke', locale)}</span>}
+      </p>
+    </section>
+
+    <section aria-labelledby="sim-priv-heading" class="mt-8" data-sim-priv>
+      <h2 id="sim-priv-heading" class="text-base font-semibold text-ink">{t('sim.privH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.privLead', locale)}</p>
+      <ul class="mt-3 space-y-1">
+        {privilegeItems.map((item) => (
+          <li class="flex items-baseline justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-2 text-sm">
+            <span class="text-muted">{poolOptionLabel(item.option, locale)}</span>
+            <span class="font-mono tabular-nums text-ink">
+              {fmt(item.option.annualCost)}
+              {typeof item.option.source === 'string' && (
+                <a href={item.option.source} class="ml-2 text-xs text-accent underline-offset-2 hover:underline">Source</a>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.privCost', locale)}</p>
     </section>
 
     <ShoppingArea client:load items={pool} baselineAnnualCost={annualCost} locale={locale} />

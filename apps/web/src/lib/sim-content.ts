@@ -58,6 +58,50 @@ export const CARD_A = {
   ],
 } as const satisfies SimCard;
 
+/**
+ * 卡 B · 家族企业继承人（§4.4，老钱 / 低调 × 传承）。
+ *
+ * 刻意**不持有**私人飞机 / 游艇：与卡 A 形成「同为超高净值、年成本压力完全不同」
+ * 的对照——卡 A 基态负担率 78%（黄），卡 B 只有约 5%（绿），同一套 4% 现金流
+ * 口径下，新钱在烧钱、老钱在守现金流，这就是这张卡要教的一课。
+ * 年成本画像（catalog 直接加总）：独栋豪宅 120,000 + 城市公寓 27,000 +
+ * 精英寄宿 / 国际学校 100,000 + 家庭商业医保 10,000 + 高档餐饮 / 社交 30,000 +
+ * 大额弹性（管家 / 慈善 / 俱乐部）120,000 = **407,000 / 年**。
+ */
+export const CARD_B = {
+  id: 'card-b',
+  label: '家族企业继承人',
+  subtitle: '老钱 · 低调重传承，防御性配置，社交与慈善是工作而非炫耀。',
+  fictionNotice: '虚构角色，不代表任何真实人物；资产结构为示意，不代表真实持仓。',
+  labelEn: 'Family-business heir',
+  subtitleEn:
+    'Old money · low-key and inheritance-focused, defensively positioned; socializing and philanthropy are work, not showing off.',
+  fictionNoticeEn:
+    'A fictional character, not any real person; the asset mix is illustrative, not real holdings.',
+  assetStructure: [
+    { label: '家族信托与企业股权', share: 65 },
+    { label: '不动产', share: 20 },
+    { label: '现金 / 债券', share: 15 },
+  ],
+  assetStructureEn: ['Family trust & business equity', 'Real estate', 'Cash / bonds'],
+  choices: [
+    { dimension: 'living', optionId: 'luxury-mansion' },
+    { dimension: 'living', optionId: 'owner-condo' },
+    { dimension: 'family', optionId: 'elite-education' },
+    { dimension: 'health-insurance', optionId: 'family-insurance' },
+    { dimension: 'dining-daily', optionId: 'fine-dining' },
+    { dimension: 'flexibility', optionId: 'discretionary-large' },
+  ],
+} as const satisfies SimCard;
+
+/** 全部身份卡（顺序即切换器顺序）。 */
+export const SIM_CARDS = [CARD_A, CARD_B] as const;
+
+/** 卡 B 同款现金流参数（§4.4 量级区间下限 $200M × 4% 安全提取率，与卡 A 同一口径）。 */
+export const CARD_B_ANNUAL_INCOME = 8_000_000;
+/** 卡 B 上一年已承担的持有成本 = 基态年成本 407,000。 */
+export const CARD_B_LAST_YEAR_COST = 407_000;
+
 /** 卡 A 同款再加一艘超级游艇 = §4.4 的「断裂教学开关」（S2 账单日用）。 */
 export const CARD_A_BROKE: LifeChoice = [
   ...CARD_A.choices,
@@ -101,6 +145,28 @@ export function cardView(card: SimCard, locale: Locale): {
       share: part.share,
     })),
   };
+}
+
+/**
+ * 经历通道 · 人生快进（§2.3）：收入与年成本不变，逐年累计结余。
+ * 纯算术——不预测收入变化、不含通胀与税率；负值即累计亏空（现金流早已断裂）。
+ */
+export function fastForward(annualIncome: number, annualCost: number, years: number): number {
+  return (annualIncome - annualCost) * years;
+}
+
+/**
+ * 感受通道 · 失去模拟（§2.3 MVP 候选 3）：某一年收入腰斩，其余不变，
+ * 用既有 burdenStatus 立刻重算负担率——「持有即风险」的反面教材。
+ */
+export function swanBurden(
+  annualCost: number,
+  annualIncome: number,
+  lastYearCost: number,
+): { rate: number | null; status: 'green' | 'yellow' | 'red' } {
+  const cashflow = annualIncome / 2 - lastYearCost;
+  const { rate, status } = burdenStatus(annualCost, cashflow);
+  return { rate, status };
 }
 
 /**
@@ -160,9 +226,14 @@ export function cardBurden(
   choices: LifeChoice,
   catalog: Catalog,
   assumptions: Assumptions,
+  /** 现金流口径默认卡 A；卡 B（及以后的卡）必须显式传自己的收入与上一年成本。 */
+  cashflowParams: { annualIncome: number; lastYearCost: number } = {
+    annualIncome: CARD_A_ANNUAL_INCOME,
+    lastYearCost: CARD_A_LAST_YEAR_COST,
+  },
 ) {
   const annualCost = scenarioAnnualCost(choices, catalog, assumptions).annualCost;
-  const cashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
+  const cashflow = cashflowParams.annualIncome - cashflowParams.lastYearCost;
   const { rate, status } = burdenStatus(annualCost, cashflow);
   return { annualCost, cashflow, rate, status };
 }
@@ -437,9 +508,11 @@ export function runwayMonths(capital: number, annualCost: number): number | null
  * 展示取整只发生在这里，与换算条同一套口吻：不足一年说月数，
  * 因为「0.0 年」既没有信息又显得假。
  */
-export function formatRunway(months: number): string {
-  if (months < 12) return `${months.toFixed(1)} 个月`;
+export function formatRunway(months: number, locale: 'zh' | 'en' = 'zh'): string {
+  const unit = (n: string, kind: 'month' | 'year') =>
+    locale === 'en' ? `${n} ${kind}${n === '1' ? '' : 's'}` : `${n} ${kind === 'month' ? '个月' : '年'}`;
+  if (months < 12) return unit(months.toFixed(1), 'month');
   const years = months / 12;
   const digits = years >= 100 ? Math.round(years).toLocaleString('en-US') : years.toFixed(1);
-  return `${digits.endsWith('.0') ? digits.slice(0, -2) : digits} 年`;
+  return unit(digits.endsWith('.0') ? digits.slice(0, -2) : digits, 'year');
 }

@@ -1068,6 +1068,54 @@ try {
     '',
   );
 
+  // ── 步骤 7.8：三通道（经历·快进 / 感受·黑天鹅 / 地位·特权价目）──
+  // 卡 A 基态：收入 $3M、年成本 $1,317,000 → 30 年累计结余 (3,000,000−1,317,000)×30 = $50,490,000。
+  const lifeText = await page.locator('[data-sim-life]').innerText();
+  check(
+    lifeText.includes('$50,490,000'),
+    '快进 30 年：卡 A 累计结余 $50,490,000（手算核对）',
+    lifeText.replace(/\s+/g, ' ').trim().slice(0, 160),
+  );
+  // 黑天鹅：卡 A 收入腰斩 → 现金流 1.5M − 1.317M = 183k，负担率 1.317M/183k ≈ 720% → 红。
+  const swanText = await page.locator('[data-sim-swan]').innerText();
+  check(
+    swanText.includes('720%') && swanText.includes('78%'),
+    '黑天鹅：卡 A 负担率 78% → 720% 断裂（手算核对）',
+    swanText.replace(/\s+/g, ' ').trim().slice(0, 160),
+  );
+  const privText = await page.locator('[data-sim-priv]').innerText();
+  check(
+    privText.includes('$189,500') && privText.includes('$100,000') && privText.includes('Source'),
+    '特权价目：两项带来源金额呈现',
+    '',
+  );
+
+  // ── 步骤 7.7：卡 B（老钱继承人）——?card=card-b 切卡、年成本与绿区负担率、切换器 ──
+  await page.goto(`${BASE}/app/sim?card=card-b&lang=zh`, { waitUntil: 'networkidle' });
+  const cardBText = await page.locator('main').innerText();
+  check(
+    cardBText.includes('家族企业继承人') && cardBText.includes('$407,000'),
+    '卡 B：标题与年成本 $407,000',
+    '',
+  );
+  // 负担率 = 407,000 ÷ (8,000,000 − 407,000) ≈ 5.4% → 绿区「可负担」，与卡 A 的 78% 黄区同口径对照。
+  check(
+    cardBText.includes('可负担') && cardBText.includes('负担率 5%'),
+    '卡 B：负担率 ≈5% 绿区（vs 卡 A 78% 黄区，同一 4% 口径的对照课）',
+    '',
+  );
+  const activeCardLink = page.locator('nav[aria-label*="身份卡"] a[aria-current="page"], nav[aria-label*="persona"] a[aria-current="page"]');
+  check(
+    (await activeCardLink.count()) === 1 && (await activeCardLink.innerText()).includes('家族企业继承人'),
+    '卡 B：切换器存在且当前卡高亮',
+    '',
+  );
+  check(!cardBText.includes('加一艘超级游艇'), '卡 B：无游艇断裂开关（老钱刻意不持有）', '');
+  // 切回卡 A：切换器链接生效
+  await page.goto(`${BASE}/app/sim?lang=zh`, { waitUntil: 'networkidle' });
+  const cardAText = await page.locator('main').innerText();
+  check(cardAText.includes('科技独角兽创始人') && cardAText.includes('紧张'), '切回卡 A：默认卡与黄区负担率不变', '');
+
   // ── 步骤 8：购物区（M3 S2/S3）——加购 → 预览变色 → 移出 ──
   await page.goto(`${BASE}/app/sim`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });
@@ -1093,7 +1141,7 @@ try {
 
   check(await cartCount() === 0, '购物区：首帧空车', `count=${await cartCount()}`);
 
-  const galaCard = page.locator('li', { hasText: 'Met Gala 慈善晚宴单张门票' }).first();
+  const galaCard = page.locator('[data-shopping-area] li', { hasText: 'Met Gala 慈善晚宴单张门票' }).first();
   await galaCard.getByRole('button', { name: '加入购物车' }).click();
   await page.waitForTimeout(200);
   check(await cartCount() === 1, '购物区：加购后件数 = 1', `count=${await cartCount()}`);
@@ -1114,7 +1162,7 @@ try {
   await page.waitForTimeout(150);
   check(await cartCount() === 1, '购物区：同一项反复切换不叠加', `count=${await cartCount()}`);
 
-  const yachtCard = page.locator('li', { hasText: '超级游艇' }).first();
+  const yachtCard = page.locator('[data-shopping-area] li', { hasText: '超级游艇' }).first();
   await yachtCard.getByRole('button', { name: '加入购物车' }).click();
   await page.waitForTimeout(200);
   check(await cartCount() === 2, '购物区：加购游艇后件数 = 2（同维多件允许）', `count=${await cartCount()}`);
