@@ -14,7 +14,7 @@
  * 直接给账单态（PRD §9 WCAG AA），此时不上报 `claim:reveal`——那一拍没有被
  * 渲染过，报了就是把漏斗最想看的那一步记成假的。
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Interpolated from './Interpolated';
 import { track } from '../lib/analytics';
 import { claimSim, readSimState } from '../lib/sim-draft';
@@ -39,6 +39,9 @@ type Props = {
 const GRANT_MS = 300;
 const BILL_MS = 1800;
 
+/** §4 T+0.3s 的金币雨：只活在 granted 那一拍（1.5s），静音、纯 CSS、无依赖。 */
+const COIN_COUNT = 18;
+
 function money(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
 }
@@ -52,6 +55,22 @@ export default function ClaimMillion({
 }: Props) {
   const [phase, setPhase] = useState<'idle' | 'granted' | 'bill'>('idle');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // 确定性伪随机（由索引推出）：每次渲染同一组落点，不依赖 Math.random，
+  // 也避免测试环境抖动。granted 拍只在点击后出现，无 hydration 问题。
+  const coins = useMemo(
+    () =>
+      Array.from({ length: COIN_COUNT }, (_, i) => {
+        const seed = (i * 2654435761) % 1000;
+        return {
+          left: 4 + ((seed * 7) % 92),
+          sway: ((seed % 41) - 20) * 2,
+          delay: (seed % 300) / 1000,
+          duration: 0.9 + (seed % 40) / 100,
+        };
+      }),
+    [],
+  );
 
   // 已经领过的人回访：直接给账单态，但不重放两拍、也不重复计数。
   // 必须放在 effect 里：SSR 没有 localStorage，放进 useState 初值会 hydration mismatch。
@@ -93,8 +112,28 @@ export default function ClaimMillion({
   return (
     <section
       aria-labelledby="claim-heading"
-      className="mt-10 rounded-2xl border border-line bg-panel px-4 py-5"
+      className="relative mt-10 rounded-2xl border border-line bg-panel px-4 py-5"
     >
+      {phase === 'granted' && (
+        <div
+          data-claim-coins
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+        >
+          {coins.map((coin, i) => (
+            <span
+              key={i}
+              className="claim-coin"
+              style={{
+                left: `${coin.left}%`,
+                animationDelay: `${coin.delay}s`,
+                animationDuration: `${coin.duration}s`,
+                ['--coin-sway' as string]: `${coin.sway}px`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       <p className="text-xs font-medium uppercase tracking-widest text-accent">
         {t('claim.eyebrow', locale)}
       </p>

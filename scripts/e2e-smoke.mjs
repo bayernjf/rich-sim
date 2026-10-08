@@ -165,6 +165,11 @@ try {
   } else {
     check(await claimCta.getAttribute('href') === '/app/sim?claim=1', '领钱入口：SSR 出来就是可用链接（关 JS 也能走）', '');
     await claimCta.click();
+    const coinsAppeared = await page
+      .waitForSelector('[data-claim-coins] .claim-coin', { timeout: 1200 })
+      .then(() => true)
+      .catch(() => false);
+    check(coinsAppeared, '领钱：第一拍有金币雨特效（§4 T+0.3s，P2）', '');
     await page.waitForSelector('[data-claim-route="life"]', { timeout: 3000 });
     const panel = await page.locator('section[aria-labelledby="claim-heading"]').innerText();
     check(panel.includes('年运营全口径'), '领钱：第二拍含账单口径字样', '');
