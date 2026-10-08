@@ -71,7 +71,7 @@ type SimState = {
 
 ### 3.2 零契约改动
 
-`Profile = { income, expense, savings, debt }`，`project` 的起始本金 = `savings - debt`。所以模拟态直接喂 `{ savings: 1_000_000, ... }` 就能复用 **`project` / `gap` / `enoughLine` / `scenarioAnnualCost` / `buildMilestones` 全部五个函数**，`Goal` 现成支持 `{ kind: 'net-worth', value }`。**不新增引擎函数、不改任何口径。**
+`Profile = { income, expense, savings, debt }`，`project` 的起始本金 = `savings - debt`。所以模拟态直接喂 `{ savings: 1_000_000, ... }` 就能复用 **`project` / `gap` / `enoughLine` / `scenarioAnnualCost` / `buildMilestones` 全部五个函数**，`Goal` 现成支持 `{ kind: 'net-worth', value }`。**不新增引擎函数、不改任何口径。**（F2 2026-10-08 新增取数辅助 `profileMonthlyExpense`：SIM 态 `income = expense = 0`、无 `expenseBreakdown`，行为逐位不变，此结论仍成立）
 
 ### 3.3 三状态在这里第一次真正咬人
 

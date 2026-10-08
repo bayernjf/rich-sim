@@ -71,6 +71,7 @@ Wave 4（收尾，1 agent）      T12 口径校验 → T13 集成验收
 - ✅ **C2**（2026-10-04）：Catalog **23 项年成本全部附公开来源校准**（普通人/理想档锚 BLS CE 2024 全国均值与最高收入五分位、AAA Your Driving Costs、KFF 雇主医保、NAIS 私校、Child Care Aware 托育、Allianz 度假、Zillow 租金；富豪极端档为行业公开估算，取值保守）；口径统一为消费者实际自付年现金支出（房贷只计利息、雇主承担保费与本金不计入）。同步移除设计器内置 mock catalog、`catalog` 改必传 prop；形状测试增至 10 条（强制每个 `source` 为 http(s) URL、选项金额逐维严格递增）。deferred #1 的 USD 部分闭环。
 - ✅ **T06**（2026-10-03）：设计器 mobile-first（可点选、本地保存、实时年成本预览），已接真实 catalog。
 - ✅ **T07**（2026-10-03）：财务录入 ≤4 项 + 校验拦截 + localStorage 持久化。
+- ✅ **F2 逐项支出**（2026-10-08，闸门 (b)）：T07 支出字段增「高级：拆开填（默认收起）」，四类拆分驱动 `expense` + `expenseBreakdown` 并参与全部测算（core `profileMonthlyExpense`，`project`/`gap`/`buildMilestones`/换算器全走它）；全空回落单个数、旧草稿逐位不变、`assumptionsVersion` 不升版。见 PRD §8 与 CONVENTIONS。
 - ✅ **T09**（2026-10-03）：假设清单 + 免责声明 SSR 渲染（纯 Astro 组件，零客户端 JS）。
 - ✅ **T10**（2026-10-03）：币种切换 + `/api/fx` SSR 汇率代理（Frankfurter 实时 → static-fx.json 兜底，降级实测覆盖）；**实测结论：Frankfurter 已从 `api.frankfurter.app` 301 迁移至 `api.frankfurter.dev/v1`（实现已用新域），base=CNY 完全可用**（原「待验证」风险关闭）。
 - ✅ **T08**（2026-10-03）：测算输出页（够用线/三状态一等卡片/差距/阶梯目标 ≥3/空态 CTA），纯函数计算层 `apps/web/src/lib/results.ts` + 6 单测；根测试 43 条全绿；SSR 假设清单+免责声明命中。

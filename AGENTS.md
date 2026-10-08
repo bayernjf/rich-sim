@@ -88,6 +88,7 @@ Node 22（`.nvmrc`）。
 | 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
 | 托管 | 海外 MVP：应用 + 营销**全 Cloudflare**（一个平台管 DNS/CDN/WAF/部署）；Vercel 后置为触发选项（服务端变重时评估迁入） | `technical-design.md` §9 |
 | MVP 形态 | **无后端**、无账号，方案存 `localStorage` | `technical-design.md` §10 |
+| F2 逐项支出（2026-10-08） | 走闸门 (b)：`Profile.expenseBreakdown?`（4 大类月口径）**真进引擎**（`profileMonthlyExpense`，project/gap/buildMilestones/换算器全走它），UI 默认收起；部分推翻 m2 D3（恢复进引擎、保留「不滑向记账工具」），`assumptionsVersion` 不升版 | `docs/PRD.md` §8、`docs/m2-decisions.md` D3、`CONVENTIONS.md` |
 
 ## 红线（合规与产品边界）
 

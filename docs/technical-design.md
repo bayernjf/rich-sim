@@ -89,7 +89,7 @@
 **接口草案**
 
 ```ts
-type Profile = { income: number; expense: number; savings: number; debt: number };
+type Profile = { income: number; expense: number; savings: number; debt: number; expenseBreakdown? };  // expenseBreakdown?: 可选，F2 逐项支出（2026-10-08）
 type Assumptions = { returnRate: number; withdrawalRate: number; inflation: number };
 type Goal = { kind: 'enough-line' | 'net-worth'; value: number };
 
@@ -114,7 +114,13 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];
 **类型与函数**
 
 ```ts
-type Profile = { income: number; expense: number; savings: number; debt: number };   // 月口径
+type Profile = {
+  income: number;
+  expense: number; // 月支出总额；expenseBreakdown 存在时引擎按四项之和取数
+  savings: number;
+  debt: number;
+  expenseBreakdown?: { housing: number; transport: number; food: number; other: number }; // F2 逐项支出（2026-10-08），可选，月口径
+};   // 月口径
 type Assumptions = { returnRate: number; withdrawalRate: number; inflation: number }; // 年化小数（0.04）
 type Goal = { kind: 'enough-line' | 'net-worth'; value: number };
 type Projection =
@@ -195,7 +201,7 @@ function convert(amount: number, from: Currency, to: Currency, fx: FxSnapshot): 
 | 实体 | 关键字段 | 说明 |
 |---|---|---|
 | `user` | id, email, created_at | 认证后才有 |
-| `profile` | user_id, income, expense, savings, debt, currency, updated_at | 现状快照 |
+| `profile` | user_id, income, expense, savings, debt, currency, updated_at, expense_breakdown(jsonb) | 现状快照（expense_breakdown 可选，F2 逐项支出 2026-10-08） |
 | `scenario` | user_id, choices(jsonb), annual_cost, created_at | 理想生活的维度选择 |
 | `goal` | user_id, kind, value, assumptions(jsonb) | 目标与假设 |
 | `plan` | user_id, goal_id, milestones(jsonb), created_at | 阶梯目标 |
