@@ -810,6 +810,12 @@ try {
     'Auth：坏邮箱被前端拦下，不发请求',
     `notice="${authNotice}"`,
   );
+  // 合法邮箱 + 短密码：前端拦截，不发请求（密码模式，2026-10-09 起）。
+  await page.fill('[data-auth-email-input]', 'smoke@example.com');
+  await page.fill('[data-auth-password-input]', '123');
+  await page.click('[data-auth-send]');
+  const pwNotice = await page.locator('[data-auth-notice]').innerText();
+  check(pwNotice.includes('至少 6 位'), 'Auth：短密码被前端拦下，不发请求', `notice="${pwNotice}"`);
   const evAuth = await eventsSoFar();
   check(
     countEvent(evAuth, 'auth:login') === 0,

@@ -4,13 +4,21 @@
  * 三条纪律：
  * - **未配置 Supabase 就不渲染**（M5 验收 #1：未接入时全站零变化）；
  *   SSR 与客户端首帧都返回 null，挂上客户端、读到 env 后才出现。
- * - **会话恢复**走 supabase-js 的 onAuthStateChange——magic link 点回来
- *   落在任意页面，这个岛自己换到已登录态，不需要专门的重定向页。
+ * - **会话恢复**走 supabase-js 的 onAuthStateChange——登录/注册成功后
+ *   岛自己换到已登录态；邮箱+密码模式（Confirm email 已关，注册即登录）。
  * - **事件零 props**：`auth:login` / `auth:logout` 不带邮箱（PII 不出本机）。
  */
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../lib/supabase';
-import { looksLikeEmail, sendMagicLink, signOut, stateFromSession, type AuthState } from '../lib/auth';
+import {
+  looksLikeEmail,
+  MIN_PASSWORD_LENGTH,
+  signInWithPassword,
+  signOut,
+  signUpWithPassword,
+  stateFromSession,
+  type AuthState,
+} from '../lib/auth';
 import { track } from '../lib/analytics';
 import { format, t } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
@@ -20,6 +28,8 @@ export default function AuthButton({ locale = 'zh' }: { locale?: Locale }) {
   const [state, setState] = useState<AuthState>({ status: 'signed-out' });
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -40,19 +50,23 @@ export default function AuthButton({ locale = 'zh' }: { locale?: Locale }) {
 
   if (!enabled) return null;
 
-  const handleSend = async () => {
+  const handleSubmit = async () => {
     const trimmed = email.trim();
     if (!looksLikeEmail(trimmed)) {
       setNotice(t('auth.invalidEmail', locale));
       return;
     }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setNotice(format(t('auth.shortPassword', locale), { min: String(MIN_PASSWORD_LENGTH) }));
+      return;
+    }
     setBusy(true);
-    const result = await sendMagicLink(trimmed, window.location.href.split('#')[0]);
+    const result = mode === 'sign-in'
+      ? await signInWithPassword(trimmed, password)
+      : await signUpWithPassword(trimmed, password);
     setBusy(false);
-    if (result.ok) {
-      setState({ status: 'sent', email: trimmed });
-      setNotice(format(t('auth.sent', locale), { email: trimmed }));
-    } else {
+    // 成功时 onAuthStateChange 会把岛切到已登录态，这里只需报错。
+    if (!result.ok) {
       setNotice(format(t('auth.failed', locale), { message: result.message }));
     }
   };
@@ -93,26 +107,54 @@ export default function AuthButton({ locale = 'zh' }: { locale?: Locale }) {
           data-auth-panel
           className="absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-line bg-panel p-4 shadow-lg"
         >
-          <div className="flex gap-2">
+          <div className="flex gap-2" role="group" aria-label="mode">
+            <button
+              type="button"
+              data-auth-mode="sign-in"
+              aria-pressed={mode === 'sign-in'}
+              onClick={() => setMode('sign-in')}
+              className={`min-h-8 flex-1 rounded-full px-3 text-xs font-medium ${mode === 'sign-in' ? 'bg-accent text-on-accent' : 'border border-line text-ink'}`}
+            >
+              {t('auth.signIn', locale)}
+            </button>
+            <button
+              type="button"
+              data-auth-mode="sign-up"
+              aria-pressed={mode === 'sign-up'}
+              onClick={() => setMode('sign-up')}
+              className={`min-h-8 flex-1 rounded-full px-3 text-xs font-medium ${mode === 'sign-up' ? 'bg-accent text-on-accent' : 'border border-line text-ink'}`}
+            >
+              {t('auth.signUp', locale)}
+            </button>
+          </div>
+          <div className="mt-2 flex flex-col gap-2">
             <input
               data-auth-email-input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !busy) void handleSend();
-              }}
               placeholder={t('auth.emailPlaceholder', locale)}
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink placeholder:text-muted"
+              className="min-h-11 w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink placeholder:text-muted"
+            />
+            <input
+              data-auth-password-input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !busy) void handleSubmit();
+              }}
+              placeholder={t('auth.passwordPlaceholder', locale)}
+              className="min-h-11 w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink placeholder:text-muted"
             />
             <button
               type="button"
               data-auth-send
               disabled={busy}
-              onClick={() => void handleSend()}
-              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-accent px-4 py-2 text-xs font-semibold text-on-accent disabled:opacity-60"
+              onClick={() => void handleSubmit()}
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-4 py-2 text-xs font-semibold text-on-accent disabled:opacity-60"
             >
-              {t('auth.sendLink', locale)}
+              {mode === 'sign-in' ? t('auth.signIn', locale) : t('auth.signUp', locale)}
             </button>
           </div>
           <p data-auth-notice aria-live="polite" className="mt-2 min-h-4 text-xs leading-relaxed text-muted">
