@@ -38,6 +38,7 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 
 - 一切类型以 `packages/core/src/types.ts` 为准（T02）。**禁止在 web 侧重新定义** core 已有类型，一律 `import type ... from '@rich-sim/core'`。
 - Catalog 类型已含 `source?` / `note?` / `isDefault?` 字段，供 T05 标注来源与默认选项。
+- `Profile.expenseBreakdown?`（F2 · 逐项支出，2026-10-08 闸门 (b)）：可选，旧草稿（无该字段）完全兼容；存在时**参与引擎计算**。web 侧支出口径的事实源在 `apps/web/src/lib/expense.ts`（`resolveExpense`），写入保证 `expense = breakdown 之和`。
 
 ## 设计令牌与 UI 约定
 
@@ -48,8 +49,9 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 
 ## 引擎公式口径（T03 已定，实现勿改）
 
+- 月支出取数（F2 · 逐项支出，2026-10-08）：**引擎一律经 `profileMonthlyExpense(p)`**——`expenseBreakdown` 存在时返回四项之和并忽略 `expense`，否则回落 `expense`。`project` / `gap` / `buildMilestones` / `wealthTimeEquivalent` 全部走它；旧草稿（无 breakdown）结果逐位不变，故 `assumptionsVersion` **不升版**（无公式变化）。写入口径在 web 侧 `lib/expense.ts`（`expense` = breakdown 之和，永不打架）。
 - `enoughLine(annualCost, a)` = `annualCost / a.withdrawalRate`（例：40 万 / 0.04 = 1000 万）。
-- `project(p, goal, a)`：起始本金 = `savings - debt`；年储蓄 = `(income - expense) * 12`；逐年 `balance = balance * (1 + returnRate) + annualDeposit`；`enough-line` 目标的目标本金 = `value / a.withdrawalRate`；60 年内达标 → `reachable`（`years` = 首次达标年；目标 ≤ 起始本金 → 0）；月净储蓄 ≤ 0 → `no-net-savings`；否则 `unreachable`。`savingsRate` = 月净储蓄 / 月收入。
+- `project(p, goal, a)`：起始本金 = `savings - debt`；年储蓄 = `(income - profileMonthlyExpense(p)) * 12`；逐年 `balance = balance * (1 + returnRate) + annualDeposit`；`enough-line` 目标的目标本金 = `value / a.withdrawalRate`；60 年内达标 → `reachable`（`years` = 首次达标年；目标 ≤ 起始本金 → 0）；月净储蓄 ≤ 0 → `no-net-savings`；否则 `unreachable`。`savingsRate` = 月净储蓄 / 月收入。
 - `gap(p, goal, a)`：`yearsAtCurrentPace` = 当前速度达成年数（unreachable = 60，no-net-savings = 0）；`annualGap` = 30 年内达标所需年储蓄 − 当前年储蓄（< 0 记 0）。
 - `scenarioAnnualCost`：M1 = 各选项年成本简单求和（通胀作为假设记录并展示，暂不参与换算；改口径必须 bump `assumptionsVersion`）。
 - `convert(amount, from, to, fx)` = `amount * fx.rates[to] / fx.rates[from]`。
