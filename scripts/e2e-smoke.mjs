@@ -347,12 +347,45 @@ try {
 
   await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.fill('#field-income', '15000');
-  await page.fill('#field-expense', '8000');
+  await page.fill('#field-expenseTotal', '8000');
   await page.fill('#field-savings', '100000');
   await page.fill('#field-debt', '0');
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(100);
   const evFinance = await eventsSoFar();
   check(countEvent(evFinance, 'finance:update') >= 1, '埋点：finance:update 已入队', `count=${countEvent(evFinance, 'finance:update')}`);
+
+  // F2（2026-10-08）：展开「高级：拆开填」，四类求和 8000 驱动 expense + breakdown。
+  await page.click('button:has-text("高级：拆开填")');
+  await page.fill('#sub-housing', '3500');
+  await page.fill('#sub-transport', '800');
+  await page.fill('#sub-food', '2000');
+  await page.fill('#sub-other', '1700');
+  await page.waitForTimeout(150);
+  const totalShown = await page.inputValue('#field-expenseTotal');
+  const totalDisabled = await page.isDisabled('#field-expenseTotal');
+  check(
+    totalShown === '8000' && totalDisabled,
+    'F2：四类拆分自动求和为 8000 且总额只读',
+    `total=${totalShown} disabled=${totalDisabled}`,
+  );
+  const breakdownInDraft = await page.evaluate(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem('rich-sim:plan:v1') ?? 'null');
+      return d?.profile?.expenseBreakdown ?? null;
+    } catch {
+      return null;
+    }
+  });
+  check(
+    breakdownInDraft !== null &&
+      breakdownInDraft.housing === 3500 &&
+      breakdownInDraft.transport === 800 &&
+      breakdownInDraft.food === 2000 &&
+      breakdownInDraft.other === 1700 &&
+      breakdownInDraft.housing + breakdownInDraft.transport + breakdownInDraft.food + breakdownInDraft.other === 8000,
+    'F2：draft.profile 已写 expenseBreakdown（四项合计 8000）',
+    JSON.stringify(breakdownInDraft),
+  );
 
   // ── 步骤 3：结果页 ──
   await page.goto(`${BASE}/app/result`, { waitUntil: 'networkidle' });
@@ -697,6 +730,24 @@ try {
   await page.waitForTimeout(300);
   const curVal = await page.locator('#display-currency').inputValue();
   check(curVal === 'CNY', '切币种：选择器值变为 CNY', `value=${curVal}`);
+
+  const breakdownAfterSwitch = await page.evaluate(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem('rich-sim:plan:v1') ?? 'null');
+      return d?.profile?.expenseBreakdown ?? null;
+    } catch {
+      return null;
+    }
+  });
+  check(
+    breakdownAfterSwitch !== null &&
+      breakdownAfterSwitch.housing > 0 &&
+      breakdownAfterSwitch.transport > 0 &&
+      breakdownAfterSwitch.food > 0 &&
+      breakdownAfterSwitch.other > 0,
+    'F2：切币种后 expenseBreakdown 逐项保留（未降级成单个数）',
+    JSON.stringify(breakdownAfterSwitch),
+  );
 
   const evSwitch = await eventsSoFar();
   check(countEvent(evSwitch, 'currency:switch') >= 1, '埋点：currency:switch 已入队', `count=${countEvent(evSwitch, 'currency:switch')}`);

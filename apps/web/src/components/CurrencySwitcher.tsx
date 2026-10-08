@@ -32,14 +32,28 @@ type CurrencySwitcherProps = {
   locale?: Locale;
 };
 
-/** 用新快照把 profile 各金额从旧币种换算到新币种（旧==profile.currency）。 */
+/**
+ * 用新快照把 profile 各金额从旧币种换算到新币种（旧==profile.currency）。
+ * F2（逐项支出，2026-10-08）：profile 带 expenseBreakdown 时逐项换算并保留——
+ * 不这样做，切一次币种就把用户拆开的支出抹掉，等于静默降级成单个数。
+ */
 function convertProfile(p: Profile, from: Currency, to: Currency, fx: FxSnapshot): Profile {
-  return {
+  const base = {
     income: convert(p.income, from, to, fx),
     expense: convert(p.expense, from, to, fx),
     savings: convert(p.savings, from, to, fx),
     debt: convert(p.debt, from, to, fx),
     currency: to,
+  };
+  if (!p.expenseBreakdown) return base;
+  return {
+    ...base,
+    expenseBreakdown: {
+      housing: convert(p.expenseBreakdown.housing, from, to, fx),
+      transport: convert(p.expenseBreakdown.transport, from, to, fx),
+      food: convert(p.expenseBreakdown.food, from, to, fx),
+      other: convert(p.expenseBreakdown.other, from, to, fx),
+    },
   };
 }
 
