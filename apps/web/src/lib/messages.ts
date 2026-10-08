@@ -297,6 +297,15 @@ const ZH = {
   'plans.delete': '删除',
   'plans.loaded': '已载入「{name}」，上面的数字已按它重算',
   'plans.empty': '还没有存档。',
+  'auth.signIn': '登录',
+  'auth.emailPlaceholder': '你的邮箱',
+  'auth.sendLink': '发登录链接',
+  'auth.sent': '链接已发到 {email}，点邮件里的链接即完成登录',
+  'auth.invalidEmail': '邮箱格式看起来不对',
+  'auth.failed': '发送失败：{message}',
+  'auth.signedInAs': '{email}',
+  'auth.signOut': '退出',
+  'auth.note': '登录后方案会云端同步；不登录也能全程使用，数据只在本机。',
 };
 
 const EN: Record<keyof typeof ZH, string> = {
@@ -601,6 +610,15 @@ const EN: Record<keyof typeof ZH, string> = {
   'plans.delete': 'Delete',
   'plans.loaded': 'Loaded “{name}” — the numbers above now reflect it',
   'plans.empty': 'Nothing saved yet.',
+  'auth.signIn': 'Sign in',
+  'auth.emailPlaceholder': 'Your email',
+  'auth.sendLink': 'Email me a sign-in link',
+  'auth.sent': 'Link sent to {email} — open it to finish signing in',
+  'auth.invalidEmail': 'That email looks off',
+  'auth.failed': 'Could not send: {message}',
+  'auth.signedInAs': '{email}',
+  'auth.signOut': 'Sign out',
+  'auth.note': 'Sign in to sync your plan to the cloud. Everything works signed-out too — data stays on this device.',
 };
 
 export type MessageKey = keyof typeof ZH;

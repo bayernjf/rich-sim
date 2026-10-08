@@ -775,6 +775,31 @@ try {
     '',
   );
 
+  // M5 S1 · Auth：dev 挂了 .env（模拟已配置）→ 登录按钮要出现；
+  // 面板开合、坏邮箱提示、事件不发（没真登录就没有 auth:login）。
+  // 「未配置时全站零渲染」由 SSR 源文本断言钉住（构建期无 env 时的形态）。
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-auth-open]', { timeout: 5000 });
+  check(true, 'Auth：已配置 Supabase 时登录按钮出现', '');
+  const ssrFinance = await (await fetch(`${BASE}/app/finance?lang=zh`)).text();
+  check(!ssrFinance.includes('data-auth-open'), 'Auth：SSR 源码无登录岛（纯客户端渲染）', '');
+  await page.click('[data-auth-open]');
+  await page.waitForSelector('[data-auth-panel]');
+  await page.fill('[data-auth-email-input]', 'not-an-email');
+  await page.click('[data-auth-send]');
+  const authNotice = await page.locator('[data-auth-notice]').innerText();
+  check(
+    authNotice.includes('邮箱格式'),
+    'Auth：坏邮箱被前端拦下，不发请求',
+    `notice="${authNotice}"`,
+  );
+  const evAuth = await eventsSoFar();
+  check(
+    countEvent(evAuth, 'auth:login') === 0,
+    'Auth：未完成登录前没有 auth:login 事件',
+    `count=${countEvent(evAuth, 'auth:login')}`,
+  );
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
