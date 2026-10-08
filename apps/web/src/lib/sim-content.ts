@@ -148,6 +148,28 @@ export function cardView(card: SimCard, locale: Locale): {
 }
 
 /**
+ * 经历通道 · 人生快进（§2.3）：收入与年成本不变，逐年累计结余。
+ * 纯算术——不预测收入变化、不含通胀与税率；负值即累计亏空（现金流早已断裂）。
+ */
+export function fastForward(annualIncome: number, annualCost: number, years: number): number {
+  return (annualIncome - annualCost) * years;
+}
+
+/**
+ * 感受通道 · 失去模拟（§2.3 MVP 候选 3）：某一年收入腰斩，其余不变，
+ * 用既有 burdenStatus 立刻重算负担率——「持有即风险」的反面教材。
+ */
+export function swanBurden(
+  annualCost: number,
+  annualIncome: number,
+  lastYearCost: number,
+): { rate: number | null; status: 'green' | 'yellow' | 'red' } {
+  const cashflow = annualIncome / 2 - lastYearCost;
+  const { rate, status } = burdenStatus(annualCost, cashflow);
+  return { rate, status };
+}
+
+/**
  * 两个纯体验项刻意不进 core catalog（那边有每维 3–5 项、维内递增等契约），
  * 所以它们的英文名也只能在这一侧——同样由 sim-l10n.test.ts 穷尽性钉住。
  */

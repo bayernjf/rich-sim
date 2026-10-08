@@ -229,6 +229,20 @@ const ZH = {
   'sim.kind.experience': '体验',
   'sim.kind.experienceHint': '一次性、情绪强、零持有负担',
   'sim.cardSwitch': '换一张身份卡：',
+  'sim.lifeH': '人生快进：按这套收支过 30 年',
+  'sim.lifeLead':
+    '收入与年成本保持当前水平不变，一年一年往下过，累计结余如下。纯算术推演：不预测收入变化、不含通胀与税率，不是对未来的承诺。',
+  'sim.lifeSurplus': '第 {years} 年 · 累计结余 {amount}',
+  'sim.lifeDeficit': '第 {years} 年 · 累计亏空 {amount}——现金流早已断裂',
+  'sim.swanH': '黑天鹅：收入腰斩那一年',
+  'sim.swanLead':
+    '假设某一年收入腰斩（危机、诉讼、分产——不预测哪一种），其余不变，负担率立刻重算：',
+  'sim.swanResult': '负担率从 {before} 跳到 {after}',
+  'sim.swanBroke': '现金流为负：这一年账都付不出，只能变卖资产（折价 75%）。',
+  'sim.privH': '特权价目',
+  'sim.privLead':
+    '被世界优待的感觉也有价签。私密剧情，不做社交展示；金额来自带来源的目录项：',
+  'sim.privCost': '代价点：应酬排满日程、隐私消失——这两件没有价签，但每年都有。',
   'invest.title': '把起始金放进资产类别',
   'invest.intro':
     '把这笔虚拟起始金分配到五个资产类别，自己填每个类别的年收益率假设，看它按你的假设滚 1 / 5 / 10 年。只有资产类别，没有任何具体标的；收益率是你的假设，不是承诺。',
@@ -561,6 +575,20 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.kind.experience': 'Experiences',
   'sim.kind.experienceHint': 'One-off, emotionally strong, no holding burden',
   'sim.cardSwitch': 'Switch persona card:',
+  'sim.lifeH': 'Life in fast-forward: 30 years on these numbers',
+  'sim.lifeLead':
+    'Income and annual cost stay at current levels, year after year. Cumulative surplus below. Pure arithmetic: no income changes, no inflation, no taxes - and no promises about the future.',
+  'sim.lifeSurplus': 'Year {years} · cumulative surplus {amount}',
+  'sim.lifeDeficit': 'Year {years} · cumulative deficit {amount} - the cashflow broke long ago',
+  'sim.swanH': 'Black swan: the year income halves',
+  'sim.swanLead':
+    'Assume income halves one year (crisis, lawsuit, settlement - we do not predict which). Everything else stays put, and the burden rate is recomputed instantly:',
+  'sim.swanResult': 'Burden rate jumps from {before} to {after}',
+  'sim.swanBroke': 'Negative cashflow: this year the bills cannot be paid - assets must be sold (at 75%).',
+  'sim.privH': 'The price of privilege',
+  'sim.privLead':
+    'Being treated specially by the world has a price tag too. A private scene, not social display; amounts come from sourced catalog items:',
+  'sim.privCost': 'The hidden costs: a calendar full of obligations and no privacy - no price tag, but billed every year.',
   'invest.title': 'Allocate your starting capital',
   'invest.intro':
     'Split this virtual capital across five asset classes, enter your own annual return assumption for each, and watch it compound over 1 / 5 / 10 years on your assumptions. Asset classes only - no tickers, no products. The returns are your assumptions, not promises.',

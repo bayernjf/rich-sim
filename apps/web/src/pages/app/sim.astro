@@ -19,6 +19,9 @@ import {
   SELL_DISCOUNT,
   capitalFromParam,
   cardAnnualCost,
+  fastForward,
+  poolOptionLabel,
+  swanBurden,
   cardBurden,
   cardBills,
   cardView,
@@ -45,6 +48,12 @@ const { rate, status } = cardBurden(simChoices, catalog, DEFAULT_ASSUMPTIONS, {
   annualIncome: cardIncome,
   lastYearCost: cardLastYearCost,
 });
+
+const swan = swanBurden(simCost, cardIncome, cardLastYearCost);
+const swanRate = swan.rate === null ? null : `${Math.round(swan.rate * 100)}%`;
+const nowRate = rate === null ? null : `${Math.round(rate * 100)}%`;
+const fastYears = [10, 20, 30].map((y) => ({ years: y, surplus: fastForward(cardIncome, simCost, y) }));
+const privilegeItems = pool.filter((item) => item.option.id.startsWith('exp-'));
 
 const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
@@ -250,6 +259,59 @@ const assetBars = card.assetStructure.map((part, index) => ({
         locale={locale}
         bills={pageBills.map((bill) => ({ optionLabel: bill.optionLabel, annualCost: bill.annualCost }))}
       />
+    </section>
+
+    <section aria-labelledby="sim-life-heading" class="mt-8" data-sim-life>
+      <h2 id="sim-life-heading" class="text-base font-semibold text-ink">{t('sim.lifeH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.lifeLead', locale)}</p>
+      <ul class="mt-3 space-y-1">
+        {fastYears.map((row) => (
+          <li class="flex items-baseline justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-2 text-sm">
+            <span class="text-muted">
+              {format(t(row.surplus >= 0 ? 'sim.lifeSurplus' : 'sim.lifeDeficit', locale), {
+                years: String(row.years),
+                amount: '',
+              }).replace('{amount}', '')}
+            </span>
+            <span class={`font-mono tabular-nums ${row.surplus >= 0 ? 'text-ink' : 'text-danger'}`}>
+              {fmt(Math.abs(row.surplus))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sim-swan-heading" class="mt-8" data-sim-swan>
+      <h2 id="sim-swan-heading" class="text-base font-semibold text-ink">{t('sim.swanH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.swanLead', locale)}</p>
+      <p class:list={[
+        'mt-3 rounded-lg border px-3 py-2 text-sm',
+        swan.status === 'green' ? 'border-accent bg-accent-soft text-accent'
+          : swan.status === 'yellow' ? 'border-line bg-panel text-ink'
+          : 'border-danger bg-panel text-danger',
+      ]}>
+        {format(t('sim.swanResult', locale), { before: nowRate ?? '—', after: swanRate ?? '—' })}
+        {swan.status === 'red' && <span class="mt-1 block text-xs">{t('sim.swanBroke', locale)}</span>}
+      </p>
+    </section>
+
+    <section aria-labelledby="sim-priv-heading" class="mt-8" data-sim-priv>
+      <h2 id="sim-priv-heading" class="text-base font-semibold text-ink">{t('sim.privH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.privLead', locale)}</p>
+      <ul class="mt-3 space-y-1">
+        {privilegeItems.map((item) => (
+          <li class="flex items-baseline justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-2 text-sm">
+            <span class="text-muted">{poolOptionLabel(item.option, locale)}</span>
+            <span class="font-mono tabular-nums text-ink">
+              {fmt(item.option.annualCost)}
+              {typeof item.option.source === 'string' && (
+                <a href={item.option.source} class="ml-2 text-xs text-accent underline-offset-2 hover:underline">Source</a>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.privCost', locale)}</p>
     </section>
 
     <ShoppingArea client:load items={pool} baselineAnnualCost={annualCost} locale={locale} />
