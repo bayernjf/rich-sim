@@ -8,7 +8,9 @@ import { buildReport } from '../lib/report';
 /**
  * M4 S2 · T02 报告视图（React 岛，client:load，挂在 /app/result 页内）。
  *
- * - **它是文档，不是表单**：没有任何输入框 / 按钮 / 折叠控件——内容全部来自
+ * - **它是文档，不是表单**：正文没有任何输入框或折叠控件；唯一的动作是页首那个
+ *   「打印 / 保存为 PDF」按钮（T06），而它自己会被 `@media print` 隐藏，不进纸面。
+ *   内容全部来自
  *   `buildReport()`（T01），本组件只负责排版。
  * - **数据不出本机**：只读 `localStorage` 的草稿，没有任何网络路径（G1）。
  * - 无草稿 / 无 profile 时整块不渲染（空态由 `ResultsView` 负责）。
@@ -48,13 +50,24 @@ export default function ReportView({
       aria-labelledby="report-title"
       className="mt-8 rounded-2xl border border-line bg-panel p-6"
     >
-      <header>
-        <h2 id="report-title" className="text-base font-medium text-ink">
-          {t('report.title', locale)}
-        </h2>
-        <p className="mt-1 text-xs text-muted">
-          {format(t('report.generatedOn', locale), { date: report.generatedOn })}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="report-title" className="text-base font-medium text-ink">
+            {t('report.title', locale)}
+          </h2>
+          <p className="mt-1 text-xs text-muted">
+            {format(t('report.generatedOn', locale), { date: report.generatedOn })}
+          </p>
+        </div>
+        {/* T06 打印入口：不进纸面（@media print 隐藏所有 button） */}
+        <button
+          type="button"
+          data-report-print
+          onClick={() => window.print()}
+          className="min-h-11 rounded-full border border-line-strong px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
+        >
+          {t('report.print', locale)}
+        </button>
       </header>
 
       <div className="mt-5 space-y-5">
