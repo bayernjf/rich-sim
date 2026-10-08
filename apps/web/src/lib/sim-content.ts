@@ -437,9 +437,11 @@ export function runwayMonths(capital: number, annualCost: number): number | null
  * 展示取整只发生在这里，与换算条同一套口吻：不足一年说月数，
  * 因为「0.0 年」既没有信息又显得假。
  */
-export function formatRunway(months: number): string {
-  if (months < 12) return `${months.toFixed(1)} 个月`;
+export function formatRunway(months: number, locale: 'zh' | 'en' = 'zh'): string {
+  const unit = (n: string, kind: 'month' | 'year') =>
+    locale === 'en' ? `${n} ${kind}${n === '1' ? '' : 's'}` : `${n} ${kind === 'month' ? '个月' : '年'}`;
+  if (months < 12) return unit(months.toFixed(1), 'month');
   const years = months / 12;
   const digits = years >= 100 ? Math.round(years).toLocaleString('en-US') : years.toFixed(1);
-  return `${digits.endsWith('.0') ? digits.slice(0, -2) : digits} 年`;
+  return unit(digits.endsWith('.0') ? digits.slice(0, -2) : digits, 'year');
 }

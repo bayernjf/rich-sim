@@ -55,7 +55,7 @@ export default function ClaimRunway({
     >
       <Interpolated
         template={t('runway.covers', locale)}
-        vars={{ capital: money(capital), runway: formatRunway(months) }}
+        vars={{ capital: money(capital), runway: formatRunway(months, locale) }}
         className="font-mono font-semibold tabular-nums"
       />
       <span className="mt-1 block text-xs font-normal leading-relaxed text-muted">

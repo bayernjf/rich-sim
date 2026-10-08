@@ -158,6 +158,12 @@ describe('领钱入口（S4）', () => {
     expect(formatRunway(months as number)).toBe('1.8 个月');
   });
 
+  it('英文态走英文单位：9.1 months / 9.8 years，不混中文', () => {
+    expect(formatRunway(1_000_000 / (1_317_000 / 12), 'en')).toBe('9.1 months');
+    expect(formatRunway(1_000_000 / (101_600 / 12), 'en')).toBe('9.8 years');
+    expect(formatRunway(12, 'en')).toBe('1 year');
+  });
+
   it('撑得住的生活说年数：默认生活 $101,600 → 9.8 年', () => {
     const months = runwayMonths(SIM_STARTING_CAPITAL, 101_600);
     expect(months).toBeCloseTo(1_000_000 / (101_600 / 12), 6);
