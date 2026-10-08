@@ -19,17 +19,45 @@ export type FxSnapshot = {
   version: string;
 };
 
+/**
+ * Itemized monthly spending (F2 · 逐项支出, 2026-10-08, gate (b)).
+ * Monthly granularity, four broad buckets — deliberately coarse so the
+ * finance entry stays lightweight instead of becoming a bookkeeping tool
+ * (PRD §3.2 Non-Goal). Present on a Profile only when the user chose to
+ * break spending down; legacy drafts without it are untouched.
+ */
+export type ExpenseBreakdown = {
+  /** Housing: rent / mortgage interest / utilities, monthly. */
+  housing: number;
+  /** Transport: car / public transit, monthly. */
+  transport: number;
+  /** Food: groceries + eating out, monthly. */
+  food: number;
+  /** Everything else, monthly. */
+  other: number;
+};
+
 /** Current-finance profile, monthly granularity. */
 export type Profile = {
   /** Monthly income. */
   income: number;
-  /** Monthly expense. */
+  /**
+   * Monthly expense — total. When `expenseBreakdown` is present the engine
+   * computes the total from it (profileMonthlyExpense); the writer layer
+   * keeps expense = sum(breakdown) so the two never diverge.
+   */
   expense: number;
   /** Current savings (absolute). */
   savings: number;
   /** Current debt (absolute). */
   debt: number;
   currency: Currency;
+  /**
+   * Optional itemized monthly spending. Undefined = single-number legacy
+   * draft (fully supported); present = engine uses its sum. Old drafts are
+   * unaffected either way.
+   */
+  expenseBreakdown?: ExpenseBreakdown;
 };
 
 /**
