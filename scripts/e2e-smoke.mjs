@@ -728,6 +728,53 @@ try {
     },
   ]);
 
+  // F9（本机版）· 多剧本存档：存一个 → 列表出现 → 载入 → 删除，
+  // 顺带钉住三件事——SSR 源码里没有这个岛、同名覆盖不翻倍、事件零 props。
+  // 注意不能查 'data-saved-plans' 本身：print 隐藏清单里有同名 CSS 选择器，
+  // dev 模式样式内联，会躺在 SSR <style> 里造成误伤——查组件专属的内部 id。
+  const ssrPlans = await (await fetch(`${BASE}/app/result?lang=zh`)).text();
+  check(!ssrPlans.includes('saved-plans-heading'), '剧本存档：SSR 源码无存档岛（纯客户端渲染）', '');
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-saved-plans]');
+  await page.fill('[data-plan-name]', '基准');
+  await page.click('[data-plan-save]');
+  await page.waitForSelector('[data-plan-item]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 1,
+    '剧本存档：存一个后列表出现一条',
+    '',
+  );
+  await page.fill('[data-plan-name]', '基准');
+  await page.click('[data-plan-save]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 1,
+    '剧本存档：同名覆盖，不翻倍',
+    '',
+  );
+  await page.click('[data-plan-load]');
+  const loadNotice = await page.locator('[data-plan-notice]').innerText();
+  check(loadNotice.includes('已载入'), '剧本存档：载入后有明示', `notice="${loadNotice}"`);
+  const evPlans = await eventsSoFar();
+  check(
+    ['plan:save', 'plan:load'].every((n) => countEvent(evPlans, n) >= 1),
+    '埋点：plan:save / plan:load 已入队',
+    ['plan:save', 'plan:load'].map((n) => `${n}=${countEvent(evPlans, n)}`).join(' '),
+  );
+  const planEventsWithProps = evPlans.find(
+    (e) => /^.*plan:(save|load|delete)$/.test(e.event) && Object.keys(e.props ?? {}).length > 0,
+  );
+  check(
+    !planEventsWithProps,
+    '红线：plan:* 事件零 props（剧本名不出本机）',
+    planEventsWithProps ? JSON.stringify(planEventsWithProps.props) : '',
+  );
+  await page.click('[data-plan-delete]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 0,
+    '剧本存档：删除后列表清空',
+    '',
+  );
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');

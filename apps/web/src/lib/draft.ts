@@ -37,9 +37,36 @@ export type Draft = {
    * 只存派生数字与当时的净资产，不存任何输入原文之外的东西，且**永远不出本机**。
    */
   history?: Snapshot[];
+  /**
+   * F9（本机版）· 多剧本存档，见 `lib/plans.ts`。
+   * undefined = 没存过（旧草稿天然兼容）；`[]` = 全部删光。
+   * 与 `history` 同一条纪律：`writeDraft` 隐式保留，永远不出本机。
+   */
+  savedPlans?: SavedPlan[];
   /** ISO timestamp. */
   updatedAt: string;
 };
+
+/**
+ * F9（本机版）· 多剧本存档的一条。
+ *
+ * 存的是「一个剧本的全部输入」：设计器七维选择 + 财务四（八）项 + 可能的
+ * 购物车一键成目标 override。不存币种与假设——那是展示偏好与全局口径，
+ * 不是剧本的一部分；载入时沿用当前值。派生数字（年限、够用线）不存：
+ * 载入后走 `computeResults` 现算，与「测算结果不落盘」的既有口径一致。
+ */
+export type SavedPlan = {
+  /** 本机唯一 id（`lib/plans.ts` 生成，不出本机）。 */
+  id: string;
+  /** 用户起的名字（ trimmed，长度上限见 plans.ts）。 */
+  name: string;
+  /** 存档时刻（ISO 8601）。 */
+  savedAt: string;
+  choices: LifeChoice;
+  profile: Profile | null;
+  goalOverride?: { annualCost: number; from: 'sim-cart' };
+};
+
 
 export function readDraft(): Draft | null {
   try {
@@ -59,8 +86,10 @@ export function writeDraft(draft: Draft): void {
   // 抹掉——而且抹得很安静。所以这里统一保留：调用方不显式写 history 就等于不动它。
   // 要清掉请显式传 `history: []`（当前只有 clearDraft 走整键删除）。
   const previous = readDraft();
-  const merged =
-    draft.history === undefined && previous?.history ? { ...draft, history: previous.history } : draft;
+  let merged = draft;
+  if (draft.history === undefined && previous?.history) merged = { ...merged, history: previous.history };
+  if (draft.savedPlans === undefined && previous?.savedPlans)
+    merged = { ...merged, savedPlans: previous.savedPlans };
   localStorage.setItem(
     DRAFT_KEY,
     JSON.stringify({ ...merged, updatedAt: new Date().toISOString() }),

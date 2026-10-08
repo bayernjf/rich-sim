@@ -284,6 +284,19 @@ const ZH = {
   'progress.currencyNote':
     '币种从 {from} 换成 {to}，金额不放在一起比（年限可以：两边按同一个因子一起缩放）',
   'progress.note': '这是本机每次测算读数的对照，不是预测、不构成建议；有没有进展由你自己判断。',
+  'plans.eyebrow': '剧本存档',
+  'plans.intro': '把当前这套输入存成一个剧本，随时载入对照；只存在这台机器上。',
+  'plans.placeholder': '给这个剧本起个名',
+  'plans.save': '存当前方案',
+  'plans.saved': '已存「{name}」',
+  'plans.overwritten': '已覆盖同名剧本「{name}」',
+  'plans.emptyName': '先起个名字再存',
+  'plans.tooMany': '最多存 {max} 个剧本，先删掉一个',
+  'plans.count': '{n}/{max}',
+  'plans.load': '载入',
+  'plans.delete': '删除',
+  'plans.loaded': '已载入「{name}」，上面的数字已按它重算',
+  'plans.empty': '还没有存档。',
 };
 
 const EN: Record<keyof typeof ZH, string> = {
@@ -575,6 +588,19 @@ const EN: Record<keyof typeof ZH, string> = {
     'Currency changed from {from} to {to}, so the money figures are not compared side by side (the horizon is: both sides scale by the same factor)',
   'progress.note':
     'This is a comparison of what this page showed you on this device. It forecasts nothing, advises nothing, and judges nothing.',
+  'plans.eyebrow': 'Saved scenarios',
+  'plans.intro': 'Save the current inputs as a named scenario and reload it anytime. Stored on this device only.',
+  'plans.placeholder': 'Name this scenario',
+  'plans.save': 'Save current',
+  'plans.saved': 'Saved “{name}”',
+  'plans.overwritten': 'Overwrote “{name}”',
+  'plans.emptyName': 'Name it first',
+  'plans.tooMany': 'Up to {max} scenarios — delete one first',
+  'plans.count': '{n}/{max}',
+  'plans.load': 'Load',
+  'plans.delete': 'Delete',
+  'plans.loaded': 'Loaded “{name}” — the numbers above now reflect it',
+  'plans.empty': 'Nothing saved yet.',
 };
 
 export type MessageKey = keyof typeof ZH;
