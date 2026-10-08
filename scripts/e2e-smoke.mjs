@@ -34,6 +34,17 @@ function parseAmount(text) {
   return m ? Number(m[0]) : NaN;
 }
 
+/**
+ * 只留标记：去掉 <style> / <script> 块。
+ *
+ * 「SSR 里没有这个岛」要查的是**标记**，不是字符串——打印样式表里也会出现
+ * `[data-scenario-panel]` 这类选择器（`@media print` 用它隐藏岛），而 dev 模式
+ * 会把 CSS 内联进 HTML，按裸字符串查会误伤。
+ */
+function markupOnly(html) {
+  return html.replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, '');
+}
+
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
@@ -391,7 +402,7 @@ try {
   // 先验关 JS 的那一屏：编辑岛不在源码里，但提取率与免责声明必须还在。
   const ssrAssumptions = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
   check(
-    !ssrAssumptions.includes('data-assumptions-editor'),
+    !markupOnly(ssrAssumptions).includes('data-assumptions-editor'),
     '可调假设：SSR 源码里没有编辑岛',
     '',
   );
@@ -1009,7 +1020,7 @@ try {
   // 面板是客户端岛：SSR 源码里必须没有它，而假设清单/免责声明必须仍然完整
   // （T03 判据——关 JS 时这一页依然是合规的完整页面）。
   const ssrHtml = await (await page.request.get(`${BASE}/app/result?smoke=1&lang=zh`)).text();
-  check(!ssrHtml.includes('data-scenario-panel'), '情景面板：SSR 源码里没有岛', '');
+  check(!markupOnly(ssrHtml).includes('data-scenario-panel'), '情景面板：SSR 源码里没有岛', '');
   check(
     ssrHtml.includes('假设清单') && ssrHtml.includes('免责声明'),
     '情景面板：SSR 仍带假设清单与免责声明',
@@ -1081,6 +1092,58 @@ try {
     `text="${joblessEn.trim()}"`,
   );
   await page.uncheck('[data-scenario-toggle="jobless"]');
+
+  // ── 步骤 10：报告（M4 S2 · T02/T03/T05/T06）──
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-report]');
+
+  const reportBlocks = await page
+    .locator('[data-report] [data-report-block]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-report-block')));
+  for (const id of ['situation', 'goal', 'status', 'gap', 'milestones']) {
+    check(reportBlocks.includes(id), `报告：有「${id}」小节`, `blocks=${reportBlocks.join(',')}`);
+  }
+
+  const reportText = await page.locator('[data-report]').innerText();
+  check(
+    reportText.includes('不构成') && reportText.includes('建议'),
+    '报告：免责声明随报告走',
+    `has=${reportText.includes('不构成')}`,
+  );
+
+  // 报告是文档不是表单：正文里不该出现输入控件（唯一的控件是打印按钮）
+  const reportInputs = await page
+    .locator('[data-report] input, [data-report] select, [data-report] textarea')
+    .count();
+  check(reportInputs === 0, '报告：正文没有输入控件', `count=${reportInputs}`);
+  check(
+    (await page.locator('[data-report-print]').count()) === 1,
+    '报告：有打印入口按钮',
+    '',
+  );
+
+  // 打印样式表必须命中报告与合规面板，并隐藏交互控件
+  const printCss = await page.evaluate(() => {
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue; // 跨源表读不到 cssRules，跳过
+      }
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSMediaRule && rule.media.mediaText === 'print') return rule.cssText;
+      }
+    }
+    return '';
+  });
+  check(
+    /\[data-report\]/.test(printCss) &&
+      /\[data-compliance\]/.test(printCss) &&
+      /button/.test(printCss),
+    '报告：打印样式命中报告与合规面板、并隐藏按钮',
+    `len=${printCss.length}`,
+  );
 
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
