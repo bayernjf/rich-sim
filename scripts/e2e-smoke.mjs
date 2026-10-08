@@ -1145,6 +1145,24 @@ try {
     `len=${printCss.length}`,
   );
 
+  // ── 步骤 11：假付费信号（M4 S4 前置探针）——不收款，只确认交互与埋点 ──
+  await page.waitForSelector('[data-paywall-probe]');
+  const tierCount = await page.locator('[data-paywall-tier]').count();
+  check(tierCount === 2, '付费墙：两个意愿选项', `count=${tierCount}`);
+
+  const probeNote = await page.locator('[data-paywall-probe]').innerText();
+  check(/不收款|not|No charge/.test(probeNote), '付费墙：明示不收款', '');
+
+  await page.click('[data-paywall-tier="report"]');
+  await page.waitForSelector('[data-paywall-thanks]');
+
+  const evProbe = await eventsSoFar();
+  check(
+    countEvent(evProbe, 'paywall:intent:report') >= 1,
+    '埋点：paywall:intent:report 已入队',
+    `count=${countEvent(evProbe, 'paywall:intent:report')}`,
+  );
+
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {
