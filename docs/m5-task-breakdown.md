@@ -1,6 +1,6 @@
 # M5 任务分解：账号体系与云端同步
 
-> 状态：**新建（2026-10-08）**，未开工。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
+> 状态：**S1 代码完成（2026-10-08）**：Auth 岛（magic link）挂载设计器/财务/结果三页，未配置 env 零渲染；单测 +5、冒烟 +4（142 条 FAILS 0）。**真人登录联调前还差 dashboard 侧两步**（见 §6），随后 S2 同步。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
 > 起因：2026-10-08 发起人拍板 **D4 翻转——账号体系立项**（`docs/m2-decisions.md` D4）。原判据（同设备 7 日回访 ≥15%）因线上读数为 0 短期无法达成，发起人直接拍板。
 > 范围：M5 = **Supabase Auth 登录** + **草稿云端同步**（REAL 账 `rich-sim:plan:v1` 与 SIM 账 `rich-sim:sim:v1`）。**不做**：付费、分享、社交、多设备冲突合并的高级策略。
 
@@ -20,8 +20,8 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 
 | 闸门 | 内容 | 状态 |
 |---|---|---|
-| **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ⏳ 等发起人 |
-| **M5-G2** | **登录方式**：建议只做 **magic link 邮箱登录**（Supabase Auth 内置、免密码、海外合规压力最小）；Google OAuth 后置 | 待拍板（建议项即可批） |
+| **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ✅ **已过（2026-10-08）**：项目 `aqpiqakykraobfyfbdow`，publishable key 已入 `apps/web/.env`（gitignored）；Pages 环境变量待上线时配 |
+| **M5-G2** | **登录方式**：只做 **magic link 邮箱登录**（Supabase Auth 内置、免密码、海外合规压力最小）；Google OAuth 后置 | ✅ **已拍板（2026-10-08，发起人默认同意建议项）** |
 | **M5-G3** | **隐私政策 / 条款页**：有了账号与云端存储，就需要最小隐私政策页（收集什么、存哪、怎么删）。文案需发起人确认 | 待拍板 |
 
 ## 1. 切片
@@ -30,7 +30,7 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 
 | 切片 | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| **S1** | **Auth 接入**：`@supabase/supabase-js` 客户端（懒加载，未配置环境变量时零行为，沿用 Analytics 的开关纪律）；导航区「登录」入口 + magic link 表单 + 会话恢复；`auth:login` / `auth:logout` 事件 | G1、G2 | M |
+| **S1** ✅ 代码完成（2026-10-08） | **Auth 接入**：`@supabase/supabase-js` 客户端（懒加载，未配置环境变量时零行为，沿用 Analytics 的开关纪律）；导航区「登录」入口 + magic link 表单 + 会话恢复；`auth:login` / `auth:logout` 事件 | G1、G2 | M |
 | **S2** | **草稿同步（REAL 账）**：登录后首次把本机草稿上云；此后 `writeDraft` 时防抖上云；冷启动时云端新于本机则拉取（冲突规则见 §3）。RLS：`auth.uid() = user_id` 才能读写自己的行 | S1 | M |
 | **S3** | **草稿同步（SIM 账）+ 登出语义**：SIM 账同 S2 口径；登出**不清本机草稿**（明示「本机副本保留」），只断同步 | S2 | S |
 
@@ -74,3 +74,9 @@ create policy "own rows" on plans
 - 不做服务端渲染个性化（页面仍静态 + 岛）。
 - 不做分享链接、不做协作、不做多剧本云存档（F9 是另一件事，可做本机版，不依赖 M5）。
 - 不动 `workers/analytics-collector`：它继续只存事件名与时间，与账号体系完全无关。
+
+## 6. Dashboard 侧待办（发起人手点，代码帮不了）
+
+1. **建表**：SQL Editor 里跑 §2 的 `plans` 表 + RLS 两段 SQL。
+2. **Redirect URL**：Authentication → URL Configuration，把 `http://localhost:4335/**`（联调用）与 `https://app.rich-sim.bayjf.com/**`（上线用）加进 Additional Redirect URLs；Site URL 填线上域名。
+3. （可选）Authentication → Emails 里改 magic link 邮件模板的品牌文案；默认模板即可联调。
