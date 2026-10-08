@@ -4,7 +4,7 @@ import ContinueDraft from '../components/ContinueDraft.tsx';
 import ClaimMillion from '../components/ClaimMillion';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
-import { SIM_STARTING_CAPITAL, annualDrawdown, claimBillRows } from '../lib/sim-content';
+import { SIM_CAPITAL_TIERS, claimBillRows } from '../lib/sim-content';
 import { localeFromRequest } from '../lib/i18n';
 import { t } from '../lib/messages';
 
@@ -31,6 +31,6 @@ const claimRows = claimEnabled
     >
       {t('home.cta', locale)}
     </a>
-    <ContinueDraft client:load locale={locale} />{claimEnabled && (<ClaimMillion client:load locale={locale} capital={SIM_STARTING_CAPITAL} rows={claimRows} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} drawdown={annualDrawdown(SIM_STARTING_CAPITAL, DEFAULT_ASSUMPTIONS)} />)}
+    <ContinueDraft client:load locale={locale} />{claimEnabled && (<ClaimMillion client:load locale={locale} tiers={SIM_CAPITAL_TIERS} rows={claimRows} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} />)}
   </main>
 </BaseLayout>

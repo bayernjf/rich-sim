@@ -29,11 +29,11 @@
 | `docs/m1-task-breakdown.md` | M1 任务分解与并行执行规划（13 任务 × 4 Wave，多 agent 编排） | 活跃 |
 | `docs/DEPLOYMENT.md` | Cloudflare Pages Git 集成部署配置、发布流程、冒烟清单与发布事故记录 | 活跃 |
 | `docs/comparison-converter.md` | 对比换算器方案（把富人年成本翻译成用户的时间单位）：两种口径、币种/边界规则、红线对照、MVP 范围 | **v1.1：§2.1 轻量口径（M2 S3）与 §2.2 本金口径（2026-10-08，设计器 sticky 可展开）均已实现**；§4 记录了挂载位与原方案的差异及理由 |
-| `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2/P3 未做；临时取值见该文档 §7.1 |
+| `docs/homepage-claim-experience.md` | 首页「领一百万」方案 **v2**：虚拟起始金走独立 `rich-sim:sim:v1`、两拍特效、SIM/REAL 两条账本单向桥、逐条红线对照、分期 P1-P3 | **P1 已实现（2026-10-05，切片 S4），生产入口已打开**（`PUBLIC_HOMEPAGE_CLAIM=1`，Preview 未配）；P2 金币雨、§9 #1 起始金三档（$100K/$1M/$10M）与 P3 投资线最小版（五资产类别 + 自填收益率，守全部红线）均已实现（2026-10-08）；见该文档 §7/§7.1 |
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
-| `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；S3（SIM 账同步 + 登出语义）同日完成，M5 三片代码齐；已随 PR #54 合并 main 上线（Supabase Pages 变量已配）；剩真人 magic link 联调 + G3 隐私政策页 |
+| `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；S3（SIM 账同步 + 登出语义）同日完成，M5 三片代码齐；已随 PR #54 合并 main 上线（Supabase Pages 变量已配）；G3 隐私政策页已实现（/privacy 双语 SSR + 页脚入口，文案待发起人过目）；剩真人 magic link 联调 |
 | `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G6 六个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约 / 报告挂载位） | **S1（F7）随 PR #43、S1.5 随 PR #44、S1.6（F6 本机版测算历史）、S1.7（本金口径）均已上线**（2026-10-08）。**S2（F8 报告 + 打印导出）已随 PR #47–#49 合并 main**：纯前端报告、`@media print` 样式与打印入口。**假付费信号已随 PR #51 上线**：报告页两个不收款选项（`paywall:intent:*`，props 只带档位），先攒 PRD §11.2 的付费意愿读数。**只剩 S4（付费墙 + 支付）**——M4 里唯一需要服务端的一片，等 G3 / G4 基于意愿读数拍板。现值（270 单测 / check 0 hint / 冒烟 127·121）统一写在 m4 分解顶部 |
 
 ## 已做的决策

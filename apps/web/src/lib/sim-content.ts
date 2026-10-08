@@ -357,11 +357,21 @@ const EXPERIENCE_ITEMS: { dimension: string; option: CatalogOption }[] = [
 /* ── 领钱入口（S4 · homepage-claim-experience.md §7 P1）── */
 
 /**
- * 虚拟起始金。§9 #1 的「固定 $1M vs 三档」未拍板，P1 取固定档：三档把
- * "不够"变成可对比的梯度，但它同时多一个决策点，而在没有读数的情况下
- * 无法判断这对转化是加分还是分散。翻转条件见该节。
+ * 虚拟起始金。~~§9 #1 的「固定 $1M vs 三档」未拍板，P1 取固定档~~
+ * **2026-10-08 发起人拍板走三档**：$100K / $1M / $10M 把"不够"变成可对比的
+ * 梯度（$10M × 4% = $40 万/年，仍盖不住全顶档 $7M）。`claim:tap` 埋点带
+ * capital，读数出来后可评估哪档被点得最多。
  */
-export const SIM_STARTING_CAPITAL = 1_000_000;
+export const SIM_CAPITAL_TIERS = [100_000, 1_000_000, 10_000_000] as const;
+
+/** 兼容默认档（中间档）：SSR 降级链接与 sim 页 ?claim=1 无 capital 参数时用。 */
+export const SIM_STARTING_CAPITAL = SIM_CAPITAL_TIERS[1];
+
+/** 校验一个 URL 参数来的本金：只接受三档之一，其余回退默认档。 */
+export function capitalFromParam(raw: string | null): number {
+  const value = Number(raw);
+  return (SIM_CAPITAL_TIERS as readonly number[]).includes(value) ? value : SIM_STARTING_CAPITAL;
+}
 
 /** 每个维度取最贵的一项 = 「全顶档生活」。金额由目录求和，这里不含它的字面量。 */
 export function topTierChoices(catalog: Catalog): LifeChoice {

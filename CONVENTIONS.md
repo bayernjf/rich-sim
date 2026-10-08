@@ -22,6 +22,7 @@
 | `/app/finance` | 财务录入（≤4 项） | T07 |
 | `/app/result` | 测算输出（三状态 + 阶梯目标） | T08 |
 | `/app/sim` | 富豪模拟 · 卡 A 资产看板与年持有成本（F5 最小版，SSR） | `docs/m2-task-breakdown.md` S1 |
+| `/privacy` | 隐私政策（纯 SSR 静态页，双语） | M5-G3（`docs/m5-task-breakdown.md`） |
 | `/api/fx` | 汇率 SSR 代理端点（Frankfurter，静态快照兜底） | T10 |
 
 ## localStorage 方案 schema（冻结）

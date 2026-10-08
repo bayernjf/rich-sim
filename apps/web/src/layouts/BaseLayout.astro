@@ -54,6 +54,13 @@ const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site).href :
     <a class="skip-link" href="#main">跳到主要内容</a>
     <slot />
 
+    <!-- M5-G3 · 隐私政策入口（有账号体系就必须随时可达） -->
+    <footer class="mx-auto max-w-3xl px-4 pb-6 text-center">
+      <a href="/privacy" class="text-xs text-muted underline-offset-2 hover:underline">
+        {locale === 'zh' ? '隐私政策' : 'Privacy Policy'}
+      </a>
+    </footer>
+
     <!-- B2 真实上报：未配置环境变量时零输出（见 Analytics.astro） -->
     <Analytics />
 

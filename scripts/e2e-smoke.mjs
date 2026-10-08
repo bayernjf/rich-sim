@@ -163,8 +163,14 @@ try {
   if (!claimEnabled) {
     check(true, '领钱入口：开关未开时不出现（PUBLIC_HOMEPAGE_CLAIM≠1）→ 跳过该流程', 'skipped');
   } else {
-    check(await claimCta.getAttribute('href') === '/app/sim?claim=1', '领钱入口：SSR 出来就是可用链接（关 JS 也能走）', '');
-    await claimCta.click();
+    check(
+      (await claimCta.count()) === 3 &&
+        (await claimCta.nth(0).getAttribute('href')) === '/app/sim?claim=1&capital=100000' &&
+        (await claimCta.nth(2).getAttribute('href')) === '/app/sim?claim=1&capital=10000000',
+      '领钱入口：三档起始金，SSR 出来就是可用链接（关 JS 也能走）',
+      `count=${await claimCta.count()}`,
+    );
+    await claimCta.nth(2).click();
     const coinsAppeared = await page
       .waitForSelector('[data-claim-coins] .claim-coin', { timeout: 1200 })
       .then(() => true)
@@ -172,7 +178,11 @@ try {
     check(coinsAppeared, '领钱：第一拍有金币雨特效（§4 T+0.3s，P2）', '');
     await page.waitForSelector('[data-claim-route="life"]', { timeout: 3000 });
     const panel = await page.locator('section[aria-labelledby="claim-heading"]').innerText();
-    check(panel.includes('年运营全口径'), '领钱：第二拍含账单口径字样', '');
+    check(
+      panel.includes('年运营全口径') && panel.includes('$400,000'),
+      '领钱：第二拍含账单口径字样与所选档位的年产出（$10M × 4% = $400,000）',
+      '',
+    );
     check(
       await page.locator('section[aria-labelledby="claim-heading"] a[href^="http"]').count() >= 2,
       '领钱：第二拍每个金额带来源',
@@ -187,6 +197,11 @@ try {
       '领钱：只写模拟态账本，真实方案账本仍为空（验收 #1）',
       `sim=${!!ledger.sim} plan=${ledger.plan}`,
     );
+    check(
+      !!ledger.sim && JSON.parse(ledger.sim).startingCapital === 10_000_000,
+      '领钱：所选 $10M 档落进模拟账本',
+      `capital=${ledger.sim ? JSON.parse(ledger.sim).startingCapital : 'n/a'}`,
+    );
     const evClaim = await eventsSoFar();
     const claimEvents = ['claim:tap', 'claim:reveal', 'claim:bill'].map((n) => `${n}=${countEvent(evClaim, n)}`);
     check(
@@ -196,11 +211,13 @@ try {
     );
 
     // 关 JS 的那条路径（?claim=1）：这一行由 SSR 渲染，不依赖本机账本。
+    // 注意：上面已点过 $10M 档并落账，组件挂载后会读本机账本覆盖 URL 默认值，
+    // 所以这里按 $10M 校验（顺带钉住「账本覆盖 URL 默认档」这条行为）。
     await page.goto(`${BASE}/app/sim?claim=1`, { waitUntil: 'networkidle' });
     const runway = await page.locator('[data-claim-runway]').innerText();
     check(
-      runway.includes('9.1 个月'),
-      '领钱：$1M 撑卡 A 这套生活 ≈ 9.1 个月（手算 1,000,000 ÷ 1,317,000/年）',
+      runway.includes('7.6 年'),
+      '领钱：$10M 撑卡 A 这套生活 ≈ 7.6 年（手算 10,000,000 ÷ 1,317,000/年）',
       `text="${runway.replace(/\n/g, ' ').trim()}"`,
     );
   }
@@ -800,6 +817,28 @@ try {
     `count=${countEvent(evAuth, 'auth:login')}`,
   );
 
+  // M5-G3 · 隐私政策：纯 SSR（关 JS 也能读全）、双语、页脚可达。
+  const ssrPrivacyZh = await (await fetch(`${BASE}/privacy?lang=zh`)).text();
+  check(
+    ssrPrivacyZh.includes('你的财务数据，默认不出这台设备') && ssrPrivacyZh.includes('localStorage'),
+    '隐私政策：中文 SSR 含本机存储承诺',
+    '',
+  );
+  // 扫描前剥掉 HTML 注释与 <head>：仓库的工程注释是中文的，那不叫夹中文；
+  // 这条盯的是正文文本。
+  const ssrPrivacyEnRaw = await (await fetch(`${BASE}/privacy?lang=en`)).text();
+  const ssrPrivacyEn = ssrPrivacyEnRaw
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/[\s\S]*<body[^>]*>/, '')
+    .replace(/财富模拟|跳到主要内容/g, '');
+  check(
+    ssrPrivacyEn.includes('stays on this device by default') && !/[\u4e00-\u9fff]/.test(ssrPrivacyEn),
+    '隐私政策：英文 SSR 正文不夹中文',
+    '',
+  );
+  const ssrHome = await (await fetch(`${BASE}/?lang=zh`)).text();
+  check(ssrHome.includes('href="/privacy"'), '隐私政策：页脚链接在各页可达', '');
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
@@ -1141,6 +1180,50 @@ try {
 
   const evGoal = await eventsSoFar();
   check(countEvent(evGoal, 'cart:to-goal') >= 1, '埋点：cart:to-goal 已入队', `count=${countEvent(evGoal, 'cart:to-goal')}`);
+
+  // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──
+  // 步骤 1.5 的 localStorage.clear() 把 sim 账本清掉了，这里先补领 $10M。
+  await page.goto(`${BASE}/?lang=zh`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => {
+    localStorage.setItem('rich-sim:sim:v1', JSON.stringify({
+      schemaVersion: 1,
+      startingCapital: 10_000_000,
+      claimedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+  });
+  await page.goto(`${BASE}/app/sim?lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-invest-area]', { timeout: 5000 });
+  // SSR 源码里必须没有这块岛（关 JS 时卡 A 看板与免责标注仍是完整页面）。
+  const simSsr = await (await page.request.get(`${BASE}/app/sim?lang=zh`)).text();
+  check(!markupOnly(simSsr).includes('data-invest-area'), '投资线：SSR 源码里没有岛', '');
+  // 现金 60 / 债券 40；债券填 10%，现金留空（按 0% 并显式标注）。
+  const weightInputs = page.locator('[data-invest-area] input[type="number"]');
+  await weightInputs.nth(0).fill('60');
+  await weightInputs.nth(2).fill('40');
+  await weightInputs.nth(3).fill('10');
+  const investTotal = await page.locator('[data-invest-total]').innerText();
+  check(investTotal.includes('100%'), '投资线：权重合计 100%', investTotal.replace(/\s+/g, ' ').trim());
+  // $10M × 60% = $6,000,000（现金 0%）；$10M × 40% × 1.1 = $4,400,000 → 1 年合计 $10,400,000。
+  const investText = await page.locator('[data-invest-area]').innerText();
+  check(
+    investText.includes('$10,400,000') && investText.includes('你假设 债券 每年 10%') && investText.includes('你假设 现金 每年 0%'),
+    '投资线：1 年推演金额与假设清单逐字呈现',
+    investText.replace(/\s+/g, ' ').trim().slice(0, 200),
+  );
+  const simLedger = await page.evaluate(() => JSON.parse(localStorage.getItem('rich-sim:sim:v1') || 'null'));
+  check(
+    simLedger?.invest?.weights?.bond === 40 && simLedger?.invest?.returns?.bond === 10 &&
+      simLedger?.invest?.returns?.cash === null && simLedger?.schemaVersion === 1,
+    '投资线：配置持久化在 sim 账本可选字段（schemaVersion 仍为 1）',
+    JSON.stringify(simLedger?.invest),
+  );
+  // 红线源文本断言：界面上不存在任何具体标的/推荐配置控件。
+  check(
+    !/S&P|纳斯达克|基金|代码|推荐配置/.test(investText),
+    '投资线：无标的、无基金名、无"推荐配置"字样',
+    '',
+  );
   // ── 步骤 10：多情景推演（M4 S1）──────────────────────────────
   await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-scenario-panel]', { timeout: 5000 });
