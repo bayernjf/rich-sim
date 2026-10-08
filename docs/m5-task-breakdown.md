@@ -1,6 +1,6 @@
 # M5 任务分解：账号体系与云端同步
 
-> 状态：**S1 代码完成（2026-10-08）**：Auth 岛（magic link）挂载设计器/财务/结果三页，未配置 env 零渲染；单测 +5、冒烟 +4（142 条 FAILS 0）。**真人登录联调前还差 dashboard 侧两步**（见 §6），随后 S2 同步。**S2 已同日完成**：`lib/sync.ts`（decideSync 对时规则 8 测试钉死）+ `SyncBridge` 不可见岛（登录对时 + 本机写入 2s 防抖上行），dashboard 两步已由 agent 经浏览器完成（建表 SQL Success、Site URL 与两条 Redirect URL 已保存并截图核验）。真人 magic link 联调待发起人走一遍。**S3 已同日完成**：SIM 账同步（`SimState.updatedAt` + `SIM_UPDATED_EVENT`，sync 泛化为 kind 参数），登出语义 = 断同步、本机副本保留（零删除路径，无额外代码）。M5 全部三片代码完成，剩联调与 G3 隐私政策页。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
+> 状态：**S1 代码完成（2026-10-08）**：Auth 岛（magic link）挂载设计器/财务/结果三页，未配置 env 零渲染；单测 +5、冒烟 +4（142 条 FAILS 0）。**真人登录联调前还差 dashboard 侧两步**（见 §6），随后 S2 同步。**S2 已同日完成**：`lib/sync.ts`（decideSync 对时规则 8 测试钉死）+ `SyncBridge` 不可见岛（登录对时 + 本机写入 2s 防抖上行），dashboard 两步已由 agent 经浏览器完成（建表 SQL Success、Site URL 与两条 Redirect URL 已保存并截图核验）。真人 magic link 联调待发起人走一遍。**2026-10-09 更新：登录方式翻转为邮箱+密码（Confirm email 已关），联调项随之改为真人注册/登录一次。****S3 已同日完成**：SIM 账同步（`SimState.updatedAt` + `SIM_UPDATED_EVENT`，sync 泛化为 kind 参数），登出语义 = 断同步、本机副本保留（零删除路径，无额外代码）。M5 全部三片代码完成，剩联调与 G3 隐私政策页。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
 > 起因：2026-10-08 发起人拍板 **D4 翻转——账号体系立项**（`docs/m2-decisions.md` D4）。原判据（同设备 7 日回访 ≥15%）因线上读数为 0 短期无法达成，发起人直接拍板。
 > 范围：M5 = **Supabase Auth 登录** + **草稿云端同步**（REAL 账 `rich-sim:plan:v1` 与 SIM 账 `rich-sim:sim:v1`）。**不做**：付费、分享、社交、多设备冲突合并的高级策略。
 
@@ -21,7 +21,7 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 | 闸门 | 内容 | 状态 |
 |---|---|---|
 | **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ✅ **已过（2026-10-08）**：项目 `aqpiqakykraobfyfbdow`，publishable key 已入 `apps/web/.env`（gitignored）；Pages 环境变量待上线时配 |
-| **M5-G2** | **登录方式**：只做 **magic link 邮箱登录**（Supabase Auth 内置、免密码、海外合规压力最小）；Google OAuth 后置 | ✅ **已拍板（2026-10-08，发起人默认同意建议项）** |
+| **M5-G2** | **登录方式**：~~只做 magic link 邮箱登录~~ **2026-10-09 翻转：邮箱+密码注册/登录**（发起人拍板；Supabase Confirm email 已关，注册即拿 session，无邮件环节）；magic link 与 Google OAuth 后置 | ✅ **已拍板（2026-10-09，发起人）** |
 | **M5-G3** | **隐私政策 / 条款页**：有了账号与云端存储，就需要最小隐私政策页（收集什么、存哪、怎么删）。文案需发起人确认 | ✅ **页面上线待确认（2026-10-08）**：`/privacy` 纯 SSR 双语页 + 全站页脚入口已实现（路由表已登记）；**文案待发起人过目**——每句都对应真实代码行为，联系渠道用 GitHub Issues（未公开邮箱） |
 
 ## 1. 切片

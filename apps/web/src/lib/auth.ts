@@ -12,7 +12,6 @@ import { getSupabase } from './supabase';
 
 export type AuthState =
   | { status: 'signed-out' }
-  | { status: 'sent'; email: string }
   | { status: 'signed-in'; email: string };
 
 /** 从 Supabase session 提取本组件需要的最小状态。 */
@@ -21,18 +20,28 @@ export function stateFromSession(session: Session | null): AuthState {
   return email ? { status: 'signed-in', email } : { status: 'signed-out' };
 }
 
-export type SendLinkResult = { ok: true } | { ok: false; message: string };
+export type PasswordAuthResult = { ok: true } | { ok: false; message: string };
 
-/** 发 magic link；redirectTo 回到当前页（登录后落在用户原来在的地方）。 */
-export async function sendMagicLink(email: string, redirectTo: string): Promise<SendLinkResult> {
+/**
+ * 邮箱+密码登录 / 注册（2026-10-09 起替换 magic link，发起人拍板）。
+ * Confirm email 已在 Supabase 关闭：注册成功即拿到 session，无邮件环节。
+ */
+export async function signInWithPassword(email: string, password: string): Promise<PasswordAuthResult> {
   const supabase = getSupabase();
   if (!supabase) return { ok: false, message: 'not-configured' };
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   return error ? { ok: false, message: error.message } : { ok: true };
 }
+
+export async function signUpWithPassword(email: string, password: string): Promise<PasswordAuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, message: 'not-configured' };
+  const { error } = await supabase.auth.signUp({ email, password });
+  return error ? { ok: false, message: error.message } : { ok: true };
+}
+
+/** Supabase 默认最短密码长度；真正的校验在服务端，这里只挡明显过短。 */
+export const MIN_PASSWORD_LENGTH = 6;
 
 export async function signOut(): Promise<void> {
   const supabase = getSupabase();
