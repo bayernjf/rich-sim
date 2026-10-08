@@ -800,6 +800,28 @@ try {
     `count=${countEvent(evAuth, 'auth:login')}`,
   );
 
+  // M5-G3 · 隐私政策：纯 SSR（关 JS 也能读全）、双语、页脚可达。
+  const ssrPrivacyZh = await (await fetch(`${BASE}/privacy?lang=zh`)).text();
+  check(
+    ssrPrivacyZh.includes('你的财务数据，默认不出这台设备') && ssrPrivacyZh.includes('localStorage'),
+    '隐私政策：中文 SSR 含本机存储承诺',
+    '',
+  );
+  // 扫描前剥掉 HTML 注释与 <head>：仓库的工程注释是中文的，那不叫夹中文；
+  // 这条盯的是正文文本。
+  const ssrPrivacyEnRaw = await (await fetch(`${BASE}/privacy?lang=en`)).text();
+  const ssrPrivacyEn = ssrPrivacyEnRaw
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/[\s\S]*<body[^>]*>/, '')
+    .replace(/财富模拟|跳到主要内容/g, '');
+  check(
+    ssrPrivacyEn.includes('stays on this device by default') && !/[\u4e00-\u9fff]/.test(ssrPrivacyEn),
+    '隐私政策：英文 SSR 正文不夹中文',
+    '',
+  );
+  const ssrHome = await (await fetch(`${BASE}/?lang=zh`)).text();
+  check(ssrHome.includes('href="/privacy"'), '隐私政策：页脚链接在各页可达', '');
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');

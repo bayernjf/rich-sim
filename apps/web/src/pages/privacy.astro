@@ -1,0 +1,112 @@
+---
+/**
+ * M5-G3 · 最小隐私政策（纯 SSR 静态页，双语同页切换由 ?lang= 控制）。
+ *
+ * 内容纪律：每一句话都对应代码里真实存在的行为（localStorage 两本账 /
+ * Supabase Auth + plans 表 RLS / CF Web Analytics / analytics-collector
+ * 不存标识符），不写「我们可能」这类给自己留后门的条款。改动数据行为
+ * 时这页必须跟着改——它是承诺，不是模板。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { localeFromRequest } from '../lib/i18n';
+
+const locale = localeFromRequest(Astro.request, Astro.url);
+const zh = locale === 'zh';
+---
+
+<BaseLayout
+  title={zh ? '隐私政策 · 财富模拟' : 'Privacy Policy · rich-sim'}
+  description={zh
+    ? '财富模拟的隐私政策：本机优先存储、登录后云端同步、匿名统计的最小口径。'
+    : 'rich-sim privacy policy: local-first storage, cloud sync after sign-in, minimal anonymous analytics.'}
+  locale={locale}
+>
+  <main id="main" class="mx-auto max-w-2xl px-4 py-10">
+    <p class="text-xs font-medium uppercase tracking-widest text-accent">
+      {zh ? '隐私政策' : 'Privacy Policy'}
+    </p>
+    <h1 class="mt-2 text-2xl font-semibold tracking-tight">
+      {zh ? '你的财务数据，默认不出这台设备' : 'Your financial data stays on this device by default'}
+    </h1>
+    <p class="mt-2 text-xs text-muted">{zh ? '生效日期：2026-10-08' : 'Effective: 2026-10-08'}</p>
+
+    <div class="mt-6 space-y-6 text-sm leading-relaxed text-ink">
+      <section>
+        <h2 class="text-base font-semibold">{zh ? '存在哪' : 'Where your data lives'}</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5 text-muted">
+          <li>
+            {zh
+              ? '你填的收入、支出、储蓄、负债和理想生活选择，全部只存在你浏览器的 localStorage 里（两个独立 key：真实方案与模拟体验）。不登录，这些数据永远不会离开这台设备。'
+              : 'Your income, expenses, savings, debt and life choices live only in your browser\u2019s localStorage (two separate keys: real plan and simulation). Signed out, this data never leaves the device.'}
+          </li>
+          <li>
+            {zh
+              ? '登录后（可选）：你的邮箱用于 Supabase Auth 登录；你本机的方案草稿会同步到云端 plans 表作为备份与跨设备副本。行级安全（RLS）保证只有你自己的账号能读写自己的行。'
+              : 'After sign-in (optional): your email is used for Supabase Auth; your local plan draft syncs to a cloud plans table as backup and cross-device copy. Row-level security means only your account can read or write your rows.'}
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-base font-semibold">{zh ? '我们收集什么统计' : 'What we measure'}</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5 text-muted">
+          <li>
+            {zh
+              ? 'Cloudflare Web Analytics：页面浏览与会话数，不使用 Cookie、不跨站追踪。'
+              : 'Cloudflare Web Analytics: page views and visits. No cookies, no cross-site tracking.'}
+          </li>
+          <li>
+            {zh
+              ? '自建事件收集端：只记录事件名与时间（例如「完成了一次测算」），不存 IP、不存 UA、不存任何标识符，也不存你填的任何数字。'
+              : 'Our own event collector stores only event names and timestamps (e.g. \u201Ca calculation completed\u201D). No IP, no user agent, no identifiers, and none of the numbers you enter.'}
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-base font-semibold">{zh ? '我们不做什么' : 'What we never do'}</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5 text-muted">
+          <li>{zh ? '不出售、不共享你的数据给任何第三方做营销。' : 'We never sell or share your data with third parties for marketing.'}</li>
+          <li>{zh ? '不用你的财务输入训练模型、不做画像、不做广告。' : 'Your financial inputs are never used for model training, profiling, or ads.'}</li>
+          <li>{zh ? '未登录时不向服务器发送你的任何财务输入。' : 'Signed out, none of your financial inputs are sent to any server.'}</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-base font-semibold">{zh ? '删除' : 'Deletion'}</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5 text-muted">
+          <li>
+            {zh
+              ? '本机数据：清除浏览器站点数据即可立即全部删除。'
+              : 'Local data: clear your browser\u2019s site data and it is gone immediately.'}
+          </li>
+          <li>
+            {zh
+              ? '云端副本：退出登录只断开同步，不删云端数据；要删除账号与云端副本，请通过下方联系方式提出，我们会删除。'
+              : 'Cloud copy: signing out only stops syncing and does not delete cloud data. To delete your account and cloud copies, contact us below and we will delete them.'}
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-base font-semibold">{zh ? '联系' : 'Contact'}</h2>
+        <p class="mt-2 text-muted">
+          {zh
+            ? '对本政策或你的数据有任何问题，请在 GitHub 仓库提 issue：'
+            : 'Questions about this policy or your data: open an issue on our GitHub repository: '}
+          <a
+            href="https://github.com/bayernjf/rich-sim/issues"
+            rel="noopener"
+            class="text-accent underline-offset-2 hover:underline"
+          >github.com/bayernjf/rich-sim/issues</a>
+        </p>
+      </section>
+
+      <p class="border-t border-line pt-4 text-xs text-muted">
+        {zh
+          ? '本政策只描述当前版本真实存在的行为；产品数据行为变化时会同步更新本页。'
+          : 'This policy describes only what the current version actually does; it will be updated whenever data behavior changes.'}
+      </p>
+    </div>
+  </main>
+</BaseLayout>
