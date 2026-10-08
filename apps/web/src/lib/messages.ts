@@ -261,8 +261,15 @@ const ZH = {
   'invest.projYears': '{years} 年后',
   'invest.assumption': '你假设 {cls} 每年 {pct}%',
   'invest.assumptionZero': '你假设 {cls} 每年 0%（未填）',
+  'invest.vol': '波动率假设 %',
+  'invest.volBlank': '留空=无波动',
+  'invest.mcH': '蒙特卡洛路径',
+  'invest.mcBadge': '随机模拟 · 非预测',
+  'invest.mcResample': '换一批路径',
+  'invest.mcLead':
+    '按你的收益与波动假设，GBM 几何布朗运动跑 {paths} 条随机路径：中位数 + P10–P90 区间。同样的平均收益，路径可以千差万别——这就是波动这一课。',
   'invest.disclaimer':
-    '以上只是对你自填假设的静态算术：虚拟起始金 · 不复再平衡 · 不是投资建议、不推荐任何金融产品、不预测也不承诺结果。',
+    '以上只是对你自填假设的算术与随机模拟：虚拟起始金 · 不复再平衡 · 随机路径非预测 · 不是投资建议、不推荐任何金融产品、不承诺结果。',
   'scenario.title': '多情景推演',
   'scenario.intro': '一次只改一个变量，看它怎么改变达成年限。这是算术推演，不是对未来的预测。',
   'scenario.raise': '涨薪',
@@ -607,8 +614,15 @@ const EN: Record<keyof typeof ZH, string> = {
   'invest.projYears': 'After {years}y',
   'invest.assumption': 'You assume {cls} at {pct}%/yr',
   'invest.assumptionZero': 'You assume {cls} at 0%/yr (blank)',
+  'invest.vol': 'Volatility assumption %',
+  'invest.volBlank': 'blank = none',
+  'invest.mcH': 'Monte Carlo paths',
+  'invest.mcBadge': 'Random simulation - not a forecast',
+  'invest.mcResample': 'Resample paths',
+  'invest.mcLead':
+    '{paths} random GBM paths on your return and volatility assumptions: median plus the P10-P90 band. The same average return can produce wildly different journeys - that is the volatility lesson.',
   'invest.disclaimer':
-    'Static arithmetic on your own assumptions only: virtual capital, no rebalancing, no investment advice, no product recommendations, no forecasts, no promises.',
+    'Arithmetic and random simulation on your own assumptions only: virtual capital, no rebalancing, random paths are not forecasts, no investment advice, no product recommendations, no promises.',
   'scenario.title': 'What-if scenarios',
   'scenario.intro':
     'Change one variable at a time and see how it moves the horizon. This is arithmetic, not a forecast.',
