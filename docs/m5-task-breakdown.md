@@ -1,6 +1,6 @@
 # M5 任务分解：账号体系与云端同步
 
-> 状态：**S1 代码完成（2026-10-08）**：Auth 岛（magic link）挂载设计器/财务/结果三页，未配置 env 零渲染；单测 +5、冒烟 +4（142 条 FAILS 0）。**真人登录联调前还差 dashboard 侧两步**（见 §6），随后 S2 同步。**S2 已同日完成**：`lib/sync.ts`（decideSync 对时规则 8 测试钉死）+ `SyncBridge` 不可见岛（登录对时 + 本机写入 2s 防抖上行），dashboard 两步已由 agent 经浏览器完成（建表 SQL Success、Site URL 与两条 Redirect URL 已保存并截图核验）。真人 magic link 联调待发起人走一遍。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
+> 状态：**S1 代码完成（2026-10-08）**：Auth 岛（magic link）挂载设计器/财务/结果三页，未配置 env 零渲染；单测 +5、冒烟 +4（142 条 FAILS 0）。**真人登录联调前还差 dashboard 侧两步**（见 §6），随后 S2 同步。**S2 已同日完成**：`lib/sync.ts`（decideSync 对时规则 8 测试钉死）+ `SyncBridge` 不可见岛（登录对时 + 本机写入 2s 防抖上行），dashboard 两步已由 agent 经浏览器完成（建表 SQL Success、Site URL 与两条 Redirect URL 已保存并截图核验）。真人 magic link 联调待发起人走一遍。**S3 已同日完成**：SIM 账同步（`SimState.updatedAt` + `SIM_UPDATED_EVENT`，sync 泛化为 kind 参数），登出语义 = 断同步、本机副本保留（零删除路径，无额外代码）。M5 全部三片代码完成，剩联调与 G3 隐私政策页。**节奏（2026-10-08 发起人）**：本地继续只用 localStorage，Supabase 项目后置——要迁移时再按本文开工；设计已保证届时是「加同步层」而非「改本机路径」（`plans.payload` 存本机 JSON 原样，localStorage 永远是首屏数据源）。
 > 起因：2026-10-08 发起人拍板 **D4 翻转——账号体系立项**（`docs/m2-decisions.md` D4）。原判据（同设备 7 日回访 ≥15%）因线上读数为 0 短期无法达成，发起人直接拍板。
 > 范围：M5 = **Supabase Auth 登录** + **草稿云端同步**（REAL 账 `rich-sim:plan:v1` 与 SIM 账 `rich-sim:sim:v1`）。**不做**：付费、分享、社交、多设备冲突合并的高级策略。
 
@@ -32,7 +32,7 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 |---|---|---|---|
 | **S1** ✅ 代码完成（2026-10-08） | **Auth 接入**：`@supabase/supabase-js` 客户端（懒加载，未配置环境变量时零行为，沿用 Analytics 的开关纪律）；导航区「登录」入口 + magic link 表单 + 会话恢复；`auth:login` / `auth:logout` 事件 | G1、G2 | M |
 | **S2** ✅ 代码完成（2026-10-08） | **草稿同步（REAL 账）**：登录后首次把本机草稿上云；此后 `writeDraft` 时防抖上云；冷启动时云端新于本机则拉取（冲突规则见 §3）。RLS：`auth.uid() = user_id` 才能读写自己的行 | S1 | M |
-| **S3** | **草稿同步（SIM 账）+ 登出语义**：SIM 账同 S2 口径；登出**不清本机草稿**（明示「本机副本保留」），只断同步 | S2 | S |
+| **S3** ✅ 代码完成（2026-10-08） | **草稿同步（SIM 账）+ 登出语义**：SIM 账同 S2 口径；登出**不清本机草稿**（明示「本机副本保留」），只断同步 | S2 | S |
 
 ## 2. 数据模型（最小）
 

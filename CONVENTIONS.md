@@ -32,7 +32,7 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 1. `writeDraft` 对 `history`（与后来的 `savedPlans`）做**隐式保留**——调用方不显式传就等于不动它。原因：每个写方都是重建整个 `Draft` 字面量，逐条透传漏一处就把用户的历史抹干净，而且抹得很安静。要清历史请显式传 `history: []`。
 2. 历史只存在这一本账里，**不出本机**：`workers/analytics-collector` 收到的只有一个事件名（`progress:view`），没有任何数值。红线见 AGENTS.md「用户自填的财务数据不得上传」。
 
-**第二个独立 key `rich-sim:sim:v1`**（`docs/homepage-claim-experience.md` §3.1，随 M2 切片 S4 加入）：模拟态的虚拟起始金，读写一律走 `apps/web/src/lib/sim-draft.ts`。两个模块**互不 import、互不读写对方的 key**——这条是「两本账不混」的结构保证，由 `sim-draft.test.ts` 钉住：改任何一侧都要连测试一起改。真实测算只用前者，模拟态只用后者。
+**第二个独立 key `rich-sim:sim:v1`**（`docs/homepage-claim-experience.md` §3.1，随 M2 切片 S4 加入）：模拟态的虚拟起始金，读写一律走 `apps/web/src/lib/sim-draft.ts`。两个模块**互不 import、互不读写对方的 key**——这条是「两本账不混」的结构保证，由 `sim-draft.test.ts` 钉住：改任何一侧都要连测试一起改。真实测算只用前者，模拟态只用后者。M5 S3 起 `SimState` 多一个可选 `updatedAt`（云同步对时戳，旧状态兜底 `claimedAt`）与 `SIM_UPDATED_EVENT`（写入广播，地位同 `DRAFT_UPDATED_EVENT`）；schemaVersion 维持 1。
 
 ## 类型契约（冻结）
 
