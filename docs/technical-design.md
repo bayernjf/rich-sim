@@ -89,7 +89,7 @@
 **接口草案**
 
 ```ts
-type Profile = { income: number; expense: number; savings: number; debt: number };
+type Profile = { income: number; expense: number; savings: number; debt: number; expenseBreakdown? };  // expenseBreakdown?: 可选，F2 逐项支出（2026-10-08）
 type Assumptions = { returnRate: number; withdrawalRate: number; inflation: number };
 type Goal = { kind: 'enough-line' | 'net-worth'; value: number };
 
@@ -114,7 +114,13 @@ function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milestone[];
 **类型与函数**
 
 ```ts
-type Profile = { income: number; expense: number; savings: number; debt: number };   // 月口径
+type Profile = {
+  income: number;
+  expense: number; // 月支出总额；expenseBreakdown 存在时引擎按四项之和取数
+  savings: number;
+  debt: number;
+  expenseBreakdown?: { housing: number; transport: number; food: number; other: number }; // F2 逐项支出（2026-10-08），可选，月口径
+};   // 月口径
 type Assumptions = { returnRate: number; withdrawalRate: number; inflation: number }; // 年化小数（0.04）
 type Goal = { kind: 'enough-line' | 'net-worth'; value: number };
 type Projection =
@@ -195,7 +201,7 @@ function convert(amount: number, from: Currency, to: Currency, fx: FxSnapshot): 
 | 实体 | 关键字段 | 说明 |
 |---|---|---|
 | `user` | id, email, created_at | 认证后才有 |
-| `profile` | user_id, income, expense, savings, debt, currency, updated_at | 现状快照 |
+| `profile` | user_id, income, expense, savings, debt, currency, updated_at, expense_breakdown(jsonb) | 现状快照（expense_breakdown 可选，F2 逐项支出 2026-10-08） |
 | `scenario` | user_id, choices(jsonb), annual_cost, created_at | 理想生活的维度选择 |
 | `goal` | user_id, kind, value, assumptions(jsonb) | 目标与假设 |
 | `plan` | user_id, goal_id, milestones(jsonb), created_at | 阶梯目标 |
@@ -283,7 +289,7 @@ Supabase 底层就是 PostgreSQL。大陆没有 Supabase / D1 的等价物，阶
 | 阶段 | 架构变化 |
 |---|---|
 | **M1**（核心闭环） | **纯前端**：Astro + React 岛 + `@rich-sim/core`，方案存 `localStorage`。**无后端、无数据库、无账号。** |
-| **M2**（度量 + **F5 最小版** + 保存/回访） | F5 最小版仍是**纯前端**（读 catalog 展示资产看板 / 持有成本 / 现金流波动，不引入后端）；埋点接通只加 Cloudflare 环境变量。**只有「账号体系」这一步**引入认证（Auth.js）+ PostgreSQL（Drizzle）+ `/api/*`，而它尚未立项 |
+| **M2**（度量 + **F5 最小版** + 保存/回访） | F5 最小版仍是**纯前端**（读 catalog 展示资产看板 / 持有成本 / 现金流波动，不引入后端）；埋点接通只加 Cloudflare 环境变量。**只有「账号体系」这一步**引入认证 + PostgreSQL + `/api/*`——**2026-10-08 已立项（D4 翻转，发起人拍板）**：Supabase Auth（magic link）+ 草稿云端同步，localStorage 优先不动摇，分解与闸门见 `docs/m5-task-breakdown.md` |
 | **M3**（富豪模拟**完整化**） | 购物机制、六通道体验、原型卡、多剧本：新增模拟状态模块（仍是前端计算为主） |
 | **M4**（报告/支付） | 服务端报告生成 + 支付渠道 + 快照历史。<br>**2026-10-08 修订**：**快照历史已做，但不需要任何架构变化**——它是 `rich-sim:plan:v1` 里的一个可选字段（`Draft.history`，一天一条本机快照），不建表、不加 API、不出设备（`docs/m4-task-breakdown.md` §8）。**服务端报告生成这一条本身也待拍板**：M4 的闸门 G1 就是「报告在服务端生成还是纯前端生成」，选前端则这一行的后端承诺不成立（`docs/m4-task-breakdown.md` §0）。支付渠道仍等 #7 与付费意愿读数 |
 

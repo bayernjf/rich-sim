@@ -165,6 +165,11 @@ try {
   } else {
     check(await claimCta.getAttribute('href') === '/app/sim?claim=1', '领钱入口：SSR 出来就是可用链接（关 JS 也能走）', '');
     await claimCta.click();
+    const coinsAppeared = await page
+      .waitForSelector('[data-claim-coins] .claim-coin', { timeout: 1200 })
+      .then(() => true)
+      .catch(() => false);
+    check(coinsAppeared, '领钱：第一拍有金币雨特效（§4 T+0.3s，P2）', '');
     await page.waitForSelector('[data-claim-route="life"]', { timeout: 3000 });
     const panel = await page.locator('section[aria-labelledby="claim-heading"]').innerText();
     check(panel.includes('年运营全口径'), '领钱：第二拍含账单口径字样', '');
@@ -347,12 +352,45 @@ try {
 
   await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.fill('#field-income', '15000');
-  await page.fill('#field-expense', '8000');
+  await page.fill('#field-expenseTotal', '8000');
   await page.fill('#field-savings', '100000');
   await page.fill('#field-debt', '0');
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(100);
   const evFinance = await eventsSoFar();
   check(countEvent(evFinance, 'finance:update') >= 1, '埋点：finance:update 已入队', `count=${countEvent(evFinance, 'finance:update')}`);
+
+  // F2（2026-10-08）：展开「高级：拆开填」，四类求和 8000 驱动 expense + breakdown。
+  await page.click('button:has-text("高级：拆开填")');
+  await page.fill('#sub-housing', '3500');
+  await page.fill('#sub-transport', '800');
+  await page.fill('#sub-food', '2000');
+  await page.fill('#sub-other', '1700');
+  await page.waitForTimeout(150);
+  const totalShown = await page.inputValue('#field-expenseTotal');
+  const totalDisabled = await page.isDisabled('#field-expenseTotal');
+  check(
+    totalShown === '8000' && totalDisabled,
+    'F2：四类拆分自动求和为 8000 且总额只读',
+    `total=${totalShown} disabled=${totalDisabled}`,
+  );
+  const breakdownInDraft = await page.evaluate(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem('rich-sim:plan:v1') ?? 'null');
+      return d?.profile?.expenseBreakdown ?? null;
+    } catch {
+      return null;
+    }
+  });
+  check(
+    breakdownInDraft !== null &&
+      breakdownInDraft.housing === 3500 &&
+      breakdownInDraft.transport === 800 &&
+      breakdownInDraft.food === 2000 &&
+      breakdownInDraft.other === 1700 &&
+      breakdownInDraft.housing + breakdownInDraft.transport + breakdownInDraft.food + breakdownInDraft.other === 8000,
+    'F2：draft.profile 已写 expenseBreakdown（四项合计 8000）',
+    JSON.stringify(breakdownInDraft),
+  );
 
   // ── 步骤 3：结果页 ──
   await page.goto(`${BASE}/app/result`, { waitUntil: 'networkidle' });
@@ -690,6 +728,78 @@ try {
     },
   ]);
 
+  // F9（本机版）· 多剧本存档：存一个 → 列表出现 → 载入 → 删除，
+  // 顺带钉住三件事——SSR 源码里没有这个岛、同名覆盖不翻倍、事件零 props。
+  // 注意不能查 'data-saved-plans' 本身：print 隐藏清单里有同名 CSS 选择器，
+  // dev 模式样式内联，会躺在 SSR <style> 里造成误伤——查组件专属的内部 id。
+  const ssrPlans = await (await fetch(`${BASE}/app/result?lang=zh`)).text();
+  check(!ssrPlans.includes('saved-plans-heading'), '剧本存档：SSR 源码无存档岛（纯客户端渲染）', '');
+  await page.goto(`${BASE}/app/result?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-saved-plans]');
+  await page.fill('[data-plan-name]', '基准');
+  await page.click('[data-plan-save]');
+  await page.waitForSelector('[data-plan-item]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 1,
+    '剧本存档：存一个后列表出现一条',
+    '',
+  );
+  await page.fill('[data-plan-name]', '基准');
+  await page.click('[data-plan-save]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 1,
+    '剧本存档：同名覆盖，不翻倍',
+    '',
+  );
+  await page.click('[data-plan-load]');
+  const loadNotice = await page.locator('[data-plan-notice]').innerText();
+  check(loadNotice.includes('已载入'), '剧本存档：载入后有明示', `notice="${loadNotice}"`);
+  const evPlans = await eventsSoFar();
+  check(
+    ['plan:save', 'plan:load'].every((n) => countEvent(evPlans, n) >= 1),
+    '埋点：plan:save / plan:load 已入队',
+    ['plan:save', 'plan:load'].map((n) => `${n}=${countEvent(evPlans, n)}`).join(' '),
+  );
+  const planEventsWithProps = evPlans.find(
+    (e) => /^.*plan:(save|load|delete)$/.test(e.event) && Object.keys(e.props ?? {}).length > 0,
+  );
+  check(
+    !planEventsWithProps,
+    '红线：plan:* 事件零 props（剧本名不出本机）',
+    planEventsWithProps ? JSON.stringify(planEventsWithProps.props) : '',
+  );
+  await page.click('[data-plan-delete]');
+  check(
+    (await page.locator('[data-plan-item]').count()) === 0,
+    '剧本存档：删除后列表清空',
+    '',
+  );
+
+  // M5 S1 · Auth：dev 挂了 .env（模拟已配置）→ 登录按钮要出现；
+  // 面板开合、坏邮箱提示、事件不发（没真登录就没有 auth:login）。
+  // 「未配置时全站零渲染」由 SSR 源文本断言钉住（构建期无 env 时的形态）。
+  await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-auth-open]', { timeout: 5000 });
+  check(true, 'Auth：已配置 Supabase 时登录按钮出现', '');
+  const ssrFinance = await (await fetch(`${BASE}/app/finance?lang=zh`)).text();
+  check(!ssrFinance.includes('data-auth-open'), 'Auth：SSR 源码无登录岛（纯客户端渲染）', '');
+  await page.click('[data-auth-open]');
+  await page.waitForSelector('[data-auth-panel]');
+  await page.fill('[data-auth-email-input]', 'not-an-email');
+  await page.click('[data-auth-send]');
+  const authNotice = await page.locator('[data-auth-notice]').innerText();
+  check(
+    authNotice.includes('邮箱格式'),
+    'Auth：坏邮箱被前端拦下，不发请求',
+    `notice="${authNotice}"`,
+  );
+  const evAuth = await eventsSoFar();
+  check(
+    countEvent(evAuth, 'auth:login') === 0,
+    'Auth：未完成登录前没有 auth:login 事件',
+    `count=${countEvent(evAuth, 'auth:login')}`,
+  );
+
   // ── 步骤 4：切币种 USD -> CNY（切换器在设计器页）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.selectOption('#display-currency', 'CNY');
@@ -697,6 +807,24 @@ try {
   await page.waitForTimeout(300);
   const curVal = await page.locator('#display-currency').inputValue();
   check(curVal === 'CNY', '切币种：选择器值变为 CNY', `value=${curVal}`);
+
+  const breakdownAfterSwitch = await page.evaluate(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem('rich-sim:plan:v1') ?? 'null');
+      return d?.profile?.expenseBreakdown ?? null;
+    } catch {
+      return null;
+    }
+  });
+  check(
+    breakdownAfterSwitch !== null &&
+      breakdownAfterSwitch.housing > 0 &&
+      breakdownAfterSwitch.transport > 0 &&
+      breakdownAfterSwitch.food > 0 &&
+      breakdownAfterSwitch.other > 0,
+    'F2：切币种后 expenseBreakdown 逐项保留（未降级成单个数）',
+    JSON.stringify(breakdownAfterSwitch),
+  );
 
   const evSwitch = await eventsSoFar();
   check(countEvent(evSwitch, 'currency:switch') >= 1, '埋点：currency:switch 已入队', `count=${countEvent(evSwitch, 'currency:switch')}`);

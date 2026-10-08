@@ -1,6 +1,6 @@
 # Handoff · rich-sim（财富模拟 · 产品）
 
-> 更新时间：2026-10-08
+> 更新时间：2026-10-08（F9 本机版多剧本存档 + 领钱 P2 金币雨 + 账号体系立项 D4 翻转）
 > 本仓库是**产品仓库：文档 + 应用代码一体**（M1 代码已并入，2026-10-04）。
 
 ---
@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 15 份、表内 15 行
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 16 份、表内 16 行
 - **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -33,6 +33,7 @@
 | `docs/m2-decisions.md` | M2 决策包 D1–D5：F5 首个剧本、六通道取舍、F2 逐项支出、账号体系、投资线——每条一个可批选项 + 理由 + 翻转条件 | **已整包确认（2026-10-05）**，保留翻转条件备查 |
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
+| `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；剩真人 magic link 联调 + S3 |
 | `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G6 六个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约 / 报告挂载位） | **S1（F7）随 PR #43、S1.5 随 PR #44、S1.6（F6 本机版测算历史）、S1.7（本金口径）均已上线**（2026-10-08）。**S2（F8 报告 + 打印导出）已随 PR #47–#49 合并 main**：纯前端报告、`@media print` 样式与打印入口。**假付费信号已随 PR #51 上线**：报告页两个不收款选项（`paywall:intent:*`，props 只带档位），先攒 PRD §11.2 的付费意愿读数。**只剩 S4（付费墙 + 支付）**——M4 里唯一需要服务端的一片，等 G3 / G4 基于意愿读数拍板。现值（270 单测 / check 0 hint / 冒烟 127·121）统一写在 m4 分解顶部 |
 
 ## 已做的决策
@@ -45,10 +46,10 @@
 | 技术栈 | Astro + React 岛 + 独立纯函数计算引擎 | `technical-design.md` §3 |
 | 数据库 / 账号 | Supabase（Postgres + Auth + Storage） | `technical-design.md` §3 |
 | 托管 | 海外 MVP：应用 + 营销**全 Cloudflare**（一个平台管 DNS/CDN/WAF/部署）；Vercel 后置为触发选项（服务端变重时评估迁入） | `technical-design.md` §9 |
-| MVP 形态 | **无后端**，方案存 `localStorage` | `technical-design.md` §10 |
+| MVP 形态 | ~~无后端，方案存 `localStorage`~~ **2026-10-08 翻转（发起人拍板：账号体系立项）**：localStorage 优先、不登录可全程使用；登录后草稿云端同步（Supabase Auth + Postgres）。红线不变：同步是**用户显式登录后的主动行为**，匿名分析与事件管道仍不碰财务数据 | `technical-design.md` §10、`docs/m5-task-breakdown.md` |
 | 产品形态节奏 | M1 响应式 Web（移动端达标）；M2 加 PWA；大陆做微信小程序（Taro）；原生 App 以付费+回访触发门驱动 | `technical-design.md` §10.1 |
 | 币种与汇率 | 计算在本位币、换算只在展示层；汇率 = 假设的一部分（快照进 Assumptions 并参与版本化）；M1 实时汇率（SSR 代理），M2 历史汇率 | `technical-design.md` §4.2 |
-| **M2 决策包 D1–D5** | **D1** F5 首个剧本 = 卡 A 科技独角兽创始人（年成本 $1,317,000，$1M 起始金只够 76%）；**D2** 六通道只做 看见 / 感受（账单日）/ 比较（换算器），购物与剧情与特权后置；**D3** F2 逐项支出移出 MVP 降 P2（撞 §3.2 Non-Goal）；**D4** 账号体系**暂不立项**，等同设备回访读数（≥15% 立项 / <5% 否）；**D5** 投资线、付费墙、支付渠道一起押后（2026-10-05 整包确认） | `docs/m2-decisions.md`、`docs/m2-task-breakdown.md` |
+| **M2 决策包 D1–D5** | **D1** F5 首个剧本 = 卡 A 科技独角兽创始人（年成本 $1,317,000，$1M 起始金只够 76%）；**D2** 六通道只做 看见 / 感受（账单日）/ 比较（换算器），购物与剧情与特权后置；**D3** F2 逐项支出移出 MVP 降 P2（撞 §3.2 Non-Goal）；**D4** ~~账号体系暂不立项，等同设备回访读数~~ **2026-10-08 翻转：发起人拍板立项**（读数为 0、判据短期读不出，发起人直接拍），实施分解见 `docs/m5-task-breakdown.md`；**D5** 投资线、付费墙、支付渠道一起押后（2026-10-05 整包确认） | `docs/m2-decisions.md`、`docs/m2-task-breakdown.md` |
 | **F5 排期** | **维持 P0，最小版从 M3 提到 M2**（1 个身份剧本 + 资产看板 + 持有成本 + 现金流波动，纯前端）；购物机制 / 六通道 / 原型卡 / 多剧本仍归 M3。M2 第一步是接度量而非写 F5（2026-10-05 拍板） | `docs/PRD.md` §13.7、§12 |
 | **M3 桥口径 G4** | 走方案 **(a)**：`Draft` 增可选 `goalOverride?: { annualCost, from: 'sim-cart' }`，一键成目标**只携带年成本一个数字**进 REAL（不带起始金、不带资产占比）；`choices` 仍写「每维最贵项」作展示回显。过 `draft.ts` 冻结闸门（2026-10-06 拍板） | `docs/m3-task-breakdown.md` §0 G4、§3 S4 |
 | **界面语言（i18n 切片）** | 双语 zh / en，**默认 en**，选择存 Cookie 并在 SSR 期生效（合规文本不能靠客户端改写）；目录英文名放 `catalog-data.ts` 的 `CATALOG_LABELS_EN` + 穷尽性测试，**不动冻结的 types.ts**；UI chrome 走 `lib/messages.ts`（`en` 用类型强制覆盖每一个 zh key）；逐页迁移：设计器、财务录入、结果页、首页与领钱入口已完成（2026-10-07）；六个界面全部迁移完毕（2026-10-07）；残留：目录项 `note` 仍是中文（内容层，且**当前无任何页面渲染它**）；会渲染的 `costComponents` 已于 2026-10-07 补英文（`CATALOG_COST_COMPONENTS_EN` + `optionCostComponents`） | `docs/PRD.md` §9、`apps/web/src/lib/i18n.ts`、`lib/messages.ts`、`packages/core/src/catalog-data.ts` |
@@ -57,6 +58,7 @@
 | **本金口径挂载位 S1.7** | 展开位放**设计器 sticky**（对象=当前最贵单项），**不放结果页**——那页的主数字「够用线」本身就是整份生活的本金，再做一个点开才看到的同一数字是重复不是教育。偏离 `comparison-converter.md` §4 原文，已在该文档 §2.2 / §4 双侧记录差异与理由（2026-10-08） | `docs/comparison-converter.md` §4、本文「下一步」S1.7 段 |
 | **M4 报告形态 G1 / G2** | ✅ **已拍板（2026-10-08）**：**G1 = 纯前端生成**——服务端生成必须先把用户的收入/支出/存款/负债上传，撞「用户自填的财务数据不得上传」红线；且不动「MVP 无后端」，成本低一个数量级（报告只是 `computeResults` 已有输出的排版视图）。**G2 = 浏览器打印样式（`@media print`）导出 PDF，分享链接不做**（分享同样要上传数据）。**服务端不是被否决，而是推迟到 S4 且只用于收款 / 验权**——S2 / S3 因此解锁 | `docs/m4-task-breakdown.md` §0、§2、§6 |
 | **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`（2026-10-04 绑定，浏览器实测可达、canonical/robots/sitemap 同域、冒烟 15/15），落地页 `rich-sim.bayjf.com`；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`** | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
+| **F2 逐项支出（2026-10-08 拍板 (b)）** | **扩 `Profile` 让逐项支出真进引擎**：`expenseBreakdown?`（住房/交通/食品/其他四大类，月口径，可选、旧草稿兼容），引擎经 `profileMonthlyExpense` 取数（`project`/`gap`/`buildMilestones`/换算器全走它）；财务页支出为「高级：拆开填（默认收起）」，任一子项填写即写 breakdown 并参与测算，全空回落单个数（旧草稿逐位不变）。**部分推翻 m2 D3**：恢复"进引擎"，保留其顾虑（只 4 大类、默认收起，不重开 §3.2 记账工具 Non-Goal）；`assumptionsVersion` 不升版（无公式变化）。切币种时 breakdown 逐项换算不丢（CurrencySwitcher） | `docs/PRD.md` §8、`docs/m2-decisions.md` D3、`CONVENTIONS.md` |
 
 ## 下一步
 
@@ -77,10 +79,10 @@
 8. ~~参照落地页 Calculator.astro 校验口径一致~~ ✅ T12（2026-10-04，五组样例双侧一致，无需回写）+ ✅ T13（E2E 15/15 + 完成率埋点可观测）
 9. ~~M1 移动端指标~~ ✅ T11（2026-10-04）
 
-**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步（**2026-10-05 拍板 F5 后重排**）：① ~~配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`~~ **2026-10-05 决定暂缓**（发起人：现在先不搞）——配置步骤与验证命令见 `docs/DEPLOYMENT.md` 分析埋点节；暂缓期间 PV/会话不可读；**自定义事件管道已全通（2026-10-05 晚）：收集端部署 + Pages Production 变量 + beacon 修复均完成并端到端验证，见 M2 段**；② **F5 最小版**（1 个身份剧本 + 资产看板 + 年持有成本 + 现金流波动，纯前端），启动前须拍 gameplay §6 的「首个剧本身份」与「六通道取舍」；③ 账号体系是否立项（`待定`，会推翻「MVP 无后端」）。域名 `app.rich-sim.bayjf.com` 已绑定并复验通过。
+**M1 状态：核心闭环完成（2026-10-04）**。**部署状态**：`rich-sim-landing`（落地页）→ https://rich-sim-landing.pages.dev（**Git 集成**：GitHub `bayernjf/rich-sim-landing`，push main 自动构建，另绑 `rich-sim.bayjf.com`）；产品应用 `rich-sim` → **https://rich-sim.pages.dev 已上线**（Git 集成：GitHub `bayernjf/rich-sim`，monorepo 根部署 + `.nvmrc` Node 22；首次构建因 main 缺 `package-lock.json` 报 EUSAGE，已修复推送；详见 `docs/DEPLOYMENT.md`）。线上冒烟全过（2026-10-04 实测）：首页 200「财富模拟 · rich-sim」、`/api/fx` 返回完整汇率快照（CNY base，Frankfurter ECB）、`/app/result` 假设清单+免责声明纯 SSR 源码可见——**M1 遗留风险（Cloudflare 环境冒烟）已关闭**。下一步（**2026-10-05 拍板 F5 后重排**）：① ~~配 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`~~ ✅ **2026-10-08 已配置**（建站点 + Pages Production 变量 + 重建，线上 HTML 已见 beacon，PV/会话开始积累；详见 `docs/DEPLOYMENT.md` 分析埋点节）；**自定义事件管道已全通（2026-10-05 晚）：收集端部署 + Pages Production 变量 + beacon 修复均完成并端到端验证，见 M2 段**；② **F5 最小版**（1 个身份剧本 + 资产看板 + 年持有成本 + 现金流波动，纯前端），启动前须拍 gameplay §6 的「首个剧本身份」与「六通道取舍」；③ 账号体系是否立项（`待定`，会推翻「MVP 无后端」）。域名 `app.rich-sim.bayjf.com` 已绑定并复验通过。
 
 **M2（F5 最小版 + 三通道）进度**（2026-10-05）：S1 卡 A 资产看板（`/app/sim`，纯 SSR）、S2 账单日（现金流波动 + 断裂负担率）、S3 换算条（轻量口径，挂设计器 sticky 与结果页）**均已上线**；**S4 领钱入口**代码完成——独立账本 `rich-sim:sim:v1`（第二个冻结 key，见 `CONVENTIONS.md`）、首页两拍受 `PUBLIC_HOMEPAGE_CLAIM` 控制、**2026-10-05 晚已在生产打开**（Pages Production 配 `PUBLIC_HOMEPAGE_CLAIM=1`；Preview 未配），A 线「够撑多久」挂在 `/app/sim`（`$1M ÷ 卡 A 年成本 = 9.1 个月`；加游艇后 1.8 个月；纯除法，不走 `project`——SIM 态没有收入，用法与 §8 验收 #8 的例外处理见 `homepage-claim-experience.md` §7.1）。
-**M2 四片至此全部交付且埋点管道已通**（2026-10-05 晚）：Pages Production 配好 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect` 与 `PUBLIC_HOMEPAGE_CLAIM=1`，Retry deployment 让变量进构建后，线上冒烟 37/37、首页已见「领一百万」、analytics chunk 已内联端点。首日发现并修复一个**静默丢事件**缺陷：`sendBeacon` 固定 no-cors，原实现以 `application/json` Blob 发送被浏览器在发出前拦截（`net::ERR_FAILED`），而 beacon 仍返回 true、队列照常裁剪（`c6894a2` 改为纯字符串载荷，worker 无需改动）。修复后经 headless Chrome 真实 beacon + D1 console 双重确认入库；联调用的 3 条 `probe:*` 诊断事件验证后已删除，当前 D1 仅余真实漏斗事件。下一步不再是既定切片，需要重新排：账号体系 / 投资线等仍押后（D4、D5），判据依赖真实流量下的漏斗读数。PV/会话分母仍需另行配置 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`（暂缓）。
+**M2 四片至此全部交付且埋点管道已通**（2026-10-05 晚）：Pages Production 配好 `PUBLIC_ANALYTICS_ENDPOINT=https://rich-sim-collect.jiangfengkxi.workers.dev/collect` 与 `PUBLIC_HOMEPAGE_CLAIM=1`，Retry deployment 让变量进构建后，线上冒烟 37/37、首页已见「领一百万」、analytics chunk 已内联端点。首日发现并修复一个**静默丢事件**缺陷：`sendBeacon` 固定 no-cors，原实现以 `application/json` Blob 发送被浏览器在发出前拦截（`net::ERR_FAILED`），而 beacon 仍返回 true、队列照常裁剪（`c6894a2` 改为纯字符串载荷，worker 无需改动）。修复后经 headless Chrome 真实 beacon + D1 console 双重确认入库；联调用的 3 条 `probe:*` 诊断事件验证后已删除，当前 D1 仅余真实漏斗事件。下一步不再是既定切片，需要重新排：账号体系 / 投资线等仍押后（D4、D5），判据依赖真实流量下的漏斗读数。PV/会话分母已于 2026-10-08 接通（`PUBLIC_CF_WEB_ANALYTICS_TOKEN` 已配）。
 
 **2026-10-07 补记（传输换了）**：上面那条 beacon 事故只修了一半——纯字符串载荷解决了 Content-Type 被拦，但 beacon 在卸载路径上仍会**随机丢**，而旧实现凭「beacon 返回 true」就裁剪队列。本地 sink 实测一次冒烟：约 15 个事件**只有 1 条到达收集端**（比全丢更危险，表面一切正常）。现改为 `fetch(..., { keepalive: true })` + **收到 2xx 才裁队列**，代价是至少一次语义：同一条冒烟 21 个事件落成 78 行、按 `(event, ts)` 去重得 20 个。收集端 `/summary` 计数已相应改成 `COUNT(DISTINCT event, ts)`，**代码改了、还没重新部署**。口径与验证纪律见 `docs/DEPLOYMENT.md`。
 
@@ -102,7 +104,7 @@
 - **B 代码小功能**（各 S–M）：~~① PWA 增强（manifest + service worker，tech §10.1 定案「半天成本」）~~ ✅ 32ddb25；~~② 埋点接真实上报（现为 localStorage 队列，T13 遗留）~~ ✅ 629d53c（CF Web Analytics beacon + sendBeacon 自定义事件，均由环境变量开启，未配置零行为）；~~③ sitemap.xml + robots.txt（DEPLOYMENT.md 验证清单 #5 提到，疑未配置）~~ ✅ 584b53b；~~④ WCAG AA / 键盘可达 / 对比度检查修复（PRD §9 硬要求，M1 验收未实测）~~ ✅ 61610ad（danger token、skip link、radiogroup 语义、aria-live、44px 触摸目标、固定底条遮挡）；~~⑤ 深浅色自适应核对（PRD §9，tech §7 说沿用落地页策略，需核实）~~ ✅ 6a4115c（机制已具备：prefers-color-scheme + color-scheme + 全量 light token；仅浅色 accent 对比度 4.36→5.23 加深，双主题全部文本 token 按 WCAG 公式实测 ≥4.5:1）；~~⑥ 草稿恢复入口（方案已存 localStorage，T07，查 UI 是否有回访恢复）~~ ✅ a4dcec0（首页 client:load 岛，nextDraftStep 纯函数 + 4 测试，无草稿不渲染、SSR 空帧）。
 - **C 内容**（各 M）：~~① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6；名人原型合规除外）~~ ✅ f725218（simulation-gameplay v0.2：账单日 6 个建议默认、现金流负担率公式与阈值、爽痛 1:1、两张虚构原型卡、一键成目标入 PRD §7.2/F5；剩余为 M3 前拍板项，见 gameplay §6）；~~② Catalog 21 项「待校准」数值补公开来源（deferred #1）~~ ✅ 26b4f4b（盘点所写「21 项」实为 **20 项**；23 项现已全部附可查证来源：BLS CE 2024 / AAA / KFF / NAIS / Child Care Aware / Allianz / Zillow，富豪极端档为行业估算；统一为实际自付现金口径，移除设计器 mock、catalog 改必传，测试增至 10 条；deferred #1 的 USD 部分闭环）；~~③ PRD §2.3 市场时机论证补全（需外部检索，带来源）~~ ✅ 38eb2df（Deloitte / PwC / 美联储 SHED / TIAA-GFLEC 四来源，deferred #8 市场时机部分闭环）。
 - **需拍板后才能动**：~~D1–D5~~ **2026-10-05 已整包确认**（见「已做的决策」与 `docs/m2-decisions.md`）。当前真正待拍的只剩：`deferred #5` 法务与 publicity rights 复核（M3 原型卡上线前）、`#3` 付费墙与 `#7` 支付渠道（D5 押后，等付费意愿读数）、品牌视觉 / 商标（deferred #2 剩余部分）。
-  - **F2 逐项支出（PRD §8 明写、当前未实现）——我先前把它列进「不需拍板」的 B 组，是错的，已移出**：`Profile.expense` 是**单个数字**（`packages/core/src/types.ts:27`），而 `types.ts` 与 `draft.ts` 都是冻结契约（`CONVENTIONS.md`：改契约 = 过闸门）。两条路必须选一条：**(a)** 展示层拆解 + 独立 localStorage key、引擎不读——零契约改动，但「精细模型」只是看起来精细，不影响测算，**有误导用户以为它参与计算的风险**；**(b)** 扩 `Profile` 让逐项支出真正进引擎——要过契约闸门，且牵动 `project` / `gap` / `buildMilestones` 口径与 `assumptionsVersion`。
+  - ~~**F2 逐项支出（PRD §8 明写、当前未实现）——我先前把它列进「不需拍板」的 B 组，是错的，已移出**：`Profile.expense` 是**单个数字**（`packages/core/src/types.ts:27`），而 `types.ts` 与 `draft.ts` 都是冻结契约（`CONVENTIONS.md`：改契约 = 过闸门）。两条路必须选一条：**(a)** 展示层拆解 + 独立 localStorage key、引擎不读——零契约改动，但「精细模型」只是看起来精细，不影响测算，**有误导用户以为它参与计算的风险**；**(b)** 扩 `Profile` 让逐项支出真正进引擎——要过契约闸门，且牵动 `project` / `gap` / `buildMilestones` 口径与 `assumptionsVersion`~~ ✅ **2026-10-08 发起人拍板走 (b) 并已实现**：`expenseBreakdown?` 四类月口径 + `profileMonthlyExpense` 取数 + 财务页「高级：拆开填」默认收起 + 切币种逐项换算保留；测试 core 65 / web 218 全绿。见「已做的决策」F2 行与 PRD §8。
 
 ## 待决问题
 

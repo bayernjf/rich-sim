@@ -84,7 +84,7 @@ SELECT event, COUNT(*) n FROM events WHERE event NOT LIKE 'smoke:%' GROUP BY eve
 
 **一个与上面无关、但容易误判的本机现象**：这台机器直连 `*.workers.dev` 的 DNS 被污染（解析到 108.160.163.106，`curl` 不带代理返回 000），而浏览器走系统代理 `127.0.0.1:7900` 才通。所以「shell 里 curl 收集端失败」**不等于**埋点坏了。要确认收集端能不能收名，走带代理的 POST 探针 + D1 读回——M3 的三个事件名就是这么确认的（`smoke:sim:add` / `smoke:sim:remove` / `smoke:cart:to-goal` 各 1 行入库，worker 的收名正则零改动）。
 
-### Cloudflare Web Analytics 怎么配（**2026-10-05 决定暂缓**，以下是恢复时的步骤）
+### Cloudflare Web Analytics 怎么配（~~2026-10-05 决定暂缓~~ **2026-10-08 已配置**：Web Analytics 建站点 `app.rich-sim.bayjf.com`（手动 JS Snippet 方式），token 已入 Pages **Production** 变量 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`，Retry deployment 重建后线上 HTML 已见 beacon（`data-cf-beacon` 含 token），PV/会话开始积累。配置步骤留档如下）
 
 1. Cloudflare 控制台 → **Web Analytics** → Add site → 域名填 `app.rich-sim.bayjf.com`，复制 beacon token。
 2. Pages → 项目 `rich-sim` → Settings → Environment variables → 加 `PUBLIC_CF_WEB_ANALYTICS_TOKEN`，**Production 与 Preview 都要设**。Astro 在**构建期**内联 `PUBLIC_*`，设完必须有一次新构建才生效。

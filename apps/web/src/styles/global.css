@@ -88,6 +88,44 @@
 }
 
 /*
+  领钱第一拍的金币雨（homepage-claim-experience.md §4 T+0.3s，P2）。
+  只活在 ClaimMillion 的 granted 拍（1.5s）：静音、纯 CSS、无 JS 驱动；
+  prefers-reduced-motion 的用户根本到不了 granted（组件直接给账单态），
+  这里的 reduce 兜底是双保险。
+*/
+@keyframes claim-coin-fall {
+  0% {
+    transform: translate3d(0, -14px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--coin-sway, 0px), 160px, 0) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+.claim-coin {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--c-accent);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.25);
+  animation: claim-coin-fall 1.1s ease-in forwards;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claim-coin {
+    display: none;
+  }
+}
+
+/*
   M4 S2 · T05 打印样式（G2：用浏览器「打印为 PDF」导出报告）。
   纸面上只留两样：报告（`[data-report]`）与合规面板（`[data-compliance]`，
   即假设清单 + 免责声明）——报告自带口径，合规面板随它一起走。
@@ -120,6 +158,7 @@
   [data-results-root],
   [data-assumptions-editor],
   [data-scenario-panel],
+  [data-saved-plans],
   button,
   input,
   select,

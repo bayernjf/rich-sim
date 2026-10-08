@@ -92,11 +92,26 @@ export function scenarioAnnualCost(
 }
 
 /**
+ * profileMonthlyExpense(p) — the engine's single source for monthly spending.
+ *
+ * When the user itemized spending (expenseBreakdown present), the total is
+ * the sum of the four buckets and `expense` is ignored: the itemized numbers
+ * are the finer truth and the writer layer keeps expense = sum(breakdown)
+ * anyway. Legacy drafts without a breakdown fall back to `expense` — their
+ * results are bit-for-bit unchanged.
+ */
+export function profileMonthlyExpense(p: Profile): number {
+  const b = p.expenseBreakdown;
+  if (b) return b.housing + b.transport + b.food + b.other;
+  return p.expense;
+}
+
+/**
  * project(p, goal, a) — three first-class states.
  * starting capital = savings - debt; annual deposit = (income - expense) * 12.
  */
 export function project(p: Profile, goal: Goal, a: Assumptions): Projection {
-  const monthlyNet = p.income - p.expense;
+  const monthlyNet = p.income - profileMonthlyExpense(p);
   const savingsRate = p.income > 0 ? monthlyNet / p.income : 0;
   if (monthlyNet <= 0) return { status: 'no-net-savings' };
 
@@ -132,7 +147,7 @@ export function gap(
 
   const start = p.savings - p.debt;
   const target = targetCapital(goal, a);
-  const currentAnnual = (p.income - p.expense) * 12;
+  const currentAnnual = (p.income - profileMonthlyExpense(p)) * 12;
   const r = a.returnRate;
 
   let required: number;
@@ -154,7 +169,7 @@ export function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milesto
   const start = p.savings - p.debt;
   const target = targetCapital(goal, a);
   const r = a.returnRate;
-  const monthlyNet = p.income - p.expense;
+  const monthlyNet = p.income - profileMonthlyExpense(p);
 
   // Stage 1: lift savings rate to 20% of income -> new monthly saving amount
   // and the years to the main goal at that pace.
@@ -163,12 +178,12 @@ export function buildMilestones(p: Profile, goal: Goal, a: Assumptions): Milesto
 
   // Stage 2: build the first principal cushion = 6 months of expense.
   // Saving speed is monthly; months-to-save / 12 = years.
-  const stage2Amount = STAGE2_MONTHS * p.expense;
+  const stage2Amount = STAGE2_MONTHS * profileMonthlyExpense(p);
   const stage2Years =
     monthlyNet > 0 ? Math.ceil(stage2Amount / monthlyNet / 12) : 0;
 
   // Stage 3: lift income by 10% (expense unchanged) -> years to the main goal.
-  const stage3Monthly = p.income * STAGE3_INCOME_LIFT - p.expense;
+  const stage3Monthly = p.income * STAGE3_INCOME_LIFT - profileMonthlyExpense(p);
   const stage3Years = yearsToTarget(start, stage3Monthly * 12, target, r) ?? MAX_YEARS;
 
   return [
@@ -278,7 +293,7 @@ export function wealthTimeEquivalent(
 ): TimeEquivalent {
   const currency = profile.currency;
   const annualCostLocal = convert(annualCostUsd, 'USD', currency, fx);
-  const annualSavings = (profile.income - profile.expense) * 12;
+  const annualSavings = (profile.income - profileMonthlyExpense(profile)) * 12;
   if (!(annualSavings > 0)) return { status: 'no-net-savings', annualCostLocal, annualSavings, currency };
 
   const years = annualCostLocal / annualSavings;

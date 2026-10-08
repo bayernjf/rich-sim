@@ -1,6 +1,8 @@
 ---
 import FinanceForm from '../../components/FinanceForm';
 import LocaleSwitcher from '../../components/LocaleSwitcher';
+import AuthButton from '../../components/AuthButton';
+import SyncBridge from '../../components/SyncBridge';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { localeFromRequest } from '../../lib/i18n';
 import { t } from '../../lib/messages';
@@ -14,7 +16,9 @@ const locale = localeFromRequest(Astro.request, Astro.url);
   locale={locale}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
-    <div class="mb-4 flex justify-end">
+    <div class="mb-4 flex items-center justify-end gap-2">
+      <AuthButton client:load locale={locale} />
+      <SyncBridge client:load />
       <LocaleSwitcher client:load locale={locale} />
     </div>
 

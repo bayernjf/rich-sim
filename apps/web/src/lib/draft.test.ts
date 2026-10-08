@@ -187,3 +187,53 @@ describe('writeDraft keeps the local history', () => {
     });
   });
 });
+
+/**
+ * `savedPlans` 与 `history` 同一条纪律：每个写方都是重建整个 Draft，
+ * 不透传就会静默抹掉存档。钉住「不传 = 不动」「传 [] = 主动清空」。
+ */
+describe('writeDraft keeps the saved plans', () => {
+  const stored = new Map<string, string>();
+  const g = globalThis as Record<string, unknown>;
+
+  function withStorage(run: () => void) {
+    const saved = { localStorage: g.localStorage, window: g.window };
+    stored.clear();
+    g.localStorage = {
+      getItem: (k: string) => stored.get(k) ?? null,
+      setItem: (k: string, v: string) => void stored.set(k, v),
+      removeItem: (k: string) => void stored.delete(k),
+    };
+    g.window = { dispatchEvent: () => true };
+    try {
+      run();
+    } finally {
+      g.localStorage = saved.localStorage;
+      g.window = saved.window;
+    }
+  }
+
+  const plan = {
+    id: 'plan-test',
+    name: '基准',
+    savedAt: '2026-10-08T00:00:00.000Z',
+    choices: [{ dimension: 'home', optionId: 'home_a' }],
+    profile: fullProfile,
+  };
+
+  it('a writer that does not mention savedPlans leaves them intact', () => {
+    withStorage(() => {
+      writeDraft(makeDraft({ profile: fullProfile, savedPlans: [plan] }));
+      writeDraft(makeDraft({ profile: fullProfile, currency: 'USD' }));
+      expect(JSON.parse(stored.get('rich-sim:plan:v1') ?? 'null').savedPlans).toEqual([plan]);
+    });
+  });
+
+  it('an explicit empty array wipes the archive deliberately', () => {
+    withStorage(() => {
+      writeDraft(makeDraft({ profile: fullProfile, savedPlans: [plan] }));
+      writeDraft(makeDraft({ profile: fullProfile, savedPlans: [] }));
+      expect(JSON.parse(stored.get('rich-sim:plan:v1') ?? 'null').savedPlans).toEqual([]);
+    });
+  });
+});

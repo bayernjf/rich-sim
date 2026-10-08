@@ -1,9 +1,12 @@
 ---
 import ResultsView from '../../components/ResultsView';
 import ScenarioPanel from '../../components/ScenarioPanel';
+import SavedPlans from '../../components/SavedPlans';
 import ReportView from '../../components/ReportView';
 import AssumptionsEditor from '../../components/AssumptionsEditor';
 import LocaleSwitcher from '../../components/LocaleSwitcher';
+import AuthButton from '../../components/AuthButton';
+import SyncBridge from '../../components/SyncBridge';
 import AssumptionsPanel from '../../components/AssumptionsPanel.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
@@ -19,7 +22,9 @@ const locale = localeFromRequest(Astro.request, Astro.url);
   locale={locale}
 >
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
-    <div class="mb-4 flex justify-end">
+    <div class="mb-4 flex items-center justify-end gap-2">
+      <AuthButton client:load locale={locale} />
+      <SyncBridge client:load />
       <LocaleSwitcher client:load locale={locale} />
     </div>
 
@@ -30,6 +35,9 @@ const locale = localeFromRequest(Astro.request, Astro.url);
 
     <!-- M4 S1 · T02/T03 情景面板（页内岛，不新增路由） -->
     <ScenarioPanel catalog={initialCatalogUSD} locale={locale} client:load />
+
+    <!-- F9（本机版）· 多剧本存档（页内岛，不新增路由；无草稿不渲染） -->
+    <SavedPlans locale={locale} client:load />
 
     <!-- M4 S2 · T02/T03 报告（页内区块，不新增路由；G6 默认取页内） -->
     <ReportView catalog={initialCatalogUSD} locale={locale} client:load />

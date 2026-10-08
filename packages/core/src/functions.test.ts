@@ -10,6 +10,7 @@ import {
   convert,
   enoughLine,
   gap,
+  profileMonthlyExpense,
   project,
   scenarioAnnualCost,
 } from './functions';
@@ -37,6 +38,27 @@ function assumptions(over: Partial<Assumptions> = {}): Assumptions {
 function profile(over: Partial<Profile> = {}): Profile {
   return { income: 15000, expense: 10000, savings: 100000, debt: 0, currency: 'CNY', ...over };
 }
+
+describe('profileMonthlyExpense (F2 · 逐项支出取数)', () => {
+  it('无 breakdown：回落 expense（旧草稿逐位不变）', () => {
+    expect(profileMonthlyExpense(profile())).toBe(10000);
+  });
+
+  it('有 breakdown：取四项之和，忽略 expense', () => {
+    const p = profile({
+      expense: 10000, // 故意写一个不同的旧值
+      expenseBreakdown: { housing: 4000, transport: 1500, food: 2500, other: 1000 },
+    });
+    expect(profileMonthlyExpense(p)).toBe(9000);
+  });
+
+  it('breakdown 全 0：月支出为 0（合法）', () => {
+    const p = profile({
+      expenseBreakdown: { housing: 0, transport: 0, food: 0, other: 0 },
+    });
+    expect(profileMonthlyExpense(p)).toBe(0);
+  });
+});
 
 describe('enoughLine', () => {
   // Hand-check ① (independent): 400,000 / 0.04 = 10,000,000.
@@ -260,6 +282,40 @@ describe('convert (§4.2)', () => {
     expect(convert(250, 'EUR', 'JPY', fx)).toBe(convert(250, 'EUR', 'JPY', fx));
     // 1 base = rates[c]; EUR 0.92, JPY 149.5: 250 EUR * 149.5 / 0.92
     expect(convert(250, 'EUR', 'JPY', fx)).toBeCloseTo((250 * 149.5) / 0.92, 6);
+  });
+});
+
+describe('逐项支出参与测算（F2 闸门 (b)）', () => {
+  it('project 用 breakdown 之和而非 expense 字段', () => {
+    // expense 字段写 10000（月净 5千），但 breakdown 合计 9000（月净 6千）：
+    // 引擎必须按 breakdown 算。10 万存款、年投入 7.2 万、r=0 -> 到 100 万需 ~12.5 年 -> 13 年。
+    const p = profile({
+      expense: 10000,
+      expenseBreakdown: { housing: 4000, transport: 1500, food: 2500, other: 1000 },
+    });
+    const r = project(p, { kind: 'net-worth', value: 1_000_000 }, assumptions({ returnRate: 0 }));
+    expect(r).toEqual({ status: 'reachable', years: 13, savingsRate: 6000 / 15000 });
+  });
+
+  it('gap 用 breakdown 之和计算年储蓄', () => {
+    const p = profile({
+      expense: 10000,
+      expenseBreakdown: { housing: 4000, transport: 1500, food: 2500, other: 1000 },
+    });
+    const g = gap(p, { kind: 'net-worth', value: 1_000_000 }, assumptions({ returnRate: 0 }));
+    // 年储蓄 = 6000*12 = 72000；r=0、30 年、start=10 万 -> 所需 = (100万-10万)/30 = 30000/年 -> gap=0。
+    expect(g.yearsAtCurrentPace).toBe(13);
+    expect(g.annualGap).toBe(0);
+  });
+
+  it('buildMilestones 的支出垫子用 breakdown 之和', () => {
+    const p = profile({
+      expense: 10000,
+      expenseBreakdown: { housing: 4000, transport: 1500, food: 2500, other: 1000 },
+    });
+    const ms = buildMilestones(p, { kind: 'net-worth', value: 1_000_000 }, assumptions());
+    // stage 2 = 6 个月支出 = 6 * 9000 = 54000。
+    expect(ms[1]?.goalValue).toBe(54_000);
   });
 });
 
