@@ -50,6 +50,12 @@ describe('界面措辞闸门', () => {
     }
   });
 
+  it('商城不做电商促销话术（无折扣/倒计时/库存压迫）', () => {
+    for (const phrase of ['优惠', '折扣', '抢购', '仅剩', '限时', '秒杀', '库存紧张']) {
+      expect(uiText, `商城出现促销话术「${phrase}」`).not.toContain(phrase);
+    }
+  });
+
   it('假设清单与免责声明仍在渲染路径上', () => {
     expect(uiText).toContain('假设清单');
     expect(uiText).toContain('免责声明');

@@ -60,7 +60,7 @@ describe('选择器', () => {
 });
 
 describe('CATALOG_COST_COMPONENTS_EN 穷尽性', () => {
-  // 持有成本拆项会直接渲染在购物区卡片上（ShoppingArea.tsx），是英文界面里
+  // 持有成本拆项会直接渲染在商城卡片上（MallArea.tsx），是英文界面里
   // 最容易被看见的一处中文残留，所以单独钉一张表。
   const withComponents = initialCatalogUSD.dimensions
     .flatMap((d) => d.options)

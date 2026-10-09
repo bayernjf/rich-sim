@@ -7,7 +7,7 @@
  * （data-shopping-area / data-cart-count / data-cart-status /
  * data-adopt-goal、按钮名「加入购物车 / 移出购物车」），步骤 8/9 不用改。
  *
- * 反电商纪律：无折扣、无倒计时、无库存话术、无真实品牌图。
+ * 反电商纪律：不做促销话术与催单设计、不用真实品牌图（禁语由 copy-guard 闸门钉住）。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Interpolated from './Interpolated';
