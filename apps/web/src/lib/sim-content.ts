@@ -541,3 +541,151 @@ export function formatRunway(months: number, locale: 'zh' | 'en' = 'zh'): string
   const digits = years >= 100 ? Math.round(years).toLocaleString('en-US') : years.toFixed(1);
   return unit(digits.endsWith('.0') ? digits.slice(0, -2) : digits, 'year');
 }
+
+/* ── 操作通道（T3 · simulation-gameplay §2.3 剩余：收购谈判 / 加杠杆）── */
+
+/**
+ * 操作通道的**示意参数**（教学假设，不是来源数据）——与 `CARD_A_ANNUAL_INCOME`
+ * 同一纪律：注释写清口径、UI 显式标「示意」，不冒充真实报价或建议。
+ * - `LEVERAGE_MULTIPLE`：可借规模 = 可支配现金流 × 2（示意：银行对高净值客户
+ *   的常见杠杆额度量级，不是任何机构的真实条款）。
+ * - `ACQUISITION_MULTIPLE`：收购估值 = 标的年营收 × 6（示意：私人市场并购
+ *   常见收入倍数量级，非真实定价）。
+ * - `DEAL_RATE`：杠杆/收购共用的年化利息率 5%（示意）。
+ */
+export const LEVERAGE_MULTIPLE = 2;
+export const ACQUISITION_MULTIPLE = 6;
+export const DEAL_RATE = 0.05;
+
+export type LeverageDeal = {
+  /** 可借规模 = 现金流 × 杠杆倍数（示意）。 */
+  borrow: number;
+  /** 年利息 = 可借规模 × 示意利率。 */
+  interest: number;
+  /** 年成本 + 年利息（新的下一年账单）。 */
+  totalCost: number;
+  rate: number | null;
+  status: 'green' | 'yellow' | 'red';
+  /** 负担率推到 100% 的临界杠杆倍数——超过它利息就吃光现金流（null = 已断裂）。 */
+  breakMultiple: number | null;
+};
+
+/**
+ * 加杠杆：借 cashflow × 2，利息按 5% 年化，把年利息加进年成本后重算负担率。
+ * 教育点：杠杆放大的是「能借多少」的掌控感，同时放大「每年利息」的账单——
+ * 临界倍数算出来给用户看：超过它，现金流就断裂。
+ * 纯算术，不产 NaN：非法输入（成本/现金流非正）返回可渲染的空结果。
+ */
+export function leverageDeal(annualCost: number, cashflow: number): LeverageDeal {
+  const empty = (): LeverageDeal => ({
+    borrow: 0,
+    interest: 0,
+    totalCost: annualCost,
+    rate: null,
+    status: 'green',
+    breakMultiple: null,
+  });
+  if (!(annualCost > 0) || !(cashflow > 0)) return empty();
+  const borrow = cashflow * LEVERAGE_MULTIPLE;
+  const interest = borrow * DEAL_RATE;
+  const totalCost = annualCost + interest;
+  const { rate, status } = burdenStatus(totalCost, cashflow);
+  // 负担率 ≤ 1 ⇔ annualCost + cashflow·m·r ≤ cashflow ⇔ m ≤ (cashflow − annualCost)/(cashflow·r)
+  const breakMultiple =
+    cashflow > annualCost ? (cashflow - annualCost) / (cashflow * DEAL_RATE) : null;
+  return { borrow, interest, totalCost, rate, status, breakMultiple };
+}
+
+export type AcquisitionDeal = {
+  /** 标的年营收（示意：按卡片年收入）。 */
+  revenue: number;
+  /** 估值 = 年营收 × 6（示意）。 */
+  valuation: number;
+  /** 全杠杆收购的年利息 = 估值 × 5%（示意）。 */
+  interest: number;
+  totalCost: number;
+  rate: number | null;
+  status: 'green' | 'yellow' | 'red';
+  /** 负担率 ≤ 100% 的估值倍数上限——谈判价砍到它以内才不断裂（null = 已断裂）。 */
+  breakMultiple: number | null;
+};
+
+/**
+ * 收购谈判：标的年营收按卡片年收入（示意），全杠杆收购，估值 × 5% 的年利息
+ * 加进年成本重算负担率。教育点：收购价每高一个倍数，年利息账单就涨一段；
+ * 临界倍数就是「谈判底价」——超过它，这笔收购把现金流吃断。
+ */
+export function acquisitionDeal(
+  annualIncome: number,
+  annualCost: number,
+  cashflow: number,
+): AcquisitionDeal {
+  const empty = (): AcquisitionDeal => ({
+    revenue: annualIncome,
+    valuation: 0,
+    interest: 0,
+    totalCost: annualCost,
+    rate: null,
+    status: 'green',
+    breakMultiple: null,
+  });
+  if (!(annualIncome > 0) || !(annualCost > 0) || !(cashflow > 0)) return empty();
+  const revenue = annualIncome;
+  const valuation = revenue * ACQUISITION_MULTIPLE;
+  const interest = valuation * DEAL_RATE;
+  const totalCost = annualCost + interest;
+  const { rate, status } = burdenStatus(totalCost, cashflow);
+  // 负担率 ≤ 1 ⇔ annualCost + revenue·m·r ≤ cashflow ⇔ m ≤ (cashflow − annualCost)/(revenue·r)
+  const breakMultiple =
+    cashflow > annualCost ? (cashflow - annualCost) / (revenue * DEAL_RATE) : null;
+  return { revenue, valuation, interest, totalCost, rate, status, breakMultiple };
+}
+
+/* ── 剧情通道（T3 · §2.3 剩余：随机事件——危机 / 诉讼 / 分产）── */
+
+/**
+ * 剧情通道的**示意参数**（教学假设，不是来源数据）：
+ * - `PLOT_LAWSUIT_CASHFLOW_CUT`：诉讼一次性赔付 = 0.5 × 年现金流（示意），
+ *   从现金出、当年现金流减半——「风险不是每年账单，是一次性掏空」。
+ * - `PLOT_CRISIS_INCOME_CUT`：市场危机让股权收入缩水 30%（示意），
+ *   其余不变——与 swan（收入腰斩 50%）区分幅度。
+ * - `PLOT_SPLIT_CASHFLOW_CUT`：家庭分产让可支配现金流永久减半（示意）——
+ *   内部安排，不是外部黑天鹅。
+ */
+export const PLOT_LAWSUIT_CASHFLOW_CUT = 0.5;
+export const PLOT_CRISIS_INCOME_CUT = 0.3;
+export const PLOT_SPLIT_CASHFLOW_CUT = 0.5;
+
+export type PlotEventId = 'lawsuit' | 'crisis' | 'split';
+
+export type PlotEvent = {
+  id: PlotEventId;
+  /** 事件后的可支配现金流（口径各异，见各自参数注释）。 */
+  cashflow: number;
+  rate: number | null;
+  status: 'green' | 'yellow' | 'red';
+};
+
+/**
+ * 三张黑天鹅卡：每张给出「若发生」后的负担率与状态，参数全部从卡片现有
+ * 数值（收入 / 年成本 / 现金流）推导，本函数不写任何新的金额字面量。
+ * 纯算术，不产 NaN；非法输入逐项回落空结果。
+ */
+export function plotEvents(
+  annualIncome: number,
+  annualCost: number,
+  lastYearCost: number,
+): PlotEvent[] {
+  const build = (id: PlotEventId, cashflow: number): PlotEvent => {
+    if (!(annualIncome > 0) || !(annualCost > 0) || !(lastYearCost > 0) || cashflow <= 0) {
+      return { id, cashflow, rate: null, status: 'green' };
+    }
+    const { rate, status } = burdenStatus(annualCost, cashflow);
+    return { id, cashflow, rate, status };
+  };
+  return [
+    build('lawsuit', (annualIncome - lastYearCost) * (1 - PLOT_LAWSUIT_CASHFLOW_CUT)),
+    build('crisis', annualIncome * (1 - PLOT_CRISIS_INCOME_CUT) - lastYearCost),
+    build('split', (annualIncome - lastYearCost) * (1 - PLOT_SPLIT_CASHFLOW_CUT)),
+  ];
+}

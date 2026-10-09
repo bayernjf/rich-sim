@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { BILLS_PER_PAGE, RESALE_RECOVERY_RATE, initialCatalogUSD, scenarioAnnualCost } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
 import {
+  ACQUISITION_MULTIPLE,
   CARD_A,
   CARD_A_ANNUAL_INCOME,
   CARD_A_BROKE,
   CARD_A_LAST_YEAR_COST,
+  DEAL_RATE,
+  LEVERAGE_MULTIPLE,
   SIM_STARTING_CAPITAL,
+  acquisitionDeal,
   annualDrawdown,
   cardAnnualCost,
   cardBills,
@@ -17,6 +21,8 @@ import {
   cartKindCounts,
   claimBillRows,
   formatRunway,
+  leverageDeal,
+  plotEvents,
   runwayMonths,
   shoppingPool,
   topTierChoices,
@@ -365,5 +371,101 @@ describe('购物即记账（M3 S3）', () => {
     expect(costs.asset + costs.consumer + costs.experience).toBe(
       cartAddedAnnualCost(cart, pool, baseline),
     );
+  });
+});
+
+describe('操作通道（T3 · 收购谈判 / 加杠杆）', () => {
+  const annualCost = cardAnnualCost(CARD_A.choices, initialCatalogUSD, DEFAULT_ASSUMPTIONS);
+  const cashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
+
+  it('加杠杆：借 2× 现金流、5% 年息，负担率从 78% 升到 88.3%（手算复核）', () => {
+    const deal = leverageDeal(annualCost, cashflow);
+    // 借入 = 1,683,000 × 2 = 3,366,000；年息 = 168,300；总成本 = 1,485,300
+    expect(deal.borrow).toBe(cashflow * LEVERAGE_MULTIPLE);
+    expect(deal.interest).toBeCloseTo(cashflow * LEVERAGE_MULTIPLE * DEAL_RATE);
+    expect(deal.totalCost).toBeCloseTo(annualCost + 168_300);
+    expect(deal.rate).toBeCloseTo(1_485_300 / cashflow);
+    expect(deal.status).toBe('yellow');
+  });
+
+  it('加杠杆临界倍数 ≈ 4.35×：超过它利息就吃光现金流', () => {
+    const deal = leverageDeal(annualCost, cashflow);
+    expect(deal.breakMultiple).toBeCloseTo((cashflow - annualCost) / (cashflow * DEAL_RATE));
+    expect(deal.breakMultiple).toBeCloseTo(4.35, 2);
+  });
+
+  it('收购：6× 年营收估值，全杠杆年息 90 万 → 负担率 131.7% 红', () => {
+    const deal = acquisitionDeal(CARD_A_ANNUAL_INCOME, annualCost, cashflow);
+    expect(deal.revenue).toBe(CARD_A_ANNUAL_INCOME);
+    expect(deal.valuation).toBe(CARD_A_ANNUAL_INCOME * ACQUISITION_MULTIPLE);
+    expect(deal.interest).toBeCloseTo(18_000_000 * DEAL_RATE);
+    expect(deal.totalCost).toBeCloseTo(annualCost + 900_000);
+    expect(deal.rate).toBeCloseTo(2_217_000 / cashflow);
+    expect(deal.status).toBe('red');
+  });
+
+  it('收购谈判底价 ≈ 2.44×：估值砍到它以内才不断裂', () => {
+    const deal = acquisitionDeal(CARD_A_ANNUAL_INCOME, annualCost, cashflow);
+    expect(deal.breakMultiple).toBeCloseTo((cashflow - annualCost) / (CARD_A_ANNUAL_INCOME * DEAL_RATE));
+    expect(deal.breakMultiple).toBeCloseTo(2.44, 2);
+  });
+
+  it('非法输入收敛：成本或现金流非正 → 空结果不产 NaN', () => {
+    for (const [c, f] of [
+      [0, 1_683_000],
+      [1_317_000, 0],
+      [-1, -1],
+    ] as const) {
+      const l = leverageDeal(c, f);
+      const a = acquisitionDeal(3_000_000, c, f);
+      expect(Number.isNaN(l.rate)).toBe(false);
+      expect(Number.isNaN(a.rate)).toBe(false);
+      expect(l.totalCost).toBe(c);
+      expect(a.totalCost).toBe(c);
+    }
+  });
+});
+
+describe('剧情通道（T3 · 随机事件：危机 / 诉讼 / 分产）', () => {
+  const annualCost = cardAnnualCost(CARD_A.choices, initialCatalogUSD, DEFAULT_ASSUMPTIONS);
+  const cashflow = CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST;
+
+  it('三张卡齐全且顺序稳定（lawsuit / crisis / split）', () => {
+    const events = plotEvents(CARD_A_ANNUAL_INCOME, annualCost, CARD_A_LAST_YEAR_COST);
+    expect(events.map((e) => e.id)).toEqual(['lawsuit', 'crisis', 'split']);
+  });
+
+  it('诉讼：现金流减半 → 负担率翻倍（0.78 → 1.56）红', () => {
+    const [lawsuit] = plotEvents(CARD_A_ANNUAL_INCOME, annualCost, CARD_A_LAST_YEAR_COST);
+    expect(lawsuit.cashflow).toBeCloseTo(cashflow * 0.5);
+    expect(lawsuit.rate).toBeCloseTo(annualCost / (cashflow * 0.5));
+    expect(lawsuit.status).toBe('red');
+  });
+
+  it('危机：股权收入缩水 30% → 现金流 783k，负担率 168.2% 红', () => {
+    const [, crisis] = plotEvents(CARD_A_ANNUAL_INCOME, annualCost, CARD_A_LAST_YEAR_COST);
+    const crisisCashflow = CARD_A_ANNUAL_INCOME * 0.7 - CARD_A_LAST_YEAR_COST;
+    expect(crisis.cashflow).toBeCloseTo(crisisCashflow);
+    expect(crisis.rate).toBeCloseTo(annualCost / crisisCashflow);
+    expect(crisis.status).toBe('red');
+  });
+
+  it('分产：可支配现金流永久减半（与诉讼同一比例但口径独立）', () => {
+    const [, , split] = plotEvents(CARD_A_ANNUAL_INCOME, annualCost, CARD_A_LAST_YEAR_COST);
+    expect(split.cashflow).toBeCloseTo(cashflow * 0.5);
+    expect(split.status).toBe('red');
+  });
+
+  it('非法输入：任一参数非正 → 每张卡都是空结果，不产 NaN', () => {
+    for (const [i, c, last] of [
+      [0, 1_317_000, 1_317_000],
+      [3_000_000, 0, 1_317_000],
+      [3_000_000, 1_317_000, 0],
+      [-1, -1, -1],
+    ] as const) {
+      for (const e of plotEvents(i, c, last)) {
+        expect(Number.isNaN(e.rate)).toBe(false);
+      }
+    }
   });
 });

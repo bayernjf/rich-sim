@@ -30,8 +30,10 @@ export const SUPPORTED_CURRENCIES: readonly Currency[] = [
 /** 实时数据源标签（进假设清单展示）。 */
 export const LIVE_SOURCE = 'Frankfurter (ECB)';
 
-/** Frankfurter 最新汇率端点（canonical；旧 .app 域 301 至此）。 */
-const FX_API = 'https://api.frankfurter.dev/v1/latest';
+/** Frankfurter 基础域（canonical；旧 .app 域 301 至此）。 */
+const FX_BASE = 'https://api.frankfurter.dev/v1';
+/** 最新汇率端点。 */
+const FX_API = `${FX_BASE}/latest`;
 
 /** 运行时 fetch 形状；便于测试注入 mock。 */
 export type FxFetcher = (url: string) => Promise<Response>;
@@ -86,15 +88,23 @@ export function toFxSnapshot(raw: FrankfurterRaw, base: Currency): FxSnapshot {
 }
 
 /**
- * 拉一次实时汇率并规范化。任一步失败（网络错 / 非 2xx / 缺币种 / 日期非法）
- * 都抛错——由 resolveSnapshot 捕获并降级。
+ * 拉一次汇率（实时或历史日期）并规范化。任一步失败（网络错 / 非 2xx /
+ * 缺币种 / 日期非法）都抛错——由 resolveSnapshot 捕获并降级。
+ *
+ * 历史模式（T3 · 汇率时间机）：`date` 为 `YYYY-MM-DD` 时打 Frankfurter 的
+ * 历史端点（`/v1/{date}`，覆盖 1999 至今，含 CNY）。历史快照的 `source`
+ * 仍是 Frankfurter (ECB)，`date` 字段就是所选历史日——假设清单无需改动，
+ * 因为历史汇率只做教育展示、**不进入**任何冻结的 FxSnapshot 假设。
  */
-export async function fetchLiveFx(
+export async function fetchFx(
   base: Currency,
+  date?: string,
   fetchImpl: FxFetcher = fetch,
 ): Promise<FxSnapshot> {
   const symbols = SUPPORTED_CURRENCIES.filter((c) => c !== base).join(',');
-  const url = `${FX_API}?from=${base}&symbols=${symbols}`;
+  const url = date
+    ? `${FX_BASE}/${date}?from=${base}&symbols=${symbols}`
+    : `${FX_API}?from=${base}&symbols=${symbols}`;
   let res: Response;
   try {
     res = await fetchImpl(url);
@@ -114,16 +124,17 @@ export async function fetchLiveFx(
 }
 
 /**
- * 解析一份 FxSnapshot：实时优先，任何失败都降级静态兜底快照。
+ * 解析一份 FxSnapshot：实时（或历史）优先，任何失败都降级静态兜底快照。
  * 静态快照 base=USD；convert() 是比率换算，任意 base 的快照都能正确
  * 在 6 币种间换算，故兜底无需重定 base（且 source 保持 static-snapshot）。
  */
 export async function resolveSnapshot(
   base: Currency,
+  date?: string,
   fetchImpl?: FxFetcher,
 ): Promise<FxSnapshot> {
   try {
-    return await fetchLiveFx(base, fetchImpl);
+    return await fetchFx(base, date, fetchImpl);
   } catch {
     return STATIC_FX_SNAPSHOT;
   }
