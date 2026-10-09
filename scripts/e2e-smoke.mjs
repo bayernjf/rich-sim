@@ -1060,19 +1060,29 @@ try {
   await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
   const shopEn = await page.locator('[data-shopping-area]').innerText();
   check(
-    shopEn.includes('The shopping area') &&
+    shopEn.includes('The Wealth Mall') &&
       shopEn.includes('Add to cart') &&
-      shopEn.includes('Set this life as my goal') &&
-      shopEn.includes('Assets') &&
+      shopEn.includes('All') &&
+      shopEn.includes('Goods') &&
       shopEn.includes('Experiences'),
-    'i18n：购物区英文态（分组、按钮、CTA）',
+    'i18n：商城英文态（标题、tab、加购按钮）',
     `text=${shopEn.replace(/\n/g, ' ').slice(0, 50)}`,
   );
+  // 预览与 CTA 在抽屉里：开抽屉再断言。
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
+  const drawerEn = await page.locator('[data-mall-drawer]').innerText();
   check(
-    shopEn.includes('Next bill preview') && shopEn.includes('Stretched'),
+    drawerEn.includes('Next bill preview') && drawerEn.includes('Stretched'),
     'i18n：购物车预览与负担率横幅走英文词典',
     '',
   );
+  check(
+    drawerEn.includes('Checkout - see bill day'),
+    'i18n：抽屉结算按钮英文',
+    '',
+  );
+  await page.keyboard.press('Escape');
 
   // ── 步骤 7.8：三通道（经历·快进 / 感受·黑天鹅 / 地位·特权价目）──
   // 卡 A 基态：收入 $3M、年成本 $1,317,000 → 30 年累计结余 (3,000,000−1,317,000)×30 = $50,490,000。
@@ -1136,7 +1146,7 @@ try {
     for (let i = 0; i < 20; i += 1) {
       const html = await page
         .locator('[data-shopping-area] [data-cart-status]')
-        .evaluate((el) => el.outerHTML)
+        .evaluate((el) => el.outerHTML, undefined, { timeout: 1500 })
         .catch(() => '');
       const m = html.match(/data-cart-status="([a-z]+)"/);
       if (m) return m[1];
@@ -1177,6 +1187,9 @@ try {
     '购物区：新增年成本 = 游艇 5,400,000 + 晚宴 100,000',
     `added=${await cartAdded()}`,
   );
+  // 负担率横幅与变卖提示已迁入购物车抽屉：开抽屉再断言，抽屉保持开到步骤 9。
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
   check(await cartStatus() === 'red', '购物即记账：下一期负担率变红', `status=${await cartStatus()}`);
 
   const evShop = await eventsSoFar();
@@ -1190,8 +1203,12 @@ try {
   const shopText = await page.locator('[data-shopping-area]').innerText();
   check(shopText.includes('4,050,000'), '购物即记账：红区给出游艇 75% 折价回笼 $4,050,000', '');
 
-  // 移出游艇 → 回到黄、新增回落。
-  await yachtCard.getByRole('button', { name: '移出购物车' }).click();
+  // 移出游艇 → 回到黄、新增回落。抽屉开着，走抽屉里的移出按钮。
+  await page
+    .locator('[data-mall-drawer] li', { hasText: '超级游艇' })
+    .first()
+    .getByRole('button', { name: '移出购物车' })
+    .click();
   await page.waitForTimeout(200);
   check((await cartAdded()).includes('100,000'), '购物区：移出游艇后新增回落到 $100,000', `added=${await cartAdded()}`);
   check(await cartStatus() === 'yellow', '购物即记账：移出后回到黄色', `status=${await cartStatus()}`);
