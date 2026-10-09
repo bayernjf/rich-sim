@@ -64,7 +64,7 @@ const eurText = Number.isFinite(eurRate) ? eurRate.toFixed(2) : '—';
         <dd class="font-mono tabular-nums text-ink">v{a.assumptionsVersion}</dd>
       </div>
     </dl>
-    <p class="mt-2">
+    <p data-assumption="fx" class="mt-2">
       {format(t('assumptions.fxLine', locale), {
         base: fx.base,
         cny: cnyText,

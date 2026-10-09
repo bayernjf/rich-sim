@@ -111,7 +111,8 @@ export default function DesignerShell({ catalog, locale = 'zh' }: DesignerShellP
       setProfile(draft.profile ?? null);
       // 合规清单是 SSR 渲染的，只能印默认值；用户在本机改过假设后，那几个数字
       // 必须是真正在用的那一套，否则这一页在替一个不成立的假设背书。
-      if (draft.assumptions) patchAssumptionDisplay(draft.assumptions);
+      // locale 传给汇率行：zh / en 是两条不同的句子。
+      if (draft.assumptions) patchAssumptionDisplay(draft.assumptions, undefined, locale);
     }
     setRestored(true);
   }, [catalog, currency]);

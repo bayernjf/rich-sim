@@ -52,12 +52,13 @@ export function savePlan(draft: Draft, rawName: string, now = new Date().toISOSt
     choices: draft.choices,
     profile: draft.profile,
     ...(draft.goalOverride ? { goalOverride: draft.goalOverride } : {}),
+    ...(draft.goal ? { goal: draft.goal } : {}),
   };
   return { ok: true, draft: { ...draft, savedPlans: [...kept, plan] }, plan };
 }
 
 /**
- * 载入一个剧本：choices / profile / goalOverride 回到存档时的值，
+ * 载入一个剧本：choices / profile / goalOverride / goal 回到存档时的值，
  * currency / assumptions / history / 其余 savedPlans 不动。找不到 id 返回 null。
  */
 export function applyPlan(draft: Draft, id: string): Draft | null {
@@ -70,6 +71,8 @@ export function applyPlan(draft: Draft, id: string): Draft | null {
   };
   if (plan.goalOverride) next.goalOverride = plan.goalOverride;
   else delete next.goalOverride;
+  if (plan.goal) next.goal = plan.goal;
+  else delete next.goal;
   return next;
 }
 

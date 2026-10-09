@@ -10,6 +10,7 @@ import type {
   Catalog,
   Currency,
   FxSnapshot,
+  Goal,
   LifeChoice,
   Milestone,
   Projection,
@@ -54,6 +55,8 @@ export type Results =
       savingsRate: number | null;
       /** 展示本位币。 */
       currency: Currency;
+      /** 本次测算实际使用的目标（够用线或净资产，T0-3 口径切换）。 */
+      goal: Goal;
       /** 本次测算使用的汇率快照（进假设清单展示）。 */
       fx: FxSnapshot;
       /** 目标来源：普通设计器为 undefined；S4 购物车桥为 'sim-cart'。 */
@@ -71,6 +74,20 @@ export function buildDefaultChoices(catalog: Catalog): LifeChoice {
     const chosen = d.options.find((o) => o.isDefault) ?? d.options[0];
     return { dimension: d.id, optionId: chosen.id };
   });
+}
+
+/**
+ * T0-3 · 目标口径：净资产目标存在且合法时用 `{ kind: 'net-worth' }`，
+ * 否则够用线（value = 换算后的理想生活年成本）。非法 goal
+ * （NaN / 非正数）静默回退够用线——与 goalOverride 同一套收敛纪律。
+ */
+export function goalFor(draft: Draft, annualCostLocal: number): Goal {
+  return draft.goal &&
+    draft.goal.kind === 'net-worth' &&
+    Number.isFinite(draft.goal.value) &&
+    draft.goal.value > 0
+    ? draft.goal
+    : { kind: 'enough-line', value: annualCostLocal };
 }
 
 /**
@@ -106,7 +123,7 @@ export function computeResults(
     : scenarioAnnualCost(choices, catalog, assumptions).annualCost;
   const annualCostLocal = convert(annualCostUSD, 'USD', profile.currency, assumptions.fx);
 
-  const goal = { kind: 'enough-line', value: annualCostLocal } as const;
+  const goal = goalFor(draft, annualCostLocal);
   const enough = enoughLine(annualCostLocal, assumptions);
   const projection = project(profile, goal, assumptions);
   const gapResult = gap(profile, goal, assumptions);
@@ -135,6 +152,7 @@ export function computeResults(
     status: 'ok',
     annualCostLocal,
     enoughLine: enough,
+    goal,
     projection,
     gapResult,
     milestones,

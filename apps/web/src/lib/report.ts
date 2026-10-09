@@ -91,12 +91,21 @@ export function buildReport(
     ],
   });
 
-  // 目标
+  // 目标（T0-3：口径由 results.goal 决定——净资产目标时第一行就是它；
+  // goal 来自 computeResults，报告零新计算）
   blocks.push({
     id: 'goal',
     title: t('report.goal', locale),
     fields: [
-      { label: t('result.enoughLine', locale), value: money(results.enoughLine) },
+      {
+        label: t(
+          results.goal.kind === 'net-worth' ? 'result.goalNetWorth' : 'result.enoughLine',
+          locale,
+        ),
+        value: money(
+          results.goal.kind === 'net-worth' ? results.goal.value : results.enoughLine,
+        ),
+      },
       { label: t('result.annualCost', locale), value: money(results.annualCostLocal) },
       {
         label: t('result.savingsRate', locale),

@@ -297,6 +297,75 @@ try {
     `total=${evDesigner.length} unmarked=${unmarked.map((e) => e.event).join(',') || '(无)'}`,
   );
 
+  // ── 步骤 1.1：键盘 Tab 走查 + prefers-reduced-motion（M4 文档「没有机器断言的两项」）──
+  // 设计器是交互最密集的一页（radiogroup 单选 + sticky 换算条）。两条断言回答
+  // 「键盘走不通 / reduced-motion 下交互失效」这类回归，不钉死具体元素序号以免脆。
+  const a11yErrors = [];
+  const onPageError = (err) => a11yErrors.push(String(err));
+  page.on('pageerror', onPageError);
+  try {
+    // ① 第一个 Tab 必须落在 skip link（WCAG 2.4.1）。重新导航一次，回到
+    //    「键盘用户新进一页」的真实状态（焦点在 body，第一个 Tab 从文档开头走）；
+    //    前面步骤的点选会把焦点留在控件上，靠 blur 在 React 页面里不可靠。
+    await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+    await page.keyboard.press('Tab');
+    const firstFocus = await page.evaluate(() => {
+      const el = document.activeElement;
+      return {
+        tag: el?.tagName ?? '',
+        cls: typeof el?.className === 'string' ? el.className : '',
+        href: el?.getAttribute?.('href') ?? '',
+      };
+    });
+    check(
+      firstFocus.tag === 'A' && firstFocus.cls.includes('skip-link'),
+      '键盘走查：第一个 Tab 落在 skip link（WCAG 2.4.1）',
+      `${firstFocus.tag} ${firstFocus.cls}`,
+    );
+
+    // ② Tab 循环能走到 radiogroup 里的 radio（中间被语言切换/导航/链接拦截也合法），
+    //    且继续 Tab 能绕回 body / skip link——证明没有焦点陷阱。
+    let reachedRadio = false;
+    for (let i = 0; i < 16 && !reachedRadio; i += 1) {
+      await page.keyboard.press('Tab');
+      reachedRadio = await page.evaluate(() => {
+        const el = document.activeElement;
+        return (
+          el?.getAttribute?.('role') === 'radio' ||
+          (el?.tagName === 'INPUT' && el?.getAttribute?.('type') === 'radio')
+        );
+      });
+    }
+    check(reachedRadio, '键盘走查：Tab 可达设计器选项（radio 可聚焦）', '');
+
+    let escaped = false;
+    for (let i = 0; i < 30 && !escaped; i += 1) {
+      await page.keyboard.press('Tab');
+      escaped = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el === document.body || el?.classList?.contains('skip-link');
+      });
+    }
+    check(escaped, '键盘走查：连续 Tab 能回到 body / skip link（无焦点陷阱）', '');
+
+    // ③ reduced-motion：动画关闭后交互照常工作（motion-reduce 只关动画、不关功能）。
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.click('text=独栋豪宅');
+    await page.waitForTimeout(150);
+    const vReduced = await stickyAmount();
+    check(vReduced > v0, 'reduced-motion：开启后点选仍生效（sticky 金额上升）', `v0=${v0} vReduced=${vReduced}`);
+    await page.click('text=自有公寓');
+    await page.waitForTimeout(150);
+    check(
+      a11yErrors.length === 0,
+      'reduced-motion：交互全程无未捕获 JS 错误',
+      a11yErrors.join(' | ').slice(0, 160),
+    );
+  } finally {
+    page.off('pageerror', onPageError);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  }
+
   // ── 步骤 1.6：语言在 SSR 期生效（?lang=en 直接出英文界面，不是客户端改写）──
   await page.goto(`${BASE}/app/designer?smoke=1&lang=en`, { waitUntil: 'networkidle' });
   const enHtml = await page.content();
@@ -977,6 +1046,57 @@ try {
   check(enoughCny > 15_000_000 && enoughCny < 22_000_000, '切币种后：够用线换算到 CNY（约 1800 万量级）', `enoughCny=${enoughCny} text="${enoughTextCny.trim()}"`);
   const bodyCny = await page.locator('[data-results-root]').innerText();
   check(/CNY/.test(bodyCny), '切币种后：结果页币种标签为 CNY', `hasCNY=${/CNY/.test(bodyCny)}`);
+
+  // ── 步骤 5.3：目标口径切换（T0-3 · 进契约的方案 A）──
+  // 默认够用线；切「目标净资产」→ 输入框出现 → 填 5,000,000 提交 →
+  // 主数字换成目标净资产、draft.goal 落盘、状态句改说「目标净资产」；
+  // 切回够用线 → 主数字复原、goal 清除。净资产目标本身是用户自填假设，
+  // 只是把 project/gap/milestones 的目标换掉，符合「只对自填假设做算术」红线。
+  const goalMode = page.locator('[data-goal-mode]');
+  await page.waitForSelector('[data-goal-mode]');
+  check(
+    (await goalMode.locator('[data-goal-mode-option="enough-line"]').getAttribute('aria-checked')) === 'true',
+    '目标口径：默认选中够用线',
+    '',
+  );
+  await goalMode.locator('[data-goal-mode-option="net-worth"]').click();
+  await page.waitForSelector('[data-goal-mode] [data-goal-networth] input');
+  await goalMode.locator('[data-goal-networth] input').fill('5000000');
+  await goalMode.locator('[data-goal-networth] input').press('Enter');
+  await page.waitForTimeout(200);
+  const netWorthText = await page.locator('[data-results-root] .font-mono.text-4xl').innerText();
+  const netWorthCny = parseAmount(netWorthText);
+  check(
+    netWorthCny === 5_000_000,
+    '目标口径：净资产目标成为主数字（¥5,000,000）',
+    `netWorth=${netWorthCny} text="${netWorthText.trim()}"`,
+  );
+  const goalLedger = await page.evaluate(() => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || 'null'));
+  check(
+    goalLedger?.goal?.kind === 'net-worth' && goalLedger.goal.value === 5_000_000,
+    '目标口径：goal 落进本机方案（契约可选字段，schemaVersion 仍为 1）',
+    JSON.stringify(goalLedger?.goal),
+  );
+  const bodyNetWorth = await page.locator('[data-results-root]').innerText();
+  check(
+    bodyNetWorth.includes('目标净资产'),
+    '目标口径：状态/正文按「目标净资产」表述',
+    '',
+  );
+  await goalMode.locator('[data-goal-mode-option="enough-line"]').click();
+  await page.waitForTimeout(200);
+  const enoughBack = parseAmount(await page.locator('[data-results-root] .font-mono.text-4xl').innerText());
+  check(
+    enoughBack === enoughCny,
+    '目标口径：切回够用线后主数字复原',
+    `before=${enoughCny} after=${enoughBack}`,
+  );
+  const goalCleared = await page.evaluate(() => JSON.parse(localStorage.getItem('rich-sim:plan:v1') || 'null'));
+  check(
+    !goalCleared?.goal,
+    '目标口径：切回够用线后 goal 显式清除（不是残留）',
+    '',
+  );
 
   // ── 步骤 5.5：换算条切币种——年数必须不动，金额必须动（§7.3）──
   // 这一条是分子换算的活体探针：漏了 convert()，年数会随币种漂移。

@@ -1,5 +1,7 @@
 import type { Assumptions } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
+import { format, t } from './messages';
+import type { Locale } from './i18n';
 
 /**
  * M4 · 可调假设的纯函数层（PRD §6.2：安全提取率「必须显式展示为可调假设」、
@@ -85,11 +87,36 @@ type AssumptionNode = { textContent: string };
 type AssumptionDoc = { querySelector: (selector: string) => AssumptionNode | null };
 
 /**
- * 把假设清单里那几个 `<dd data-assumption>` 的显示值同步成真正在用的那套。
+ * 汇率行的展示文本（与 AssumptionsPanel.astro 同文案源、同格式化口径——
+ * CNY / EUR 两位小数，缺币种显示 '—'）。patch 时按用户当前 locale 重写，
+ * 与 SSR 期 locale 保持一致（双语文案是两条不同的句子）。
+ */
+export function formatFxLine(a: Assumptions, locale: Locale): string {
+  const fx = a.fx;
+  const cnyRate = fx.rates['CNY'];
+  const eurRate = fx.rates['EUR'];
+  const cnyText = Number.isFinite(cnyRate) ? cnyRate.toFixed(2) : '—';
+  const eurText = Number.isFinite(eurRate) ? eurRate.toFixed(2) : '—';
+  return format(t('assumptions.fxLine', locale), {
+    base: fx.base,
+    cny: cnyText,
+    eur: eurText,
+    source: fx.source,
+    date: fx.date,
+  });
+}
+
+/**
+ * 把假设清单里那几个 `<dd data-assumption>` / `<p data-assumption="fx">` 的
+ * 显示值同步成真正在用的那套。
  *
  * 存在理由：合规清单是 SSR 渲染的（红线：不能被 JS 关掉），它只能渲染默认值；
- * 用户改过假设后，那份静态清单就会说出与计算不一致的数字。岛挂载时与每次改动后
- * 各调一次，SSR 首屏仍在源码里——这里只是把已经存在于页面的那几个数字改对。
+ * 用户改过假设、切过币种后，那份静态清单就会说出与计算不一致的数字。岛挂载时
+ * 与每次改动后各调一次，SSR 首屏仍在源码里——这里只是把已经存在于页面的
+ * 那几个数字改对。
+ *
+ * `locale` 影响汇率行文案（zh / en 是两条不同的句子），默认 'zh' 与
+ * AssumptionsPanel 的 props 默认一致。
  *
  * `document` 注入而不是伸手拿全局：apps/web 的单测跑在 node 环境，且本仓库
  * 纪律是注入依赖（见 copy-guard.test.ts 的说明）。
@@ -97,10 +124,13 @@ type AssumptionDoc = { querySelector: (selector: string) => AssumptionNode | nul
 export function patchAssumptionDisplay(
   a: Assumptions,
   doc: AssumptionDoc | null = typeof document === 'undefined' ? null : document,
+  locale: Locale = 'zh',
 ): void {
   if (!doc) return;
   for (const field of ['returnRate', 'withdrawalRate', 'inflation'] as const) {
     const node = doc.querySelector(`[data-assumption="${field}"]`);
     if (node) node.textContent = formatRate(a[field]);
   }
+  const fxNode = doc.querySelector('[data-assumption="fx"]');
+  if (fxNode) fxNode.textContent = formatFxLine(a, locale);
 }

@@ -32,6 +32,14 @@ export type Draft = {
    */
   goalOverride?: { annualCost: number; from: 'sim-cart' };
   /**
+   * T0-3（2026-10-09 拍板方案 A，进契约）· 目标口径切换。
+   * 存在时，结果页的目标从「够用线（年成本/提取率）」切换为净资产目标：
+   * `project` / `gap` / `buildMilestones` 全部喂 `{ kind: 'net-worth', value }`。
+   * value 是**录入/展示币种**下的净资产目标；undefined = 够用线，旧草稿天然兼容。
+   * 与 goalOverride 互不排斥：override 改「目标年成本的来源」，goal 改「目标类型」。
+   */
+  goal?: { kind: 'net-worth'; value: number };
+  /**
    * F6（本机版）· 测算历史快照，见 `lib/progress.ts`。
    * undefined = 这台机器还没记过（旧草稿天然兼容）；`[]` = 主动清空。
    * 只存派生数字与当时的净资产，不存任何输入原文之外的东西，且**永远不出本机**。
@@ -65,6 +73,8 @@ export type SavedPlan = {
   choices: LifeChoice;
   profile: Profile | null;
   goalOverride?: { annualCost: number; from: 'sim-cart' };
+  /** T0-3 · 目标口径（净资产目标）；undefined = 够用线。 */
+  goal?: { kind: 'net-worth'; value: number };
 };
 
 

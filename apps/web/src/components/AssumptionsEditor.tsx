@@ -78,8 +78,8 @@ export default function AssumptionsEditor({ locale = 'zh' }: { locale?: Locale }
     const current = draft.assumptions ?? DEFAULT_ASSUMPTIONS;
     setAssumptions(current);
     setText(textOf(current));
-    patchAssumptionDisplay(current);
-  }, []);
+    patchAssumptionDisplay(current, undefined, locale);
+  }, [locale]);
 
   if (!assumptions || !text) return null;
 
@@ -95,7 +95,7 @@ export default function AssumptionsEditor({ locale = 'zh' }: { locale?: Locale }
       }),
     );
     // 合规清单那几个数字是 SSR 印的默认值，改完必须跟着改成真正在用的那套。
-    patchAssumptionDisplay(next);
+    patchAssumptionDisplay(next, undefined, locale);
   };
 
   const handleChange = (field: RateField, raw: string) => {
