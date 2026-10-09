@@ -22,7 +22,7 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 |---|---|---|
 | **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ✅ **已过（2026-10-08）**：项目 `aqpiqakykraobfyfbdow`，publishable key 已入 `apps/web/.env`（gitignored）；Pages 环境变量待上线时配 |
 | **M5-G2** | **登录方式**：~~只做 magic link 邮箱登录~~ **2026-10-09 翻转：邮箱+密码注册/登录**（发起人拍板；Supabase Confirm email 已关，注册即拿 session，无邮件环节）；magic link 与 Google OAuth 后置 | ✅ **已拍板（2026-10-09，发起人）** |
-| **M5-G3** | **隐私政策 / 条款页**：有了账号与云端存储，就需要最小隐私政策页（收集什么、存哪、怎么删）。文案需发起人确认 | ✅ **页面上线待确认（2026-10-08）**：`/privacy` 纯 SSR 双语页 + 全站页脚入口已实现（路由表已登记）；**文案待发起人过目**——每句都对应真实代码行为，联系渠道用 GitHub Issues（未公开邮箱） |
+| **M5-G3** | **隐私政策 / 条款页**：有了账号与云端存储，就需要最小隐私政策页（收集什么、存哪、怎么删）。文案需发起人确认 | ✅ **已确认（2026-10-10，发起人「按清单来」）**：`/privacy` 纯 SSR 双语页 + 全站页脚入口已实现（路由表已登记）。文案逐句对应真实代码行为，三个承诺性条款已确认：**① 账号删除走人工流程**（页内明示「contact us below and we will delete them」）；**② 联系渠道用公开 GitHub issue**（`github.com/bayernjf/rich-sim/issues`，不公开邮箱）；**③ 保持最小政策、不补 GDPR 等缺失条款**。M5 至此彻底收尾 |
 
 ## 1. 切片
 
