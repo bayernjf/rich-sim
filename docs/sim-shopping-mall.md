@@ -1,6 +1,6 @@
 # 富豪商城（Sim Mall）设计 · v1 · 2026-10-09
 
-> 状态：**草案，待发起人过目**。把 `/app/sim` 的清单式购物区升级成「购物网站」形态：
+> 状态：**S1–S3 已上线（2026-10-09）**。把 `/app/sim` 的清单式购物区升级成「购物网站」形态：
 > 商品卡片流 + 分类 tab + 购物车抽屉 + 「结算 = 账单日」的爽感反转。
 > 算术层零改动（`shoppingPool` / `cart*` / `cartBurdenSummary` 全部现成），这是纯体验切片。
 
@@ -47,7 +47,7 @@
 
 **复用清单**（一行不改）：`shoppingPool()`、`saveCartItem` / `readCart`、`cartAddedAnnualCost` /
 `cartKindCounts` / `cartBurdenSummary`、`adoptCartAsGoal`、`poolOptionLabel`。
-`ShoppingArea.tsx` 保留源码一个版本周期作回滚参照，冒烟迁完后删除。
+旧 `ShoppingArea.tsx` 已随 S3 删除（冒烟钩子全部兼容迁移，164 条断言全绿）。
 
 ## 4. 红线对照（逐条）
 
