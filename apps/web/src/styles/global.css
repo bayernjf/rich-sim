@@ -35,6 +35,8 @@
   --c-accent-soft: rgba(232, 169, 60, 0.12);
   --c-on-accent: #1a1204;
   --c-danger: #f87171;
+  /* 数据可视化品类色（年度账单环形图；唯一新增色相，避开靛/紫） */
+  --c-chart-teal: #2dd4bf;
 }
 
 @media (prefers-color-scheme: light) {
@@ -51,6 +53,7 @@
     --c-accent-soft: rgba(154, 95, 10, 0.12);
     --c-on-accent: #ffffff;
     --c-danger: #b42318;
+    --c-chart-teal: #0f766e;
   }
 }
 
