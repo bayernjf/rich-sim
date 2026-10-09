@@ -4,6 +4,7 @@ import SimRealityCompare from '../../components/SimRealityCompare';
 import ClaimRunway from '../../components/ClaimRunway';
 import MallArea from '../../components/MallArea';
 import InvestArea from '../../components/InvestArea';
+import FxTimeMachine from '../../components/FxTimeMachine';
 import { BILLS_PER_PAGE, dimensionLabel, optionLabel, initialCatalogUSD, resaleRecovery } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
 import { localeFromRequest } from '../../lib/i18n';
@@ -15,9 +16,12 @@ import {
   CARD_A_LAST_YEAR_COST,
   CARD_B_ANNUAL_INCOME,
   CARD_B_LAST_YEAR_COST,
+  acquisitionDeal,
   capitalFromParam,
   cardAnnualCost,
   fastForward,
+  leverageDeal,
+  plotEvents,
   poolOptionLabel,
   swanBurden,
   cardBurden,
@@ -52,6 +56,17 @@ const swanRate = swan.rate === null ? null : `${Math.round(swan.rate * 100)}%`;
 const nowRate = rate === null ? null : `${Math.round(rate * 100)}%`;
 const fastYears = [10, 20, 30].map((y) => ({ years: y, surplus: fastForward(cardIncome, simCost, y) }));
 const privilegeItems = pool.filter((item) => item.option.id.startsWith('exp-'));
+
+// T3 操作通道（加杠杆 / 收购谈判）：纯算术 + 示意参数，显式标注、不产 NaN。
+const opCashflow = cardIncome - cardLastYearCost;
+const leverage = leverageDeal(simCost, opCashflow);
+const acquisition = acquisitionDeal(cardIncome, simCost, opCashflow);
+const fmtMultiple = (m: number | null) => (m === null ? '—' : m.toFixed(2).replace(/\.?0+$/, ''));
+const fmtRateShort = (r: number | null) => (r === null ? '—' : `${Math.round(r * 100)}%`);
+
+// T3 剧情通道（随机事件卡）：三张黑天鹅，参数从卡片数值推导。
+const plot = plotEvents(cardIncome, simCost, cardLastYearCost);
+const plotById = Object.fromEntries(plot.map((e) => [e.id, e]));
 
 const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
@@ -310,6 +325,101 @@ const assetBars = card.assetStructure.map((part, index) => ({
         ))}
       </ul>
       <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.privCost', locale)}</p>
+    </section>
+
+    {/* T3 · 操作通道（决策模拟：加杠杆 / 收购谈判）。倍数与利率为教学示意，
+        在 Lead 里显式标注；算术全在 sim-content.ts，这里只做呈现。 */}
+    <section aria-labelledby="sim-op-heading" class="mt-8" data-sim-op>
+      <h2 id="sim-op-heading" class="text-base font-semibold text-ink">{t('sim.opH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.opLead', locale)}</p>
+
+      <div class="mt-3 space-y-2">
+        <div class="rounded-xl border border-line bg-panel px-4 py-3">
+          <h3 class="text-sm font-semibold text-ink">{t('sim.opLeverageH', locale)}</h3>
+          <p class="mt-1 text-sm leading-relaxed text-muted">
+            {t('sim.opLeverageBody', locale)
+              .replace('{borrow}', fmt(leverage.borrow))
+              .replace('{interest}', fmt(Math.round(leverage.interest)))
+              .replace('{total}', fmt(Math.round(leverage.totalCost)))
+              .replace('{rate}', fmtRateShort(leverage.rate))}
+          </p>
+          {leverage.breakMultiple === null ? (
+            <p class="mt-1 text-xs font-medium text-danger">{t('sim.opLeverageBroke', locale)}</p>
+          ) : (
+            <p class="mt-1 text-xs text-muted">
+              {t('sim.opLeverageBreak', locale).replace('{m}', fmtMultiple(leverage.breakMultiple))}
+            </p>
+          )}
+        </div>
+
+        <div class="rounded-xl border border-line bg-panel px-4 py-3">
+          <h3 class="text-sm font-semibold text-ink">{t('sim.opAcqH', locale)}</h3>
+          <p class="mt-1 text-sm leading-relaxed text-muted">
+            {t('sim.opAcqBody', locale)
+              .replace('{revenue}', fmt(acquisition.revenue))
+              .replace('{valuation}', fmt(acquisition.valuation))
+              .replace('{interest}', fmt(Math.round(acquisition.interest)))
+              .replace('{total}', fmt(Math.round(acquisition.totalCost)))
+              .replace('{rate}', fmtRateShort(acquisition.rate))}
+          </p>
+          {acquisition.breakMultiple === null ? (
+            <p class="mt-1 text-xs font-medium text-danger">{t('sim.opAcqBroke', locale)}</p>
+          ) : (
+            <p class="mt-1 text-xs text-muted">
+              {t('sim.opAcqBreak', locale).replace('{m}', fmtMultiple(acquisition.breakMultiple))}
+            </p>
+          )}
+        </div>
+      </div>
+      <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.opNote', locale)}</p>
+    </section>
+
+    {/* T3 · 剧情通道（随机事件：诉讼 / 市场危机 / 家庭分产）。
+        三张卡 SSR 全渲染（确定性、可测试）；「若发生」的算术在 sim-content.ts。 */}
+    <section aria-labelledby="sim-plot-heading" class="mt-8" data-sim-plot>
+      <h2 id="sim-plot-heading" class="text-base font-semibold text-ink">{t('sim.plotH', locale)}</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.plotLead', locale)}</p>
+      <ul class="mt-3 space-y-2">
+        {(['lawsuit', 'crisis', 'split'] as const).map((id) => {
+          const ev = plotById[id];
+          const rateText = fmtRateShort(ev.rate);
+          return (
+            <li
+              class:list={[
+                'rounded-xl border px-4 py-3',
+                ev.status === 'red'
+                  ? 'border-danger bg-panel'
+                  : ev.status === 'yellow'
+                    ? 'border-line bg-panel'
+                    : 'border-accent bg-accent-soft',
+              ]}
+              data-plot={id}
+            >
+              <div class="flex items-baseline justify-between gap-3">
+                <h3 class="text-sm font-semibold text-ink">{t(`sim.plot.${id}H` as const, locale)}</h3>
+                <span class={`font-mono tabular-nums text-sm ${ev.status === 'red' ? 'text-danger' : 'text-ink'}`}>
+                  {t('sim.burdenRate', locale).replace('{rate}', rateText)}
+                </span>
+              </div>
+              <p class="mt-1 text-xs leading-relaxed text-muted">
+                {t(`sim.plot.${id}Body` as const, locale)
+                  .replace('{cashflow}', fmt(Math.round(ev.cashflow)))
+                  .replace('{rate}', rateText)}
+              </p>
+              {ev.rate !== null && ev.status === 'red' && (
+                <p class="mt-1 text-xs text-danger">{t('sim.plotBroke', locale)}</p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+
+    {/* T3 · 汇率时间机（历史汇率 + 波动教育点，technical-design §4.2 M2）。
+        客户端拉 /api/fx?date=，历史汇率只做教育展示、不写进任何假设。 */}
+    <section aria-labelledby="sim-fx-heading" class="mt-8" data-sim-fx>
+      <h2 id="sim-fx-heading" class="text-base font-semibold text-ink">{t('sim.fxH', locale)}</h2>
+      <FxTimeMachine client:load locale={locale} />
     </section>
 
     <MallArea client:load items={pool} baselineAnnualCost={annualCost} locale={locale} />
