@@ -17,10 +17,12 @@ import {
   claimSim,
   clearSimState,
   readCart,
+  readFavorites,
   readSimState,
   removeCartItem,
   sanitizeCart,
   saveCartItem,
+  saveFavoriteItem,
 } from './sim-draft';
 
 function installStorage(): Map<string, string> {
@@ -178,6 +180,65 @@ describe('购物车（M3 S2 · G2）', () => {
     let cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
     cart = saveCartItem(cart, { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
     expect(cart).toHaveLength(2);
+    expect(readSimState()).toBeNull();
+  });
+});
+
+describe('收藏夹（商城扩展 · 逛而不买）', () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  it('旧草稿（无 favorites 字段）读出来是空收藏，schemaVersion 仍是 1', () => {
+    claimSim(1_000_000);
+    expect(readSimState()?.favorites ?? []).toEqual([]);
+    expect(readFavorites()).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(SIM_KEY)!).schemaVersion).toBe(1);
+  });
+
+  it('收藏 / 取消收藏幂等（与购物车同形状）', () => {
+    claimSim(1_000_000);
+    let favorites = saveFavoriteItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    favorites = saveFavoriteItem(favorites, { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(favorites).toHaveLength(1);
+    favorites = saveFavoriteItem(favorites, { dimension: 'travel', optionId: 'superyacht' }, false);
+    expect(favorites).toEqual([]);
+    // 取消一个本就没收藏的条目也不报错。
+    expect(saveFavoriteItem([], { dimension: 'a', optionId: 'x' }, false)).toEqual([]);
+  });
+
+  it('持久化后能读回，坏数据被收敛', () => {
+    claimSim(1_000_000);
+    saveFavoriteItem([], { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
+    expect(readFavorites()).toEqual([
+      { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
+    ]);
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        startingCapital: 1_000_000,
+        claimedAt: '2026-10-09T00:00:00.000Z',
+        favorites: [{ dimension: 'travel', optionId: 'superyacht' }, { dimension: 42 }, null],
+      }),
+    );
+    expect(readFavorites()).toEqual([{ dimension: 'travel', optionId: 'superyacht' }]);
+  });
+
+  it('收藏与购物车互不影响：收藏一件不进车，加车不进收藏', () => {
+    claimSim(1_000_000);
+    saveFavoriteItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(readCart()).toEqual([]);
+    saveCartItem([], { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }, true);
+    expect(readFavorites()).toEqual([{ dimension: 'travel', optionId: 'superyacht' }]);
+    const state = JSON.parse(localStorage.getItem(SIM_KEY)!) as { cart: unknown; favorites: unknown };
+    expect(state.cart).toEqual([{ dimension: 'flexibility', optionId: 'exp-met-gala-ticket' }]);
+    expect(state.favorites).toEqual([{ dimension: 'travel', optionId: 'superyacht' }]);
+  });
+
+  it('没领过起始金时收藏不凭空创建账本（会话态，与购物车一致）', () => {
+    const favorites = saveFavoriteItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    expect(favorites).toHaveLength(1);
     expect(readSimState()).toBeNull();
   });
 });

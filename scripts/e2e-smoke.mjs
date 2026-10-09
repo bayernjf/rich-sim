@@ -1252,6 +1252,100 @@ try {
   const evGoal = await eventsSoFar();
   check(countEvent(evGoal, 'cart:to-goal') >= 1, '埋点：cart:to-goal 已入队', `count=${countEvent(evGoal, 'cart:to-goal')}`);
 
+  // ── 步骤 8.6：商城扩展（详情卡 / 收藏夹 / 年度账单环形图）──
+  await page.goto(`${BASE}/app/sim?smoke=1`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });
+  // 干净起手：放一个只领过起始金、空车空收藏的 sim 账本（无账本时收藏是会话态，
+  // 与购物车同一纪律，这里要验证的是「有账本时持久化」）。
+  await page.evaluate(() => {
+    const now = new Date().toISOString();
+    localStorage.setItem(
+      'rich-sim:sim:v1',
+      JSON.stringify({ schemaVersion: 1, startingCapital: 1_000_000, claimedAt: now, updatedAt: now }),
+    );
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-shopping-area]', { timeout: 5000 });
+
+  // ① 详情卡：游艇有成本拆项 + 资产强制变现 75% 回笼口径。
+  const extYachtCard = page.locator('[data-shopping-area] li', { hasText: '超级游艇' }).first();
+  await extYachtCard.locator('[data-item-detail] summary').click();
+  await page.waitForTimeout(100);
+  const yachtDetail = await extYachtCard.locator('[data-item-detail]').innerText();
+  check(
+    yachtDetail.includes('船员') && yachtDetail.includes('停泊与保险'),
+    '商城扩展：游艇详情卡展开成本构成（船员 / 停泊与保险）',
+    yachtDetail.replace(/\n/g, ' ').slice(0, 80),
+  );
+  check(yachtDetail.includes('75%'), '商城扩展：资产详情明示强制变现只回笼原价 75%', '');
+
+  // 体验项：无拆项 → 来源口径空态 + 无一残值提示。
+  const extGalaCard = page.locator('[data-shopping-area] li', { hasText: 'Met Gala 慈善晚宴单张门票' }).first();
+  await extGalaCard.locator('[data-item-detail] summary').click();
+  const galaDetail = await extGalaCard.locator('[data-item-detail]').innerText();
+  check(galaDetail.includes('公开来源'), '商城扩展：无拆项档位显示来源口径说明', '');
+  check(galaDetail.includes('一次性体验'), '商城扩展：体验项明示没有可变现残值', '');
+
+  // ② 收藏夹：空态 → 收藏游艇 → 不进车、持久化、tab 可见 → 取消回空态。
+  await page.click('[data-mall-tab="favorites"]');
+  check(await page.locator('[data-fav-empty]').isVisible(), '商城扩展：收藏 tab 初始空态可见', '');
+  await page.click('[data-mall-tab="all"]');
+  await extYachtCard.getByRole('button', { name: '收藏' }).click();
+  await page.waitForTimeout(150);
+  check(await cartCount() === 0, '商城扩展：收藏不计入购物车件数', `count=${await cartCount()}`);
+  await page.click('[data-mall-tab="favorites"]');
+  check(
+    (await page.locator('[data-shopping-area] li', { hasText: '超级游艇' }).count()) === 1,
+    '商城扩展：收藏的游艇出现在收藏 tab',
+    '',
+  );
+  const favLedger = await page.evaluate(() => JSON.parse(localStorage.getItem('rich-sim:sim:v1') || 'null'));
+  check(
+    favLedger?.favorites?.some((i) => i.optionId === 'superyacht') && (favLedger?.cart?.length ?? 0) === 0,
+    '商城扩展：收藏持久化进 sim 账本且购物车仍为空',
+    JSON.stringify({ fav: favLedger?.favorites, cart: favLedger?.cart }),
+  );
+  await page
+    .locator('[data-shopping-area] li', { hasText: '超级游艇' })
+    .first()
+    .getByRole('button', { name: '取消收藏' })
+    .click();
+  await page.waitForTimeout(150);
+  check(await page.locator('[data-fav-empty]').isVisible(), '商城扩展：取消收藏后回到空态', '');
+  const evFav = await eventsSoFar();
+  check(
+    countEvent(evFav, 'mall:favorite') >= 1 && countEvent(evFav, 'mall:unfavorite') >= 1,
+    '埋点：mall:favorite / mall:unfavorite 已入队',
+    `fav=${countEvent(evFav, 'mall:favorite')} unfav=${countEvent(evFav, 'mall:unfavorite')}`,
+  );
+
+  // ③ 年度账单环形图：空车只有基线一桶且金额 = $1,317,000。
+  await page.click('[data-mall-tab="all"]');
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
+  check((await page.locator('[data-bill-chart] [data-bill-slice]').count()) === 1, '商城扩展：空车年度账单只有基线一桶', '');
+  const baselineSlice = page.locator('[data-bill-slice="baseline"]');
+  check((await baselineSlice.innerText()).includes('1,317,000'), '商城扩展：基线桶 = $1,317,000', '');
+  await page.keyboard.press('Escape');
+
+  // 加 gala（体验 $100k）+ 游艇（资产 $5.4M）→ 三桶 + 合计 $6,817,000，无消费品桶。
+  await extGalaCard.getByRole('button', { name: '加入购物车' }).click();
+  await extYachtCard.getByRole('button', { name: '加入购物车' }).click();
+  await page.waitForTimeout(200);
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-bill-chart]', { timeout: 5000 });
+  const chartText = await page.locator('[data-bill-chart]').innerText();
+  check(
+    chartText.includes('1,317,000') &&
+      chartText.includes('5,400,000') &&
+      chartText.includes('100,000') &&
+      chartText.includes('6,817,000'),
+    '商城扩展：环形图含基线/资产/体验金额与合计 $6,817,000',
+    chartText.replace(/\n/g, ' ').slice(0, 160),
+  );
+  check((await page.locator('[data-bill-slice="consumer"]').count()) === 0, '商城扩展：无消费品加购时不出现消费品桶', '');
+  await page.keyboard.press('Escape');
+
   // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──
   // 步骤 1.5 的 localStorage.clear() 把 sim 账本清掉了，这里先补领 $10M。
   await page.goto(`${BASE}/?lang=zh`, { waitUntil: 'networkidle' });

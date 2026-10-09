@@ -260,6 +260,32 @@ export function burdenStatus(
   return { rate, status };
 }
 
+/**
+ * Bill-day gameplay defaults (simulation-gameplay.md §2.4). The burden bands
+ * above are parameters 5–6; these are parameters 2 and 4, lifted out of the UI
+ * so the same number cannot silently diverge between the bill day and the mall.
+ */
+
+/** §2.4 parameter 2: bills flipped per page (suggested range 3–5). */
+export const BILLS_PER_PAGE = 4;
+
+/** §2.4 parameter 4: forced resale recovers 75% of face value (midpoint of the
+ *  suggested 70–80% band) — assets do not liquidate at face value. */
+export const RESALE_RECOVERY_RATE = 0.75;
+
+/**
+ * Cash recovered from a forced resale. Invalid (non-finite / negative) input
+ * collapses to 0 rather than producing NaN; the rate must lie in (0, 1].
+ */
+export function resaleRecovery(
+  value: number,
+  rate: number = RESALE_RECOVERY_RATE,
+): number {
+  if (!(Number.isFinite(value) && value > 0)) return 0;
+  if (!(rate > 0 && rate <= 1)) return 0;
+  return value * rate;
+}
+
 /** Above this multiple the line drops the number entirely: "17,562 years"
  *  reads as noise, not as curiosity (comparison-converter.md §3.3). */
 export const TIME_EQUIVALENT_ABSURD_MULTIPLE = 1000;

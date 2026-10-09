@@ -239,6 +239,18 @@ const ZH = {
   'mall.drawerH': '购物车与下一期账单',
   'mall.close': '关闭',
   'mall.checkout': '结算 · 翻到账单日',
+  'mall.tab.favorites': '收藏',
+  'mall.detail': '成本构成',
+  'mall.detailEmpty': '该档位是按公开来源校准的年度花费，没有再拆细项；点来源链接可查口径。',
+  'mall.resellable': '断裂时可强制变卖：资产不能原价变现，强制变现只回笼原价的 {rate}。',
+  'mall.notResellable': '一次性体验：当年花完，没有持有成本，也没有可变卖的残值。',
+  'mall.favAdd': '收藏',
+  'mall.favRemove': '取消收藏',
+  'mall.favEmpty': '还没有收藏。看到想了解但没打算买的，点书签存下来——收藏只留作浏览，不进入任何账单。',
+  'mall.chartTitle': '年度账单按品类',
+  'mall.chartBaseline': '当前生活（基线）',
+  'mall.chartNote': '圆环是下一期年度账单：基线生活加购物车加购，按品类拆分；收藏的商品不在其中。',
+  'mall.chartTotal': '合计',
   'sim.cardSwitch': '换一张身份卡：',
   'sim.lifeH': '人生快进：按这套收支过 30 年',
   'sim.lifeLead':
@@ -604,6 +616,23 @@ const EN: Record<keyof typeof ZH, string> = {
   'mall.drawerH': 'Cart & your next bill',
   'mall.close': 'Close',
   'mall.checkout': 'Checkout - see bill day',
+  'mall.tab.favorites': 'Saved',
+  'mall.detail': 'Cost breakdown',
+  'mall.detailEmpty':
+    'This tier is an annual figure calibrated to public sources, with no finer split; follow the source link for the basis.',
+  'mall.resellable':
+    'When cashflow breaks it can be force-sold: assets do not liquidate at face value - a forced sale recovers only {rate}.',
+  'mall.notResellable':
+    'A one-off experience: spent within the year, no carrying cost and nothing to resell.',
+  'mall.favAdd': 'Save',
+  'mall.favRemove': 'Unsave',
+  'mall.favEmpty':
+    'Nothing saved yet. Bookmark anything you are curious about but do not plan to buy - saved items are for browsing only and never enter a bill.',
+  'mall.chartTitle': 'Your yearly bill by category',
+  'mall.chartBaseline': 'Current life (baseline)',
+  'mall.chartNote':
+    'The ring is your next yearly bill: the baseline life plus items in the cart, split by category; saved items are excluded.',
+  'mall.chartTotal': 'Total',
   'sim.cardSwitch': 'Switch persona card:',
   'sim.lifeH': 'Life in fast-forward: 30 years on these numbers',
   'sim.lifeLead':

@@ -4,7 +4,14 @@
  * implementation output.
  */
 import { describe, expect, it } from 'vitest';
-import { BURDEN_RATE_GREEN, BURDEN_RATE_HARD, burdenStatus } from './functions';
+import {
+  BILLS_PER_PAGE,
+  BURDEN_RATE_GREEN,
+  BURDEN_RATE_HARD,
+  RESALE_RECOVERY_RATE,
+  burdenStatus,
+  resaleRecovery,
+} from './functions';
 
 const COST_CARD_A = 1_317_000; // six catalog options (see apps/web sim-content)
 const CF_CARD_A = 1_683_000; // income $3,000,000 minus last year's $1,317,000
@@ -36,5 +43,30 @@ describe('burdenStatus（simulation-gameplay §2.5）', () => {
   it('CF ≤ 0 是红且不给 rate（不产 NaN/Infinity，符合一等状态纪律）', () => {
     expect(burdenStatus(COST_CARD_A, 0)).toEqual({ rate: null, status: 'red' });
     expect(burdenStatus(COST_CARD_A, -1)).toEqual({ rate: null, status: 'red' });
+  });
+});
+
+describe('账单日玩法常量（simulation-gameplay §2.4 参数 2 / 4）', () => {
+  it('参数 2：一次翻 4 张（建议区间 3–5 的中值）', () => {
+    expect(BILLS_PER_PAGE).toBe(4);
+  });
+
+  it('参数 4：强制变卖回收率 75%（70–80% 区间中值）', () => {
+    expect(RESALE_RECOVERY_RATE).toBe(0.75);
+  });
+
+  it('resaleRecovery：5,400,000 的游艇强制变卖回笼 4,050,000（手算）', () => {
+    expect(resaleRecovery(5_400_000)).toBe(4_050_000);
+  });
+
+  it('resaleRecovery：自定义回收率生效', () => {
+    expect(resaleRecovery(100, 0.5)).toBe(50);
+  });
+
+  it('resaleRecovery：非法输入一律收敛为 0，不产 NaN', () => {
+    expect(resaleRecovery(NaN)).toBe(0);
+    expect(resaleRecovery(-100)).toBe(0);
+    expect(resaleRecovery(100, 0)).toBe(0);
+    expect(resaleRecovery(100, 1.5)).toBe(0);
   });
 });

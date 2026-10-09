@@ -10,6 +10,10 @@
  * M3 S2 起多一个可选 `cart`：购物车条目（同一维度允许多件，但每个选项
  * 在车中至多一件——加购是幂等切换）。`schemaVersion` 维持 1：旧状态读出来
  * `cart` 为 `undefined`，一律按空车处理，不迁移、不改版本号。
+ *
+ * 商城扩展起再多一个可选 `favorites`：收藏夹（「逛而不买」），与购物车同形状，
+ * 但**永不参与**年成本 / 账单 / 一键成目标——它只表达「感兴趣但没买」。
+ * 旧状态没有它，按空收藏处理，`schemaVersion` 同样维持 1。
  */
 export const SIM_KEY = 'rich-sim:sim:v1';
 
@@ -38,6 +42,11 @@ export type SimState = {
   /** 购物车；旧草稿（S2 之前写入）没有这个字段，按空车处理。 */
   cart?: CartItem[];
   /**
+   * 收藏夹（商城扩展 ·「逛而不买」，可选）：只记录感兴趣的条目，**不计入**
+   * 购物车年成本、账单预览与一键成目标。旧状态没有它，按空收藏处理。
+   */
+  favorites?: CartItem[];
+  /**
    * P3 投资线 · 起始金的资产类别配置（可选）。旧状态没有它，按「全部现金」处理；
    * 收益率一律用户自填（缺失 = 该类别按 0% 推演），不存任何标的或策略。
    */
@@ -62,7 +71,12 @@ export function readSimState(): SimState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SimState;
     if (parsed && parsed.schemaVersion === 1 && Number.isFinite(parsed.startingCapital)) {
-      return { ...parsed, cart: sanitizeCart(parsed.cart), invest: sanitizeAllocation(parsed.invest) };
+      return {
+        ...parsed,
+        cart: sanitizeCart(parsed.cart),
+        favorites: sanitizeCart(parsed.favorites),
+        invest: sanitizeAllocation(parsed.invest),
+      };
     }
     return null;
   } catch {
@@ -142,6 +156,41 @@ export function saveCartItem(cart: CartItem[], item: CartItem, add: boolean): Ca
 /** 读出当前购物车（无草稿/坏数据统一为空车）。 */
 export function readCart(): CartItem[] {
   return sanitizeCart(readSimState()?.cart);
+}
+
+/* ── 收藏夹（商城扩展 ·「逛而不买」）──
+ * 与购物车同一套幂等加删形状，但单独持久化、单独读出：任何账单 / 负担率 /
+ * 一键成目标路径都只读 cart，不读 favorites，结构上保证「收藏不花钱」。 */
+
+function persistFavorites(favorites: CartItem[]): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const state = readSimState();
+    if (!state) return; // 与购物车一致：没领过起始金就没有 sim 账本可挂。
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({ ...state, favorites, updatedAt: new Date().toISOString() }),
+    );
+    notifySimUpdated();
+  } catch {
+    // 本机记账失败不阻断页面交互。
+  }
+}
+
+/**
+ * 基于调用方持有的当前收藏做幂等加/删并尝试持久化，返回最新收藏。
+ * 语义与 saveCartItem 相同（UI 持有事实源、无账本时为纯内存会话态）。
+ */
+export function saveFavoriteItem(favorites: CartItem[], item: CartItem, add: boolean): CartItem[] {
+  const current = sanitizeCart(favorites);
+  const next = add ? addCartItem(current, item) : removeCartItem(current, item);
+  persistFavorites(next);
+  return next;
+}
+
+/** 读出当前收藏（无草稿 / 坏数据统一为空收藏）。 */
+export function readFavorites(): CartItem[] {
+  return sanitizeCart(readSimState()?.favorites);
 }
 
 /** 读出当前投资配置（无草稿 / 从未配置 / 坏数据统一为 undefined = 全部现金）。 */

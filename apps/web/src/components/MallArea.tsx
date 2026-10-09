@@ -1,33 +1,53 @@
 /**
- * 富豪商城（`docs/sim-shopping-mall.md` v1 · S1+S2）：
+ * 富豪商城（`docs/sim-shopping-mall.md` v1 · S1+S2 + 商城扩展）：
  * 商品卡片流 + 分类 tab + 购物车抽屉 +「结算 = 账单日」反转。
  *
- * 算术层零改动：shoppingPool / saveCartItem / cartBurdenSummary /
- * adoptCartAsGoal 全部复用。冒烟钩子与旧 ShoppingArea 完全一致
- * （data-shopping-area / data-cart-count / data-cart-status /
- * data-adopt-goal、按钮名「加入购物车 / 移出购物车」），步骤 8/9 不用改。
+ * 商城扩展三件（sim-shopping-mall.md §8）：
+ * - 商品详情卡：每张卡可展开成本构成（core optionCostComponents）与强制变卖口径；
+ * - 收藏夹：书签 + 独立 tab，只浏览，**永不进**车 / 账单 / 一键成目标；
+ * - 年度账单环形图：抽屉内把下一期账单按基线 + 品类拆桶（cartKindCosts）。
+ *
+ * 算术层零自创：shoppingPool / saveCartItem / cartBurdenSummary /
+ * adoptCartAsGoal / resaleRecovery 全部复用 core 与 sim-content。冒烟钩子与旧版
+ * 完全一致（data-shopping-area / data-cart-count / data-cart-status /
+ * data-adopt-goal、卡片为 li、按钮名「加入购物车 / 移出购物车」）。
  *
  * 反电商纪律：不做促销话术与催单设计、不用真实品牌图（禁语由 copy-guard 闸门钉住）。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Interpolated from './Interpolated';
 import {
+  RESALE_RECOVERY_RATE,
+  dimensionLabel,
+  optionCostComponents,
+  resaleRecovery,
+} from '@rich-sim/core';
+import {
   CARD_A,
   CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
   cartBurdenSummary,
+  cartKindCosts,
   poolOptionLabel,
+  type CartEntry,
   type ShoppingItem,
 } from '../lib/sim-content';
-import { type CartItem, readCart, saveCartItem } from '../lib/sim-draft';
+import {
+  type CartItem,
+  readCart,
+  readFavorites,
+  saveCartItem,
+  saveFavoriteItem,
+} from '../lib/sim-draft';
 import { adoptCartAsGoal } from '../lib/sim-bridge';
-import { format, t } from '../lib/messages';
+import { format, t, type MessageKey } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
 type Props = { items: ShoppingItem[]; baselineAnnualCost: number; locale?: Locale };
 type Band = 'green' | 'yellow' | 'red';
-type Tab = 'all' | 'asset' | 'consumer' | 'experience';
+type Tab = 'all' | 'asset' | 'consumer' | 'experience' | 'favorites';
+type Kind = 'asset' | 'consumer' | 'experience';
 
 const statusBanner = (locale: Locale): Record<Band, { label: string; cls: string; note: string }> => ({
   green: { label: t('sim.bannerGreen', locale), cls: 'border-accent bg-accent-soft text-ink', note: t('sim.bannerGreenNote', locale) },
@@ -35,18 +55,35 @@ const statusBanner = (locale: Locale): Record<Band, { label: string; cls: string
   red: { label: t('sim.bannerRed', locale), cls: 'border-danger bg-panel text-danger', note: t('sim.bannerRedNote', locale) },
 });
 
-const TABS: { id: Tab; kind?: 'asset' | 'consumer' | 'experience' }[] = [
-  { id: 'all' },
-  { id: 'asset', kind: 'asset' },
-  { id: 'consumer', kind: 'consumer' },
-  { id: 'experience', kind: 'experience' },
+const TABS: { id: Tab; kind?: Kind; label: MessageKey }[] = [
+  { id: 'all', label: 'mall.tab.all' },
+  { id: 'asset', kind: 'asset', label: 'mall.tab.asset' },
+  { id: 'consumer', kind: 'consumer', label: 'mall.tab.consumer' },
+  { id: 'experience', kind: 'experience', label: 'mall.tab.experience' },
+  { id: 'favorites', label: 'mall.tab.favorites' },
 ];
+
+const KIND_LABEL: Record<Kind, MessageKey> = {
+  asset: 'sim.kind.asset',
+  consumer: 'sim.kind.consumer',
+  experience: 'sim.kind.experience',
+};
 
 /** 每个维度一个通用图标（emoji 作占位，AI 插画是 §6 P2 可选项）。 */
 const DIMENSION_ICON: Record<string, string> = {
   living: '🏠', transport: '✈️', family: '🎓', travel: '🛥️',
   'health-insurance': '🩺', 'dining-daily': '🍽️', flexibility: '👥',
 };
+
+/** 环形图品类色（global.css 令牌：基线灰 / 资产墨 / 消费青 / 体验金）。 */
+const SLICE_COLOR: Record<'baseline' | Kind, string> = {
+  baseline: 'var(--c-muted)',
+  asset: 'var(--c-ink)',
+  consumer: 'var(--c-chart-teal)',
+  experience: 'var(--c-accent)',
+};
+
+type BillSlice = { key: 'baseline' | Kind; value: number; label: string };
 
 function money(value: number): string {
   return `$${Math.round(value).toLocaleString('en-US')}`;
@@ -55,15 +92,86 @@ function itemKey(item: CartItem): string {
   return `${item.dimension}/${item.optionId}`;
 }
 
+/** 年度账单环形图（纯 SVG，无第三方图表库；图例本身就是可读的文本等价物）。 */
+function BillDonut({ slices, locale }: { slices: BillSlice[]; locale: Locale }) {
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const R = 64;
+  const C = 2 * Math.PI * R;
+  let acc = 0;
+  return (
+    <div data-bill-chart className="mt-4 rounded-xl border border-line bg-canvas px-4 py-3">
+      <p className="text-xs font-semibold text-ink">{t('mall.chartTitle', locale)}</p>
+      <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
+        <svg viewBox="0 0 160 160" role="img" className="size-40 shrink-0" aria-label={t('mall.chartTitle', locale)}>
+          <g transform="rotate(-90 80 80)">
+            <circle cx="80" cy="80" r={R} fill="none" stroke="var(--c-line)" strokeWidth="22" />
+            {slices.map((slice) => {
+              const fraction = slice.value / total;
+              const len = Math.max(0, fraction * C - (slices.length > 1 ? 2 : 0));
+              const offset = -acc;
+              acc += fraction * C;
+              return (
+                <circle
+                  key={slice.key}
+                  data-bill-ring={slice.key}
+                  cx="80"
+                  cy="80"
+                  r={R}
+                  fill="none"
+                  stroke={SLICE_COLOR[slice.key]}
+                  strokeWidth="22"
+                  strokeDasharray={`${len} ${C - len}`}
+                  strokeDashoffset={offset}
+                />
+              );
+            })}
+          </g>
+          <text x="80" y="76" textAnchor="middle" fontSize="11" fill="var(--c-muted)">
+            {t('mall.chartTotal', locale)}
+          </text>
+          <text x="80" y="97" textAnchor="middle" fontSize="14" fontWeight="700" fill="var(--c-ink)">
+            {money(total)}
+          </text>
+        </svg>
+        <ul className="w-full min-w-0 flex-1 space-y-1.5" aria-label={t('mall.chartTitle', locale)}>
+          {slices.map((slice) => (
+            <li
+              key={slice.key}
+              data-bill-slice={slice.key}
+              className="flex items-center justify-between gap-2 text-xs"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-muted">
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-2.5 shrink-0 rounded-full"
+                  style={{ background: SLICE_COLOR[slice.key] }}
+                />
+                <span className="truncate">{slice.label}</span>
+              </span>
+              <span className="shrink-0 font-mono tabular-nums text-ink">
+                {money(slice.value)}
+                <span className="ml-1 text-muted">{Math.round((slice.value / total) * 100)}%</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-muted">{t('mall.chartNote', locale)}</p>
+    </div>
+  );
+}
+
 export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: Props) {
   const [mounted, setMounted] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [favorites, setFavorites] = useState<CartItem[]>([]);
   const [tab, setTab] = useState<Tab>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCart(readCart());
+    setFavorites(readFavorites());
     setMounted(true);
   }, []);
 
@@ -79,17 +187,33 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
   }, [drawerOpen]);
 
   const selected = useMemo(() => new Set(cart.map(itemKey)), [cart]);
+  const favoredSet = useMemo(() => new Set(favorites.map(itemKey)), [favorites]);
+
+  const baselineChoices: CartEntry[] = CARD_A.choices.map((choice) => ({
+    dimension: choice.dimension,
+    optionId: choice.optionId,
+  }));
+
   const summary = useMemo(
     () =>
       cartBurdenSummary(
         cart,
         items,
-        CARD_A.choices.map((choice) => ({ dimension: choice.dimension, optionId: choice.optionId })),
+        baselineChoices,
         baselineAnnualCost,
         CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST,
       ),
+    // baselineChoices 内容恒定，不进依赖。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cart, items, baselineAnnualCost],
   );
+
+  const kindCosts = useMemo(
+    () => cartKindCosts(cart, items, baselineChoices),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cart, items],
+  );
+
   const resellValue = useMemo(() => {
     const asset = cart
       .map((ci) =>
@@ -100,15 +224,28 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
       )
       .filter((entry): entry is ShoppingItem => Boolean(entry))
       .sort((a, b) => b.option.annualCost - a.option.annualCost)[0];
-    return asset ? { label: asset.option.label, value: Math.round(asset.option.annualCost * 0.75) } : null;
-  }, [cart, items]);
+    return asset
+      ? {
+          label: poolOptionLabel(asset.option, locale),
+          value: Math.round(resaleRecovery(asset.option.annualCost)),
+        }
+      : null;
+  }, [cart, items, locale]);
 
   const visibleItems = useMemo(() => {
+    if (tab === 'favorites') {
+      return favorites
+        .map((fav) =>
+          items.find((entry) => entry.dimension === fav.dimension && entry.option.id === fav.optionId),
+        )
+        .filter((entry): entry is ShoppingItem => Boolean(entry))
+        .sort((a, b) => b.option.annualCost - a.option.annualCost);
+    }
     const kind = TABS.find((entry) => entry.id === tab)?.kind;
     return items
       .filter((item) => (kind ? item.option.kind === kind : true))
       .sort((a, b) => b.option.annualCost - a.option.annualCost);
-  }, [items, tab]);
+  }, [items, tab, favorites]);
 
   const cartItems = useMemo(
     () =>
@@ -118,12 +255,25 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
     [cart, items],
   );
 
+  const slices: BillSlice[] = [
+    { key: 'baseline', value: baselineAnnualCost, label: t('mall.chartBaseline', locale) },
+    ...((['asset', 'consumer', 'experience'] as Kind[])
+      .filter((kind) => kindCosts[kind] > 0)
+      .map((kind) => ({ key: kind, value: kindCosts[kind], label: t(KIND_LABEL[kind], locale) }))),
+  ];
+
   if (!mounted) return null;
 
   const toggle = (item: ShoppingItem, add: boolean) => {
-    const next = saveCartItem(cart, { dimension: item.dimension, optionId: item.option.id }, add);
-    setCart(next);
+    const entry = { dimension: item.dimension, optionId: item.option.id };
+    setCart(saveCartItem(cart, entry, add));
     track(add ? 'sim:add' : 'sim:remove');
+  };
+
+  const toggleFavorite = (item: ShoppingItem, add: boolean) => {
+    const entry = { dimension: item.dimension, optionId: item.option.id };
+    setFavorites(saveFavoriteItem(favorites, entry, add));
+    track(add ? 'mall:favorite' : 'mall:unfavorite');
   };
 
   const checkout = () => {
@@ -167,6 +317,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
         {TABS.map((entry) => (
           <button
             key={entry.id}
+            type="button"
             role="tab"
             aria-selected={tab === entry.id}
             data-mall-tab={entry.id}
@@ -175,17 +326,26 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
               tab === entry.id ? 'bg-accent text-on-accent' : 'border border-line text-ink hover:bg-panel-2'
             }`}
           >
-            {t(`mall.tab.${entry.id}`, locale)}
+            {t(entry.label, locale)}
           </button>
         ))}
       </div>
 
+      {tab === 'favorites' && visibleItems.length === 0 && (
+        <p data-fav-empty className="mt-4 rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-sm leading-relaxed text-muted">
+          {t('mall.favEmpty', locale)}
+        </p>
+      )}
+
       <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {visibleItems.map((item) => {
           const inCart = selected.has(itemKey({ dimension: item.dimension, optionId: item.option.id }));
+          const favored = favoredSet.has(itemKey({ dimension: item.dimension, optionId: item.option.id }));
+          const components = optionCostComponents(item.option, locale) ?? [];
           return (
             <li
-              key={item.option.id}
+              key={`${item.dimension}/${item.option.id}`}
+              data-mall-item={`${item.dimension}/${item.option.id}`}
               className={`flex flex-col justify-between gap-3 rounded-2xl border p-4 transition-colors ${
                 inCart ? 'border-accent bg-accent-soft/40' : 'border-line bg-panel'
               }`}
@@ -194,11 +354,62 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                 <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-canvas text-xl">
                   {DIMENSION_ICON[item.dimension] ?? '🛍️'}
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-ink">{poolOptionLabel(item.option, locale)}</p>
-                  <p className="mt-0.5 text-xs text-muted">{item.dimensionLabel}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {dimensionLabel({ id: item.dimension, label: item.dimensionLabel }, locale)}
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  data-fav={`${item.dimension}/${item.option.id}`}
+                  aria-pressed={favored}
+                  aria-label={favored ? t('mall.favRemove', locale) : t('mall.favAdd', locale)}
+                  title={favored ? t('mall.favRemove', locale) : t('mall.favAdd', locale)}
+                  onClick={() => toggleFavorite(item, !favored)}
+                  className={`grid size-11 shrink-0 place-items-center rounded-xl border text-lg transition-colors ${
+                    favored
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line bg-canvas text-muted hover:border-line-strong'
+                  }`}
+                >
+                  <span aria-hidden="true">{favored ? '★' : '☆'}</span>
+                </button>
               </div>
+
+              <details data-item-detail className="rounded-lg border border-line bg-canvas px-3">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-medium text-accent [&::-webkit-details-marker]:hidden">
+                  {t('mall.detail', locale)}
+                  <span aria-hidden="true" className="text-muted">▾</span>
+                </summary>
+                <div className="pb-3 text-xs leading-relaxed text-muted">
+                  {components.length > 0 ? (
+                    <ul data-item-components className="space-y-1">
+                      {components.map((component) => (
+                        <li key={component} className="flex gap-2">
+                          <span aria-hidden="true" className="shrink-0 text-accent">·</span>
+                          <span>{component}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{t('mall.detailEmpty', locale)}</p>
+                  )}
+                  {item.option.kind === 'asset' && (
+                    <p data-item-resell className="mt-2 text-accent">
+                      {format(t('mall.resellable', locale), {
+                        rate: `${Math.round(RESALE_RECOVERY_RATE * 100)}%`,
+                      })}
+                    </p>
+                  )}
+                  {item.option.kind === 'experience' && (
+                    <p data-item-resell className="mt-2">
+                      {t('mall.notResellable', locale)}
+                    </p>
+                  )}
+                </div>
+              </details>
+
               <div className="flex items-end justify-between gap-3">
                 <p className="font-mono text-lg font-semibold tabular-nums text-ink">
                   {money(item.option.annualCost)}
@@ -207,6 +418,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                 <button
                   type="button"
                   aria-pressed={inCart}
+                  data-mall-item-toggle={`${item.dimension}/${item.option.id}`}
                   onClick={() => toggle(item, !inCart)}
                   className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
                     inCart ? 'border border-line-strong text-ink hover:bg-panel-2' : 'bg-accent text-on-accent hover:brightness-105'
@@ -216,7 +428,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                 </button>
               </div>
               {typeof item.option.source === 'string' && (
-                <a href={item.option.source} className="text-xs text-accent underline-offset-2 hover:underline">Source</a>
+                <a href={item.option.source} target="_blank" rel="noopener noreferrer" className="text-xs text-accent underline-offset-2 hover:underline">Source</a>
               )}
             </li>
           );
@@ -303,6 +515,8 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                   </p>
                 )}
               </div>
+
+              <BillDonut slices={slices} locale={locale} />
             </div>
 
             <div className="space-y-2 border-t border-line px-5 py-4">
