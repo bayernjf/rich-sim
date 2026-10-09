@@ -136,7 +136,10 @@ const assetBars = card.assetStructure.map((part, index) => ({
         </a>
       ))}
     </nav>
-    <div class="mt-3">
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+      <p class="text-xs leading-relaxed text-muted" data-sim-start-guide>
+        {t('sim.startGuide', locale)}
+      </p>
       <a href="/app/guide" class="text-xs text-muted underline-offset-2 hover:underline">
         {t('guide.h1', locale)} →
       </a>
@@ -218,6 +221,9 @@ const assetBars = card.assetStructure.map((part, index) => ({
         {!yacht && (
           <a class="text-accent underline-offset-2 hover:underline" href="?yacht=1&card=card-a">{t('sim.yachtLink', locale)}</a>
         )}
+      </p>
+      <p class="mt-1 text-xs leading-relaxed text-muted" data-sim-bill-explain>
+        {t('sim.billExplain', locale)}
       </p>
 
       <div class={`mt-3 rounded-2xl border p-4 ${banner.cls}`} role="status">
