@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { initialCatalogUSD } from '@rich-sim/core';
-import { scenarioAnnualCost } from '@rich-sim/core';
+import { BILLS_PER_PAGE, RESALE_RECOVERY_RATE, initialCatalogUSD, scenarioAnnualCost } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from './defaults';
 import {
-  BILLS_PER_PAGE,
   CARD_A,
   CARD_A_ANNUAL_INCOME,
   CARD_A_BROKE,
   CARD_A_LAST_YEAR_COST,
-  SELL_DISCOUNT,
   SIM_STARTING_CAPITAL,
   annualDrawdown,
   cardAnnualCost,
@@ -16,6 +13,7 @@ import {
   cardBurden,
   cartAddedAnnualCost,
   cartBurdenSummary,
+  cartKindCosts,
   cartKindCounts,
   claimBillRows,
   formatRunway,
@@ -96,8 +94,8 @@ describe('账单日（S2）', () => {
     expect(CARD_A_LAST_YEAR_COST).toBe(cardAnnualCost(CARD_A.choices, catalog, assumptions));
   });
 
-  it('变卖折价是 §2.4 的 75%', () => {
-    expect(SELL_DISCOUNT).toBe(0.75);
+  it('变卖折价是 §2.4 的 75%（常量已参数化进 core）', () => {
+    expect(RESALE_RECOVERY_RATE).toBe(0.75);
   });
 });
 
@@ -339,5 +337,33 @@ describe('购物即记账（M3 S3）', () => {
       cashflow,
     );
     expect(assetOnly.ratioHint).toBe(true);
+  });
+
+  it('品类金额拆桶：游艇（资产）$5.4M + 晚宴（体验）$100k，三桶之和 = 新增总额', () => {
+    const cart = [
+      { dimension: 'travel', optionId: 'superyacht' },
+      { dimension: 'flexibility', optionId: 'exp-met-gala-ticket' },
+    ];
+    const costs = cartKindCosts(cart, pool, baseline);
+    expect(costs).toEqual({ asset: 5_400_000, consumer: 0, experience: 100_000 });
+    expect(costs.asset + costs.consumer + costs.experience).toBe(
+      cartAddedAnnualCost(cart, pool, baseline),
+    );
+  });
+
+  it('品类金额拆桶与求和同口径：基线项不重复计、重复项不双算、坏项计 0', () => {
+    const cart = [
+      { dimension: 'living', optionId: 'luxury-mansion' }, // 基线已拥有
+      { dimension: 'travel', optionId: 'superyacht' },
+      { dimension: 'travel', optionId: 'superyacht' }, // 重复
+      { dimension: 'travel', optionId: 'ghost' }, // 坏条目
+    ];
+    const costs = cartKindCosts(cart, pool, baseline);
+    expect(costs.asset).toBe(5_400_000);
+    expect(costs.consumer).toBe(0);
+    expect(costs.experience).toBe(0);
+    expect(costs.asset + costs.consumer + costs.experience).toBe(
+      cartAddedAnnualCost(cart, pool, baseline),
+    );
   });
 });

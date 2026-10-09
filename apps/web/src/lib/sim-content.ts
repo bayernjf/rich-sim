@@ -119,10 +119,9 @@ export const CARD_A_BROKE: LifeChoice = [
 export const CARD_A_ANNUAL_INCOME = 3_000_000;
 /** 上一年已承担的持有成本 = 卡 A 基态（§2.5：CF = 收入 − 上一年成本）。 */
 export const CARD_A_LAST_YEAR_COST = 1_317_000;
-/** §2.4 参数 4：变卖折价 75%（资产无法原价变现）。 */
-export const SELL_DISCOUNT = 0.75;
-/** §2.4 参数 2：一次翻 4 张，按年成本从高到低。 */
-export const BILLS_PER_PAGE = 4;
+// §2.4 参数 2（BILLS_PER_PAGE = 4）与参数 4（变卖回收率 75%）已参数化进
+// @rich-sim/core（resaleRecovery / RESALE_RECOVERY_RATE），UI 不再持有副本——
+// 账单日与商城共用同一个命名常量，避免两处静默漂移。
 
 /**
  * 卡片文案按语言取。缺英文字段时退回中文而不是抛错或返回空——
@@ -359,6 +358,32 @@ export function cartKindCounts(
     }
   }
   return counts;
+}
+
+/**
+ * 车中新增年成本按品类拆桶（年度账单饼图用）。口径与 `cartAddedAnnualCost`
+ * **逐位一致**：基线已含项不重复计、同项幂等去重、解析不到计 0；三个桶之和
+ * 必然等于 `cartAddedAnnualCost(cart, pool, baseline)`，由单测钉住。
+ */
+export function cartKindCosts(
+  cart: CartEntry[],
+  pool: ShoppingItem[],
+  baseline: CartEntry[] = [],
+): { asset: number; consumer: number; experience: number } {
+  const lookup = poolLookup(pool);
+  const owned = new Set(baseline.map((entry) => `${entry.dimension}/${entry.optionId}`));
+  const counted = new Set<string>();
+  const costs = { asset: 0, consumer: 0, experience: 0 };
+  for (const entry of cart) {
+    const key = `${entry.dimension}/${entry.optionId}`;
+    if (owned.has(key) || counted.has(key)) continue;
+    counted.add(key);
+    const kind = lookup.get(key)?.option.kind;
+    if (kind === 'asset' || kind === 'consumer' || kind === 'experience') {
+      costs[kind] += lookup.get(key)!.option.annualCost;
+    }
+  }
+  return costs;
 }
 
 /**

@@ -4,19 +4,17 @@ import SimRealityCompare from '../../components/SimRealityCompare';
 import ClaimRunway from '../../components/ClaimRunway';
 import MallArea from '../../components/MallArea';
 import InvestArea from '../../components/InvestArea';
-import { dimensionLabel, optionLabel, initialCatalogUSD } from '@rich-sim/core';
+import { BILLS_PER_PAGE, dimensionLabel, optionLabel, initialCatalogUSD, resaleRecovery } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../../lib/defaults';
 import { localeFromRequest } from '../../lib/i18n';
 import { format, t } from '../../lib/messages';
 import {
-  BILLS_PER_PAGE,
   CARD_A_BROKE,
   SIM_CARDS,
   CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
   CARD_B_ANNUAL_INCOME,
   CARD_B_LAST_YEAR_COST,
-  SELL_DISCOUNT,
   capitalFromParam,
   cardAnnualCost,
   fastForward,
@@ -215,7 +213,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
 
       {status === 'red' && (
         <p class="mt-3 rounded-lg border border-danger px-3 py-2 text-xs leading-relaxed text-danger">
-          {format(t('sim.breakNote', locale), { item: bills[0]?.optionLabel ?? '', amount: fmt(Math.round((bills[0]?.annualCost ?? 0) * SELL_DISCOUNT)) })}
+          {format(t('sim.breakNote', locale), { item: bills[0]?.optionLabel ?? '', amount: fmt(Math.round(resaleRecovery(bills[0]?.annualCost ?? 0))) })}
         </p>
       )}
 
