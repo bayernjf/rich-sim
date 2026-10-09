@@ -1471,6 +1471,59 @@ try {
   check((await page.locator('[data-bill-slice="consumer"]').count()) === 0, '商城扩展：无消费品加购时不出现消费品桶', '');
   await page.keyboard.press('Escape');
 
+  // ── 步骤 8.7：T3 通道（操作·加杠杆/收购谈判 + 剧情·随机事件 + 汇率时间机）──
+  await page.goto(`${BASE}/app/sim?smoke=1`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-sim-op]', { timeout: 5000 });
+
+  // ① 操作通道：基态（无游艇）下的加杠杆与收购算术。
+  const opText = await page.locator('[data-sim-op]').innerText();
+  check(
+    opText.includes('3,366,000') && opText.includes('1,485,300') && opText.includes('88%'),
+    'T3 操作通道：加杠杆 2×5%（借 $3.366M / 新账单 $1.485M / 负担率 88%）',
+    opText.replace(/\n/g, ' ').slice(0, 140),
+  );
+  check(opText.includes('4.35×'), 'T3 操作通道：加杠杆临界点 4.35×（超过利息吃光现金流）', '');
+  check(
+    opText.includes('18,000,000') && opText.includes('2,217,000') && opText.includes('132%'),
+    'T3 操作通道：收购 6×（估值 $18M / 新账单 $2.217M / 负担率 132% 红）',
+    '',
+  );
+  check(opText.includes('2.44×'), 'T3 操作通道：收购谈判底价 2.44× 年营收', '');
+
+  // ② 剧情通道：三张随机事件卡 SSR 全渲染，数字从卡片参数推导。
+  const plotCards = await page.locator('[data-sim-plot] [data-plot]').count();
+  check(plotCards === 3, 'T3 剧情通道：三张随机事件卡齐全', `count=${plotCards}`);
+  const plotText = await page.locator('[data-sim-plot]').innerText();
+  check(
+    plotText.includes('157%') && plotText.includes('168%') && plotText.includes('783,000'),
+    'T3 剧情通道：诉讼/分产负担率 157%、危机 168% 且现金流 783k',
+    plotText.replace(/\n/g, ' ').slice(0, 140),
+  );
+
+  // ③ 汇率时间机：SSR 有 section + 预设按钮；点 2025-10-09 → 结果文本出现 + 埋点。
+  check(
+    (await page.locator('[data-sim-fx] [data-fx-preset]').count()) === 3,
+    'T3 汇率时间机：三个预设历史日期按钮 SSR 可见',
+    '',
+  );
+  await page.click('[data-fx-preset="2025-10-09"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-fx-result]')?.textContent?.includes('≈') ?? false,
+    { timeout: 8000 },
+  );
+  const fxResult = await page.locator('[data-fx-result]').innerText();
+  check(
+    fxResult.includes('2025-10-09') && fxResult.includes('≈'),
+    'T3 汇率时间机：选择历史日期后展示当时值对比',
+    fxResult.replace(/\n/g, ' ').slice(0, 120),
+  );
+  const evFx = await eventsSoFar();
+  check(
+    countEvent(evFx, 'fx:historical') >= 1,
+    '埋点：fx:historical 已入队',
+    `n=${countEvent(evFx, 'fx:historical')}`,
+  );
+
   // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──
   // 步骤 1.5 的 localStorage.clear() 把 sim 账本清掉了，这里先补领 $10M。
   await page.goto(`${BASE}/?lang=zh`, { waitUntil: 'networkidle' });
