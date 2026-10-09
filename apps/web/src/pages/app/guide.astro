@@ -1,0 +1,104 @@
+---
+/**
+ * G1 · 玩法说明页（/app/guide）。
+ *
+ * - 纯 SSR + 少量岛（语言切换 / 视图埋点），无后端、无 localStorage 写入；
+ * - 内容按「新手引导路径」重排：第 1 步玩一把富豪（模拟）→ 第 2 步对照你自己
+ *   （现实测算）→ 第 3 步把账本养起来 → 系统层；
+ * - 每个玩法单元 = guide.<id>.title + guide.<id>.desc（messages.ts，zh/en 成对，
+ *   i18n 测试强制穷尽覆盖）；改动玩法时三处同步：本文 + docs/gameplay-inventory.md
+ *   + messages.ts（见 docs/gameplay-inventory.md 维护纪律）。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import GuideView from '../../components/GuideView';
+import LocaleSwitcher from '../../components/LocaleSwitcher';
+import { localeFromRequest } from '../../lib/i18n';
+import { t } from '../../lib/messages';
+
+const locale = localeFromRequest(Astro.request, Astro.url);
+
+/** 新手引导路径：steps[i].items 的顺序就是推荐体验顺序。 */
+const STEPS = [
+  {
+    headingKey: 'guide.step1H',
+    leadKey: 'guide.step1Lead',
+    items: [
+      'identityCard',
+      'assets',
+      'costs',
+      'bill',
+      'fastForward',
+      'swan',
+      'privilege',
+      'leverage',
+      'acquisition',
+      'plots',
+      'fxMachine',
+      'mall',
+      'favorites',
+      'billChart',
+      'invest',
+    ],
+  },
+  {
+    headingKey: 'guide.step2H',
+    leadKey: 'guide.step2Lead',
+    items: ['bridge', 'designer', 'assumptions', 'converter', 'report', 'scenarios'],
+  },
+  {
+    headingKey: 'guide.step3H',
+    leadKey: 'guide.step3Lead',
+    items: ['revisit', 'plans', 'paywallProbe'],
+  },
+  {
+    headingKey: 'guide.sysH',
+    leadKey: 'guide.sysLead',
+    items: ['locale', 'currency'],
+  },
+] as const;
+---
+
+<BaseLayout title={t('guide.metaTitle', locale)} locale={locale}>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-16">
+    <div class="mb-4 flex items-center justify-end gap-2">
+      <LocaleSwitcher client:load locale={locale} />
+    </div>
+    <p class="text-xs font-medium uppercase tracking-widest text-accent">{t('home.eyebrow', locale)}</p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight" data-guide-h1>{t('guide.h1', locale)}</h1>
+    <p class="mt-3 text-base leading-relaxed text-muted" data-guide-lead>{t('guide.lead', locale)}</p>
+
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a
+        href="/app/sim"
+        class="inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
+      >
+        {t('guide.step1H', locale)} →
+      </a>
+      <a
+        href="/app/designer"
+        class="inline-flex min-h-11 items-center rounded-full border border-line bg-panel px-5 py-3 text-sm font-semibold text-ink"
+      >
+        {t('guide.step2H', locale)} →
+      </a>
+    </div>
+
+    {STEPS.map((step) => (
+      <section class="mt-10" data-guide-step={step.headingKey}>
+        <h2 class="text-base font-semibold text-ink">{t(step.headingKey, locale)}</h2>
+        <p class="mt-1 text-sm leading-relaxed text-muted">{t(step.leadKey, locale)}</p>
+        <ul class="mt-3 space-y-2">
+          {step.items.map((id) => (
+            <li
+              class="rounded-lg border border-line bg-panel px-4 py-3"
+              data-guide-item={id}
+            >
+              <div class="text-sm font-semibold text-ink">{t(`guide.${id}.title`, locale)}</div>
+              <div class="mt-0.5 text-xs leading-relaxed text-muted">{t(`guide.${id}.desc`, locale)}</div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </main>
+  <GuideView client:load />
+</BaseLayout>

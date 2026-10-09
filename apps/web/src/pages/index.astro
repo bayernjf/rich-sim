@@ -35,6 +35,14 @@ const claimRows = claimEnabled
     >
       {t('home.cta', locale)}
     </a>
+    <div class="mt-4">
+      <a
+        href="/app/guide"
+        class="text-sm text-muted underline-offset-2 hover:underline"
+      >
+        {t('guide.h1', locale)} →
+      </a>
+    </div>
     <ContinueDraft client:load locale={locale} />{claimEnabled && (<ClaimMillion client:load locale={locale} tiers={SIM_CAPITAL_TIERS} rows={claimRows} withdrawalRate={DEFAULT_ASSUMPTIONS.withdrawalRate} />)}
   </main>
 </BaseLayout>
