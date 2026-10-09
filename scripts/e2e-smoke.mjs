@@ -231,6 +231,11 @@ try {
     'i18n：首页英文 H1 由 SSR 渲染',
     '',
   );
+  check(
+    homeEn.includes('data-locale-switcher'),
+    'i18n：首页语言切换器 SSR 渲染（补挂的首页入口，与 app 页同一组件）',
+    '',
+  );
   if (claimEnabled) {
     const claimEn = await page
       .locator('section[aria-labelledby="claim-heading"]')
