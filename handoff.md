@@ -1,6 +1,6 @@
 # Handoff · rich-sim（财富模拟 · 产品）
 
-> 更新时间：2026-10-09 深夜（T0/T1 收尾：目标净资产入口 / 汇率行修复 / 键盘走查断言 / 收集端去重部署 / READ_TOKEN）
+> 更新时间：2026-10-09 深夜（T0/T1 收尾已提交：`f9867a8` feat + `08240d0` docs，未 push）
 > 本仓库是**产品仓库：文档 + 应用代码一体**（M1 代码已并入，2026-10-04）。
 
 ---
@@ -11,8 +11,8 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 16 份、表内 16 行
-- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-09 现测：`docs/` 下 17 份、表内 17 行（sim-shopping-mall.md 2026-10-09 入表，计数 16 → 17）
+- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——2026-10-09 现测：`git rev-list --count origin/dev..dev` = **2**（T0/T1 两笔本地未推），`git rev-list --count origin/main..origin/dev` = **0**（dev 内容已全部合并进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -112,7 +112,7 @@
 - **需拍板后才能动**：~~D1–D5~~ **2026-10-05 已整包确认**（见「已做的决策」与 `docs/m2-decisions.md`）。当前真正待拍的只剩：`deferred #5` 法务与 publicity rights 复核（M3 原型卡上线前）、`#3` 付费墙与 `#7` 支付渠道（D5 押后，等付费意愿读数）、品牌视觉 / 商标（deferred #2 剩余部分）。
   - ~~**F2 逐项支出（PRD §8 明写、当前未实现）——我先前把它列进「不需拍板」的 B 组，是错的，已移出**：`Profile.expense` 是**单个数字**（`packages/core/src/types.ts:27`），而 `types.ts` 与 `draft.ts` 都是冻结契约（`CONVENTIONS.md`：改契约 = 过闸门）。两条路必须选一条：**(a)** 展示层拆解 + 独立 localStorage key、引擎不读——零契约改动，但「精细模型」只是看起来精细，不影响测算，**有误导用户以为它参与计算的风险**；**(b)** 扩 `Profile` 让逐项支出真正进引擎——要过契约闸门，且牵动 `project` / `gap` / `buildMilestones` 口径与 `assumptionsVersion`~~ ✅ **2026-10-08 发起人拍板走 (b) 并已实现**：`expenseBreakdown?` 四类月口径 + `profileMonthlyExpense` 取数 + 财务页「高级：拆开填」默认收起 + 切币种逐项换算保留；测试 core 65 / web 218 全绿。见「已做的决策」F2 行与 PRD §8。
 
-**2026-10-09 深夜 · T0/T1 收尾（路线图盘点出的「可落地批次」，发起人指派执行）**：①**T0-1 收集端去重版已部署**——`COUNT(DISTINCT event, ts)` 经 `wrangler deploy` 上线（Version `21e00ced`），线上 `/summary` 现返回去重计数（原「代码已改未部署」关闭；上文第 97 行读数段与 DEPLOYMENT 已同步修正）；②**T0-2 汇率行切币种刷新已修**——`AssumptionsPanel` 汇率行加 `[data-assumption="fx"]` 钩子，新 `formatFxLine(a, locale)` 纯函数（zh/en 两条句子、缺币种显示 —），`patchAssumptionDisplay` 扩 locale 参数并 patch 汇率行，`AssumptionsEditor` / `DesignerShell` 传真实 locale；切币种/改假设后随清单同步（M4 遗留段「汇率行仍未做」关闭，+3 单测）；③**T0-3 目标净资产入口已实现（方案 A，进契约）**——见「已做的决策」T0-3 行与 `CONVENTIONS.md`：`Draft`/`SavedPlan` 增可选 `goal`、`results.ts` 新 `goalFor` 口径切换、结果页「目标口径」切换器（提交才写盘、清空即回够用线）、报告 goal 小节随口径、zh/en 各 8 key；单测 277 全绿、check 0 错、冒烟 **181 条 FAILS 0**（步骤 5.3 六条）；④**T0-4 键盘走查 + reduced-motion 已补机器断言**——`e2e-smoke.mjs` 步骤 1.1 五条（第一个 Tab 落 skip link / Tab 可达 radio / 无焦点陷阱 / `reducedMotion:'reduce'` 下点选仍生效 / 无未捕获 JS 错误；「重新导航=新进一页」语义，blur 在 React 页不可靠），「没有机器断言的两项」关闭；⑤**T0-5 读数通道规范化**——`READ_TOKEN` 已 `wrangler secret put`（值存 `~/.rich-sim-read-token`、600 权限、不入仓库；无 token 401 / 带 token 200 实测），本机带代理 `/summary` 命令与「先按 `(event, ts)` 去重」纪律固化进 DEPLOYMENT；⑥**T1-6 /privacy 文案过目清单已交付**——逐句核对与真实代码行为一致，剩 3 个承诺性条款待发起人一句话确认（账号删除走人工流程 / 联系渠道用公开 GitHub issue / 最小政策不补 GDPR 等缺失条款），确认后 M5 彻底收尾。**本轮改动未提交**（建议按「代码」「文档」两个原子提交，不 push）。**下一批推进按路线图**：T2 付费墙 + 支付（先读 `paywall:intent:*` 意愿读数再拍 G3/G4/付费场景/商业模式，唯一服务端切片）→ T3 内容（历史汇率切换 + 汇率波动教育点、六通道剩余「收购谈判/加杠杆 + 随机事件」）→ T4 等外部条件（deferred #5 法务 / OPENAI_API_KEY 拟物衣柜+商品插画 / 品牌视觉商标）→ T5 触发门（大陆阶段 / 竞品深调 B 端原生 App / 匿名社区 F10）。
+**2026-10-09 深夜 · T0/T1 收尾（路线图盘点出的「可落地批次」，发起人指派执行）**：①**T0-1 收集端去重版已部署**——`COUNT(DISTINCT event, ts)` 经 `wrangler deploy` 上线（Version `21e00ced`），线上 `/summary` 现返回去重计数（原「代码已改未部署」关闭；上文第 97 行读数段与 DEPLOYMENT 已同步修正）；②**T0-2 汇率行切币种刷新已修**——`AssumptionsPanel` 汇率行加 `[data-assumption="fx"]` 钩子，新 `formatFxLine(a, locale)` 纯函数（zh/en 两条句子、缺币种显示 —），`patchAssumptionDisplay` 扩 locale 参数并 patch 汇率行，`AssumptionsEditor` / `DesignerShell` 传真实 locale；切币种/改假设后随清单同步（M4 遗留段「汇率行仍未做」关闭，+3 单测）；③**T0-3 目标净资产入口已实现（方案 A，进契约）**——见「已做的决策」T0-3 行与 `CONVENTIONS.md`：`Draft`/`SavedPlan` 增可选 `goal`、`results.ts` 新 `goalFor` 口径切换、结果页「目标口径」切换器（提交才写盘、清空即回够用线）、报告 goal 小节随口径、zh/en 各 8 key；单测 277 全绿、check 0 错、冒烟 **181 条 FAILS 0**（步骤 5.3 六条）；④**T0-4 键盘走查 + reduced-motion 已补机器断言**——`e2e-smoke.mjs` 步骤 1.1 五条（第一个 Tab 落 skip link / Tab 可达 radio / 无焦点陷阱 / `reducedMotion:'reduce'` 下点选仍生效 / 无未捕获 JS 错误；「重新导航=新进一页」语义，blur 在 React 页不可靠），「没有机器断言的两项」关闭；⑤**T0-5 读数通道规范化**——`READ_TOKEN` 已 `wrangler secret put`（值存 `~/.rich-sim-read-token`、600 权限、不入仓库；无 token 401 / 带 token 200 实测），本机带代理 `/summary` 命令与「先按 `(event, ts)` 去重」纪律固化进 DEPLOYMENT；⑥**T1-6 /privacy 文案过目清单已交付**——逐句核对与真实代码行为一致，剩 3 个承诺性条款待发起人一句话确认（账号删除走人工流程 / 联系渠道用公开 GitHub issue / 最小政策不补 GDPR 等缺失条款），确认后 M5 彻底收尾。**本批改动已提交**（`f9867a8` feat(web): net-worth goal + fx-line refresh + keyboard smoke asserts；`08240d0` docs: T0/T1 wrap-up + deploy dedup worker + read-token discipline），**未 push**。**下一批推进按路线图**：T2 付费墙 + 支付（先读 `paywall:intent:*` 意愿读数再拍 G3/G4/付费场景/商业模式，唯一服务端切片）→ T3 内容（历史汇率切换 + 汇率波动教育点、六通道剩余「收购谈判/加杠杆 + 随机事件」）→ T4 等外部条件（deferred #5 法务 / OPENAI_API_KEY 拟物衣柜+商品插画 / 品牌视觉商标）→ T5 触发门（大陆阶段 / 竞品深调 B 端原生 App / 匿名社区 F10）。
 
 ## 待决问题
 
