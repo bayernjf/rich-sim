@@ -1,6 +1,6 @@
 # Handoff · rich-sim（财富模拟 · 产品）
 
-> 更新时间：2026-10-08（F9 本机版多剧本存档 + 领钱 P2 金币雨 + 账号体系立项 D4 翻转）
+> 更新时间：2026-10-10（T0/T1 收尾已提交：`f9867a8` feat + `08240d0` + `0ce6bfd` docs，未 push；首页切换器一批待提交）
 > 本仓库是**产品仓库：文档 + 应用代码一体**（M1 代码已并入，2026-10-04）。
 
 ---
@@ -11,8 +11,8 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-08 现测：`docs/` 下 16 份、表内 16 行
-- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——现测：`git fetch origin && git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（未进 main）。
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-09 现测：`docs/` 下 17 份、表内 17 行（sim-shopping-mall.md 2026-10-09 入表，计数 16 → 17）
+- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——2026-10-10 现测：`git rev-list --count origin/dev..dev` = **3**（T0/T1 三笔本地未推），`git rev-list --count origin/main..origin/dev` = **0**（dev 内容已全部合并进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -60,6 +60,7 @@
 | **M4 报告形态 G1 / G2** | ✅ **已拍板（2026-10-08）**：**G1 = 纯前端生成**——服务端生成必须先把用户的收入/支出/存款/负债上传，撞「用户自填的财务数据不得上传」红线；且不动「MVP 无后端」，成本低一个数量级（报告只是 `computeResults` 已有输出的排版视图）。**G2 = 浏览器打印样式（`@media print`）导出 PDF，分享链接不做**（分享同样要上传数据）。**服务端不是被否决，而是推迟到 S4 且只用于收款 / 验权**——S2 / S3 因此解锁 | `docs/m4-task-breakdown.md` §0、§2、§6 |
 | **域名 / 英文名** | 产品 `app.rich-sim.bayjf.com`（2026-10-04 绑定，浏览器实测可达、canonical/robots/sitemap 同域、冒烟 15/15），落地页 `rich-sim.bayjf.com`；英文名沿用 `rich-sim`。**品牌视觉 / 商标仍 `待定`** | `docs/deferred-items.md` #2、`docs/DEPLOYMENT.md` |
 | **F2 逐项支出（2026-10-08 拍板 (b)）** | **扩 `Profile` 让逐项支出真进引擎**：`expenseBreakdown?`（住房/交通/食品/其他四大类，月口径，可选、旧草稿兼容），引擎经 `profileMonthlyExpense` 取数（`project`/`gap`/`buildMilestones`/换算器全走它）；财务页支出为「高级：拆开填（默认收起）」，任一子项填写即写 breakdown 并参与测算，全空回落单个数（旧草稿逐位不变）。**部分推翻 m2 D3**：恢复"进引擎"，保留其顾虑（只 4 大类、默认收起，不重开 §3.2 记账工具 Non-Goal）；`assumptionsVersion` 不升版（无公式变化）。切币种时 breakdown 逐项换算不丢（CurrencySwitcher） | `docs/PRD.md` §8、`docs/m2-decisions.md` D3、`CONVENTIONS.md` |
+| **T0-3 目标口径（2026-10-09 拍板方案 A，进契约）** | `Draft` 增可选 `goal?: { kind: 'net-worth'; value }`（value 为录入/展示币种下的净资产目标）：存在时 `project` / `gap` / `buildMilestones` 全部按净资产目标算，`results.goal` 随之切换；结果页「目标口径」切换器（够用线 / 目标净资产），提交才写盘、清空即回够用线（`writeDraft` 不隐式保留 goal）；报告 goal 小节随口径；`SavedPlan` 含 goal（剧本输入）。与 `goalOverride` 互不排斥。`schemaVersion` 维持 1 | `CONVENTIONS.md` localStorage 节、`lib/results.ts` `goalFor`、本文件「下一步」T0 段 |
 
 ## 下一步
 
@@ -93,11 +94,11 @@
 
 **2026-10-09 晚 · 商城扩展 + 账单日参数化（批 2 可做部分）**：①**商品详情卡**：卡片原生 `<details>` 展开 core `optionCostComponents` 拆项（3 个大资产中英双语，其余显示来源口径说明），资产类明示强制变现只回笼原价 75%、体验类明示无一残值；②**「逛而不买」收藏夹**：sim 账本增可选 `favorites?`（与 `cart` 同形状、同持久化纪律，已登记进 `CONVENTIONS.md`，schemaVersion 维持 1），独立「收藏」tab + 空态，结构上保证收藏不进年成本 / 账单 / 一键成目标，`mall:favorite` / `mall:unfavorite` 零 props；③**年度账单环形图**：购物车抽屉内纯 SVG 环形图，基线 + `cartKindCosts` 三桶（与新增年成本求和同口径，单测钉三桶之和 = 新增总额），图例金额 + 占比，收藏项排除；④**账单日玩法参数化进 core**（§2.4 参数 2/4）：`BILLS_PER_PAGE = 4`、`RESALE_RECOVERY_RATE = 0.75`、`resaleRecovery()`（非法输入收敛 0），sim.astro 与 MallArea 的 0.75/4 副本全部删除改引 core（参数 5/6 的 `BURDEN_RATE_*` 本就在 core）。现值：core 70 / web 268 单测全绿、check 0 错 0 警 0 hint、build 通过、冒烟 **170 条 FAILS 0**（新增步骤 8.6 共 14 条）。**批 2 剩余三项仍外部阻塞**：S4 付费墙 + 支付（M4 文档原文：先读付费意愿读数再拍 G3/G4，不先建支付链路）、名人原型卡（等 deferred #5 海外 publicity 法务复核）、拟物衣柜（等衣物条目公开来源 + OPENAI_API_KEY，见 `sim-shopping-mall.md` §8）。
 
-**2026-10-09 晚 · 第一次真人读数（修正上文「真实访客为 0」的说法）**：经 wrangler D1 直查（本机无 READ_TOKEN，`wrangler d1 execute --remote` 有权限）：库内 1227 行中裸名（`NOT LIKE 'smoke:%'`）**41 行**——10-05 有 15、10-08 有 26，按时间聚成两簇，最深点到投资线编辑 / 蒙特卡洛 resample / `auth:login` / 3 次 `sync:push`。形态与发起人本人上线走查高度一致，而库结构（无 IP/UA/标识）**无法证明任何一行来自外部访客**，结论改为：**尚无可证明的外部访客，但也不能再说「裸名全是联调」**——请发起人本人以后走查一律带 `?smoke=1`。另：`wrangler deployments list` 证实收集端去重版（`COUNT(DISTINCT event, ts)`）**至今未部署**（线上仍是 10-05 初版），准数要么先部署 worker、要么查询侧去重；详见 `docs/DEPLOYMENT.md`。
+**2026-10-09 晚 · 第一次真人读数（修正上文「真实访客为 0」的说法）**：经 wrangler D1 直查（本机无 READ_TOKEN，`wrangler d1 execute --remote` 有权限）：库内 1227 行中裸名（`NOT LIKE 'smoke:%'`）**41 行**——10-05 有 15、10-08 有 26，按时间聚成两簇，最深点到投资线编辑 / 蒙特卡洛 resample / `auth:login` / 3 次 `sync:push`。形态与发起人本人上线走查高度一致，而库结构（无 IP/UA/标识）**无法证明任何一行来自外部访客**，结论改为：**尚无可证明的外部访客，但也不能再说「裸名全是联调」**——请发起人本人以后走查一律带 `?smoke=1`。另：`wrangler deployments list` 证实收集端去重版（`COUNT(DISTINCT event, ts)`）**至今未部署**（线上仍是 10-05 初版），准数要么先部署 worker、要么查询侧去重；详见 `docs/DEPLOYMENT.md`。**（当晚深夜已部署，Version `21e00ced`，见下方 T0 段；「本机无 READ_TOKEN」也已配。）**
 
 **M4（F7 多情景推演 + §6.2 可调假设）**：**S1 已上线**——`41a8cc9` 随 **PR #43** 合并进 main（2026-10-08 现测 `git merge-base --is-ancestor 41a8cc9 origin/main` = yes）。**S1.5「假设可调」已随 PR #44 合并 main（2026-10-08 复核；提交 `632a28c` + `6420638` + `9c52265`）**：结果页新岛 `AssumptionsEditor.tsx` 直接写 `draft.assumptions.returnRate / withdrawalRate`，即时重算（跨岛靠 `writeDraft` 派发的同页事件），合规清单按 `[data-assumption]` 钩子同步成真正生效的数值；`inflation` 保持只展示（没有公式吃它）。零契约改动、不新增路由、事件不带数值。**本地实测（S1.5 收尾时）**：212 单测绿（core 59 + web 153）、`astro check` 0 错、冒烟 92 条（开 `PUBLIC_HOMEPAGE_CLAIM`）/ 86 条（关）全过。理由、区间与验收见 `docs/m4-task-breakdown.md` §7。**（下面 S1.6 那段的读数才是现值。）**
 
-**这一片顺带解开的与留下的**：`comparison-converter.md` §2.2 的**本金口径**（「想养住它需要多少本金」+ `converter:expand`）此前卡在「两个率不可调」，前置条件满足后**已由 S1.7 做掉**（见下面那段）；`AssumptionsPanel` 的**汇率行**仍是 SSR 印的静态快照，切币种后不改写（本片之前即如此，仍未做）；`Goal: 'net-worth'` 引擎支持但无 UI 入口。**已知未自动化**：`prefers-reduced-motion` 与键盘走查（沿用 S1 的诚实记录）。设计器页没有任何按假设算出来的数字（sticky 只有年成本与纯除法的换算条，`grep -n enoughLine apps/web/src/components/DesignerShell.tsx` 无命中），所以那一页只需要把底部的清单同步对，已由 `DesignerShell` 挂载时做掉。
+**这一片顺带解开的与留下的**：`comparison-converter.md` §2.2 的**本金口径**（「想养住它需要多少本金」+ `converter:expand`）此前卡在「两个率不可调」，前置条件满足后**已由 S1.7 做掉**（见下面那段）；`AssumptionsPanel` 的**汇率行**仍是 SSR 印的静态快照，切币种后不改写（本片之前即如此，仍未做）；`Goal: 'net-worth'` 引擎支持但无 UI 入口。**已知未自动化**：`prefers-reduced-motion` 与键盘走查（沿用 S1 的诚实记录）。设计器页没有任何按假设算出来的数字（sticky 只有年成本与纯除法的换算条，`grep -n enoughLine apps/web/src/components/DesignerShell.tsx` 无命中），所以那一页只需要把底部的清单同步对，已由 `DesignerShell` 挂载时做掉。**2026-10-09 晚关闭三项**：汇率行已修（`[data-assumption="fx"]` 钩子 + `formatFxLine`，切币种/改假设后随清单同步）；`net-worth` 目标入口已做（T0-3 方案 A，见决策表与「下一步」T0 段）；`prefers-reduced-motion` 与键盘走查已补冒烟断言（`e2e-smoke.mjs` 步骤 1.1，DEPLOYMENT 计数 175→181）。
 
 **M4 S1.6（F6 本机版 · 测算历史与复盘）代码完成（2026-10-08）**：过 `draft.ts` 冻结闸门——`Draft` 增**可选** `history?: Snapshot[]`（发起人 2026-10-07 口头批的形态，`schemaVersion` 维持 1，旧草稿天然兼容）。结果页每次测算落一条**当日**快照（年限 / 三状态 / 年成本 / 够用线 / 净资产 / 币种），下一次进来给「和上一次比」的差值。**形状是被 `product-concept.md` §3.2 逼出来的**：那句话（净资产按月几乎不动，进度条看不见、反而劝退）成立，所以不做完成度百分比、只做两次读数之间的差，且「什么都没变」照实说。跨币种时金额不给差（不同单位相减无意义），年限仍然比——这条齐次性用 USD 与 CNY 两份 profile 各跑一遍引擎**差分验证**过。`writeDraft` 现在对 `history` 做隐式保留（写方全是重建整个字面量，逐条透传漏一处就静默抹历史）。埋点 `progress:view` 零 props：它计数的是「这台机器今天回来看过并且有至少两个历日的记录」，**不是回访率**（无分母、无标识符，§11.2 的死结没被解开，只是多了一个此前完全没有的计数）。**本地实测（S1.6 收尾时；现值见下面 S1.7 段）**：238 单测绿（core 59 + web 179）、`astro check` 0 错 0 警、冒烟 **107 条**（开 `PUBLIC_HOMEPAGE_CLAIM`）/ **101 条**（关）全过。见 `docs/m4-task-breakdown.md` §8、`CONVENTIONS.md` 的 `history` 例外纪律。
 
@@ -110,6 +111,14 @@
 - **C 内容**（各 M）：~~① 富豪模拟玩法细节整批（购物目录数值 / 爽痛比例 / 断裂阈值 / 账单日参数 / 首批原型卡 / 一键成目标入 PRD §7.2，deferred #6；名人原型合规除外）~~ ✅ f725218（simulation-gameplay v0.2：账单日 6 个建议默认、现金流负担率公式与阈值、爽痛 1:1、两张虚构原型卡、一键成目标入 PRD §7.2/F5；剩余为 M3 前拍板项，见 gameplay §6）；~~② Catalog 21 项「待校准」数值补公开来源（deferred #1）~~ ✅ 26b4f4b（盘点所写「21 项」实为 **20 项**；23 项现已全部附可查证来源：BLS CE 2024 / AAA / KFF / NAIS / Child Care Aware / Allianz / Zillow，富豪极端档为行业估算；统一为实际自付现金口径，移除设计器 mock、catalog 改必传，测试增至 10 条；deferred #1 的 USD 部分闭环）；~~③ PRD §2.3 市场时机论证补全（需外部检索，带来源）~~ ✅ 38eb2df（Deloitte / PwC / 美联储 SHED / TIAA-GFLEC 四来源，deferred #8 市场时机部分闭环）。
 - **需拍板后才能动**：~~D1–D5~~ **2026-10-05 已整包确认**（见「已做的决策」与 `docs/m2-decisions.md`）。当前真正待拍的只剩：`deferred #5` 法务与 publicity rights 复核（M3 原型卡上线前）、`#3` 付费墙与 `#7` 支付渠道（D5 押后，等付费意愿读数）、品牌视觉 / 商标（deferred #2 剩余部分）。
   - ~~**F2 逐项支出（PRD §8 明写、当前未实现）——我先前把它列进「不需拍板」的 B 组，是错的，已移出**：`Profile.expense` 是**单个数字**（`packages/core/src/types.ts:27`），而 `types.ts` 与 `draft.ts` 都是冻结契约（`CONVENTIONS.md`：改契约 = 过闸门）。两条路必须选一条：**(a)** 展示层拆解 + 独立 localStorage key、引擎不读——零契约改动，但「精细模型」只是看起来精细，不影响测算，**有误导用户以为它参与计算的风险**；**(b)** 扩 `Profile` 让逐项支出真正进引擎——要过契约闸门，且牵动 `project` / `gap` / `buildMilestones` 口径与 `assumptionsVersion`~~ ✅ **2026-10-08 发起人拍板走 (b) 并已实现**：`expenseBreakdown?` 四类月口径 + `profileMonthlyExpense` 取数 + 财务页「高级：拆开填」默认收起 + 切币种逐项换算保留；测试 core 65 / web 218 全绿。见「已做的决策」F2 行与 PRD §8。
+
+**2026-10-10 · /privacy 三条款已确认（发起人「按清单来」）→ M5 彻底收尾**：账号删除走人工流程 / 联系渠道用公开 GitHub issue（`github.com/bayernjf/rich-sim/issues`）/ 保持最小政策不补 GDPR，均与 `privacy.astro` 真实代码行为一致（见 `docs/m5-task-breakdown.md` M5-G3）。T1-6 关闭。
+
+**2026-10-10 · T3 开工**：见下文 T3 段。
+
+**T3（内容 · 2026-10-10 开工）**：①**操作通道**：收购谈判 / 加杠杆（六通道剩余两块之一，`/app/sim` 纯 SSR，数字由卡片参数与带来源目录项现算，同已上线三通道构型）；②**剧情通道随机事件**（按 `simulation-gameplay.md` 设计，确定性/种子化、不碰红线）；③**历史汇率切换 + 汇率波动教育点**（M2 历史汇率，`technical-design.md` §4.2）。进展见下节。
+
+**2026-10-09 深夜 · T0/T1 收尾（路线图盘点出的「可落地批次」，发起人指派执行）**：①**T0-1 收集端去重版已部署**——`COUNT(DISTINCT event, ts)` 经 `wrangler deploy` 上线（Version `21e00ced`），线上 `/summary` 现返回去重计数（原「代码已改未部署」关闭；上文第 97 行读数段与 DEPLOYMENT 已同步修正）；②**T0-2 汇率行切币种刷新已修**——`AssumptionsPanel` 汇率行加 `[data-assumption="fx"]` 钩子，新 `formatFxLine(a, locale)` 纯函数（zh/en 两条句子、缺币种显示 —），`patchAssumptionDisplay` 扩 locale 参数并 patch 汇率行，`AssumptionsEditor` / `DesignerShell` 传真实 locale；切币种/改假设后随清单同步（M4 遗留段「汇率行仍未做」关闭，+3 单测）；③**T0-3 目标净资产入口已实现（方案 A，进契约）**——见「已做的决策」T0-3 行与 `CONVENTIONS.md`：`Draft`/`SavedPlan` 增可选 `goal`、`results.ts` 新 `goalFor` 口径切换、结果页「目标口径」切换器（提交才写盘、清空即回够用线）、报告 goal 小节随口径、zh/en 各 8 key；单测 277 全绿、check 0 错、冒烟 **190 条 FAILS 0**（开领钱开关实测 2026-10-09 深夜；关开关 182——步骤 5.3 六条 + 步骤 1.1 五条 + 步骤 0.5 首页切换器一条，见 DEPLOYMENT）；④**T0-4 键盘走查 + reduced-motion 已补机器断言**——`e2e-smoke.mjs` 步骤 1.1 五条（第一个 Tab 落 skip link / Tab 可达 radio / 无焦点陷阱 / `reducedMotion:'reduce'` 下点选仍生效 / 无未捕获 JS 错误；「重新导航=新进一页」语义，blur 在 React 页不可靠），「没有机器断言的两项」关闭；⑤**T0-5 读数通道规范化**——`READ_TOKEN` 已 `wrangler secret put`（值存 `~/.rich-sim-read-token`、600 权限、不入仓库；无 token 401 / 带 token 200 实测），本机带代理 `/summary` 命令与「先按 `(event, ts)` 去重」纪律固化进 DEPLOYMENT；⑥**T1-6 /privacy 文案过目清单已交付**——逐句核对与真实代码行为一致，剩 3 个承诺性条款待发起人一句话确认（账号删除走人工流程 / 联系渠道用公开 GitHub issue / 最小政策不补 GDPR 等缺失条款），确认后 M5 彻底收尾（**2026-10-10 已确认，见上**）；⑦**首页补挂语言切换器（2026-10-09 深夜，`0ce6bfd` 之后未提交）**——`index.astro` 顶部右上角与 app 页同款位置、同一组件（`data-locale-switcher`，SSR 渲染），此前首页无切换入口（生产同样没有），补挂后首页语言不再只能靠 `?lang=`/浏览器语言；SSR 断言 +1 条（步骤 0.5）。**本批改动已提交**（`f9867a8` feat(web): net-worth goal + fx-line refresh + keyboard smoke asserts；`08240d0` docs: T0/T1 wrap-up + deploy dedup worker + read-token discipline；`0ce6bfd` docs: mark T0/T1 commits landed），**未 push**；首页切换器一批（index.astro / e2e-smoke.mjs / DEPLOYMENT.md）在 `0ce6bfd` 之后待提交。**下一批推进按路线图**：T2 付费墙 + 支付（先读 `paywall:intent:*` 意愿读数再拍 G3/G4/付费场景/商业模式，唯一服务端切片）→ T3 内容（历史汇率切换 + 汇率波动教育点、六通道剩余「收购谈判/加杠杆 + 随机事件」）→ T4 等外部条件（deferred #5 法务 / OPENAI_API_KEY 拟物衣柜+商品插画 / 品牌视觉商标）→ T5 触发门（大陆阶段 / 竞品深调 B 端原生 App / 匿名社区 F10）。
 
 ## 待决问题
 

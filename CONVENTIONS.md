@@ -27,7 +27,7 @@
 
 ## localStorage 方案 schema（冻结）
 
-key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDraft` / `writeDraft` / `clearDraft`），任何页面不得绕过。结构见该文件 `Draft` 类型：必填 `choices` / `profile` / `currency` / `assumptions` / `updatedAt`，**可选** `goalOverride`（M3 S4 · G4 方案 a，购物车一键成目标只带年成本）、`history`（M4 S1.6 · F6 本机版测算快照，`lib/progress.ts` 的 `Snapshot[]`）与 `savedPlans`（F9 本机版多剧本存档，`lib/plans.ts`，同名覆盖、上限 10、事件零 props——剧本名不出本机）。`schemaVersion` 维持 1：可选字段不加版本号，旧草稿天然兼容（缺字段 = 没有 override / 没有历史）。
+key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDraft` / `writeDraft` / `clearDraft`），任何页面不得绕过。结构见该文件 `Draft` 类型：必填 `choices` / `profile` / `currency` / `assumptions` / `updatedAt`，**可选** `goalOverride`（M3 S4 · G4 方案 a，购物车一键成目标只带年成本）、`goal`（T0-3 · 2026-10-09 拍板方案 A 进契约：目标口径切换为净资产目标 `{ kind: 'net-worth', value }`，value 为录入/展示币种；存在时 `project` / `gap` / `buildMilestones` 全部喂净资产目标，与 goalOverride 互不排斥——override 改「目标年成本来源」、goal 改「目标类型」）、`history`（M4 S1.6 · F6 本机版测算快照，`lib/progress.ts` 的 `Snapshot[]`）与 `savedPlans`（F9 本机版多剧本存档，`lib/plans.ts`，同名覆盖、上限 10、事件零 props——剧本名不出本机；剧本输入含 goal）。`schemaVersion` 维持 1：可选字段不加版本号，旧草稿天然兼容（缺字段 = 没有 override / 没有历史 / 没有净资产目标）。
 
 **`history` 的两条例外纪律**（与上面「不得绕过 draft.ts」配套）：
 1. `writeDraft` 对 `history`（与后来的 `savedPlans`）做**隐式保留**——调用方不显式传就等于不动它。原因：每个写方都是重建整个 `Draft` 字面量，逐条透传漏一处就把用户的历史抹干净，而且抹得很安静。要清历史请显式传 `history: []`。

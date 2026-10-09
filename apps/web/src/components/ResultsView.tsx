@@ -57,6 +57,18 @@ export default function ResultsView({
   const [view, setView] = useState<View>('loading');
   const [review, setReview] = useState<Review | null>(null);
 
+  // T0-3 · 目标口径切换（UI 层状态）。view.goal 是真相：外部写 draft（载入剧本等）
+  // 触发重算后，这里用 useEffect 同步回真实口径；「切到净资产」只是打开输入框，
+  // 用户填了合法数字才落盘，所以输入框显示值用 key 重建、不依赖 re-render。
+  const [goalMode, setGoalMode] = useState<'enough-line' | 'net-worth'>('enough-line');
+  const [goalKey, setGoalKey] = useState(0);
+  useEffect(() => {
+    // View 是 union（string | Results）：闭包里 TS 不做分支收窄，这里显式排除 string。
+    if (view !== 'loading' && view !== 'no-draft' && view.status === 'ok') {
+      setGoalMode(view.goal.kind === 'net-worth' ? 'net-worth' : 'enough-line');
+    }
+  }, [view]);
+
   useEffect(() => {
     let tracked = false;
 
@@ -148,33 +160,139 @@ export default function ResultsView({
 
       {view !== 'loading' && view !== 'no-draft' && view.status === 'ok' && (
         <>
-          {/* 核心数字：够用线 + 理想生活年成本 + 储蓄率 */}
-          <div className="mt-8 rounded-2xl border border-line bg-panel p-6">
-            <p className="text-xs text-muted">{t('result.enoughLine', locale)}</p>
-            <p className="mt-1 font-mono text-4xl font-semibold tabular-nums text-ink">
-              {money(view.enoughLine, view.currency)}
-              <span className="ml-2 align-middle text-sm font-normal text-muted">{view.currency}</span>
-            </p>
-            {view.goalFrom === 'sim-cart' && (
-              <p data-goal-source className="mt-3 inline-flex items-center rounded-full border border-accent bg-accent-soft px-3 py-1 text-xs text-ink">
-                {t('result.cartGoalTag', locale)}
-              </p>
-            )}
-            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="text-xs text-muted">{t('result.annualCost', locale)}</dt>
-                <dd className="mt-0.5 font-mono tabular-nums text-ink">
-                  {money(view.annualCostLocal, view.currency)}
-                </dd>
+          {/* 核心数字：目标（够用线或净资产，T0-3）+ 理想生活年成本 + 储蓄率 */}
+          {(() => {
+            const goalIsNetWorth = view.goal.kind === 'net-worth';
+            return (
+              <div className="mt-8 rounded-2xl border border-line bg-panel p-6">
+                <p className="text-xs text-muted">
+                  {t(goalIsNetWorth ? 'result.goalNetWorth' : 'result.enoughLine', locale)}
+                </p>
+                <p className="mt-1 font-mono text-4xl font-semibold tabular-nums text-ink">
+                  {money(goalIsNetWorth ? view.goal.value : view.enoughLine, view.currency)}
+                  <span className="ml-2 align-middle text-sm font-normal text-muted">{view.currency}</span>
+                </p>
+                {view.goalFrom === 'sim-cart' && (
+                  <p data-goal-source className="mt-3 inline-flex items-center rounded-full border border-accent bg-accent-soft px-3 py-1 text-xs text-ink">
+                    {t('result.cartGoalTag', locale)}
+                  </p>
+                )}
+                <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+                  {goalIsNetWorth && (
+                    <div>
+                      <dt className="text-xs text-muted">{t('result.enoughLine', locale)}</dt>
+                      <dd className="mt-0.5 font-mono tabular-nums text-ink">
+                        {money(view.enoughLine, view.currency)}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-xs text-muted">{t('result.annualCost', locale)}</dt>
+                    <dd className="mt-0.5 font-mono tabular-nums text-ink">
+                      {money(view.annualCostLocal, view.currency)}
+                    </dd>
+                  </div>
+                  {!goalIsNetWorth && (
+                    <div>
+                      <dt className="text-xs text-muted">{t('result.savingsRate', locale)}</dt>
+                      <dd className="mt-0.5 font-mono tabular-nums text-ink">
+                        {view.savingsRate === null ? '—' : pct(view.savingsRate)}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
               </div>
-              <div>
-                <dt className="text-xs text-muted">{t('result.savingsRate', locale)}</dt>
-                <dd className="mt-0.5 font-mono tabular-nums text-ink">
-                  {view.savingsRate === null ? '—' : pct(view.savingsRate)}
-                </dd>
+            );
+          })()}
+
+          {/* T0-3 · 目标口径切换：够用线 / 目标净资产。提交才写 draft（整页各岛重算）。 */}
+          {(() => {
+            const goalIsNetWorth = view.goal.kind === 'net-worth';
+            const switchGoalMode = (mode: 'enough-line' | 'net-worth') => {
+              if (mode === goalMode) return;
+              if (mode === 'enough-line') {
+                const draft = readDraft();
+                if (draft) writeDraft({ ...draft, goal: undefined });
+              }
+              setGoalMode(mode);
+              setGoalKey((k) => k + 1);
+            };
+            const commitGoal = (raw: string) => {
+              const draft = readDraft();
+              if (!draft) return;
+              const n = Number(String(raw).replace(/,/g, '').trim());
+              if (Number.isFinite(n) && n > 0) {
+                writeDraft({ ...draft, goal: { kind: 'net-worth', value: n } });
+              } else if (String(raw).trim() === '') {
+                // 清空 = 切回够用线（显式清除；writeDraft 不隐式保留 goal）。
+                writeDraft({ ...draft, goal: undefined });
+              }
+              // 非法非空输入不写；key 递增强制输入框重建回上次合法显示值。
+              setGoalKey((k) => k + 1);
+            };
+            const optionCls = (active: boolean) =>
+              [
+                'min-h-11 rounded-xl border px-3 py-2 text-sm transition-colors',
+                active
+                  ? 'border-accent bg-accent-soft text-ink'
+                  : 'border-line bg-canvas text-muted hover:border-line-strong',
+              ].join(' ');
+            return (
+              <div data-goal-mode className="mt-4 rounded-2xl border border-line bg-panel p-4">
+                <p className="text-xs font-medium uppercase tracking-widest text-muted">
+                  {t('result.goalModeH', locale)}
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-label={t('result.goalModeH', locale)}
+                  className="mt-2 flex flex-wrap gap-2"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!goalIsNetWorth}
+                    data-goal-mode-option="enough-line"
+                    className={optionCls(!goalIsNetWorth)}
+                    onClick={() => switchGoalMode('enough-line')}
+                  >
+                    {t('result.goalEnoughLine', locale)}
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={goalIsNetWorth}
+                    data-goal-mode-option="net-worth"
+                    className={optionCls(goalIsNetWorth)}
+                    onClick={() => switchGoalMode('net-worth')}
+                  >
+                    {t('result.goalNetWorth', locale)}
+                  </button>
+                </div>
+                {goalMode === 'net-worth' && (
+                  <label className="mt-3 block" data-goal-networth>
+                    <span className="text-xs text-muted">
+                      {format(t('result.goalNetWorthInput', locale), { currency: view.currency })}
+                    </span>
+                    <input
+                      key={`${view.currency}-${goalKey}`}
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      defaultValue={goalIsNetWorth ? String(view.goal.value) : ''}
+                      onBlur={(e) => commitGoal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                      }}
+                      className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 font-mono tabular-nums text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+                    />
+                  </label>
+                )}
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {t('result.goalNetWorthHint', locale)}
+                </p>
               </div>
-            </dl>
-          </div>
+            );
+          })()}
 
           {/* S3 换算条：把这份理想生活翻译成用户自己的时间单位（§2.1 纯除法，不含假设） */}
           <p
@@ -203,7 +321,14 @@ export default function ResultsView({
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   <Interpolated
                     template={t('result.reachableBody', locale)}
-                    vars={{ years: view.projection.years, rate: pct(view.projection.savingsRate) }}
+                    vars={{
+                      years: view.projection.years,
+                      rate: pct(view.projection.savingsRate),
+                      goalName: t(
+                        view.goal.kind === 'net-worth' ? 'result.goalNameNetWorth' : 'result.goalNameEnough',
+                        locale,
+                      ),
+                    }}
                   />
                 </p>
               </>
@@ -214,7 +339,14 @@ export default function ResultsView({
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   <Interpolated
                     template={t('result.unreachableBody', locale)}
-                    vars={{ cap: 60, rate: pct(view.projection.savingsRate) }}
+                    vars={{
+                      cap: 60,
+                      rate: pct(view.projection.savingsRate),
+                      goalName: t(
+                        view.goal.kind === 'net-worth' ? 'result.goalNameNetWorth' : 'result.goalNameEnough',
+                        locale,
+                      ),
+                    }}
                   />
                 </p>
               </>

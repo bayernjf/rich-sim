@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Assumptions, Catalog, FxSnapshot } from '@rich-sim/core';
 import type { Draft } from './draft';
-import { computeResults } from './results';
+import { computeResults, goalFor } from './results';
 
 const fx: FxSnapshot = {
   base: 'USD',
@@ -233,5 +233,63 @@ describe('goalOverride（M3 S4 · G4 方案 a）', () => {
     if (r.status !== 'ok') throw new Error('expected ok');
     expect(r.annualCostLocal).toBe(80_000);
     expect(r.goalFrom).toBeUndefined();
+  });
+});
+
+describe('goalFor（T0-3 · 目标口径切换）', () => {
+  it('无 goal 时是够用线，value = 年成本', () => {
+    expect(goalFor(makeDraft(), 80_000)).toEqual({ kind: 'enough-line', value: 80_000 });
+  });
+
+  it('合法净资产目标原样使用', () => {
+    expect(goalFor(makeDraft({ goal: { kind: 'net-worth', value: 1_000_000 } }), 80_000)).toEqual({
+      kind: 'net-worth',
+      value: 1_000_000,
+    });
+  });
+
+  it('非法 goal（NaN / 非正数）静默回退够用线', () => {
+    expect(goalFor(makeDraft({ goal: { kind: 'net-worth', value: NaN } }), 80_000).kind).toBe(
+      'enough-line',
+    );
+    expect(goalFor(makeDraft({ goal: { kind: 'net-worth', value: 0 } }), 80_000).kind).toBe(
+      'enough-line',
+    );
+    expect(goalFor(makeDraft({ goal: { kind: 'net-worth', value: -1 } }), 80_000).kind).toBe(
+      'enough-line',
+    );
+  });
+});
+
+describe('computeResults with goal（T0-3 · 净资产目标）', () => {
+  it('净资产目标下 projection/gap/milestones 全部按目标净资产算，够用线不变', () => {
+    // 手算：start=10万、年储=6万、r=4%、目标净资产=100万。
+    //   n = ln((1e6·0.04+6e4)/(1e5·0.04+6e4))/ln(1.04) = ln(100000/64000)/ln(1.04) ≈ 11.38
+    //   -> 首达整数年 = 12（够用线 200 万仍是 20 年，两者必须不同才说明口径真的切了）。
+    const r = computeResults(
+      makeDraft({ goal: { kind: 'net-worth', value: 1_000_000 } }),
+      catalogWith(80_000),
+    );
+    if (r.status !== 'ok') throw new Error('expected ok');
+    expect(r.goal).toEqual({ kind: 'net-worth', value: 1_000_000 });
+    expect(r.enoughLine).toBe(2_000_000); // 够用线语义不变
+    expect(r.projection.status).toBe('reachable');
+    if (r.projection.status === 'reachable') expect(r.projection.years).toBe(12);
+    expect(r.gapResult.yearsAtCurrentPace).toBe(12);
+    expect(r.annualCostLocal).toBe(80_000); // 年成本不受目标口径影响
+  });
+
+  it('净资产目标与购物车 override 可共存：年成本来自 override，目标类型来自 goal', () => {
+    const r = computeResults(
+      makeDraft({
+        goalOverride: { annualCost: 1_000_000, from: 'sim-cart' },
+        goal: { kind: 'net-worth', value: 5_000_000 },
+      }),
+      catalogWith(80_000),
+    );
+    if (r.status !== 'ok') throw new Error('expected ok');
+    expect(r.goalFrom).toBe('sim-cart');
+    expect(r.goal).toEqual({ kind: 'net-worth', value: 5_000_000 });
+    expect(r.annualCostLocal).toBe(1_000_000);
   });
 });

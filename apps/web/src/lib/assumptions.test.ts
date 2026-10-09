@@ -14,6 +14,7 @@ import type { Assumptions, Catalog, FxSnapshot } from '@rich-sim/core';
 import {
   applyRate,
   DEFAULT_RATES,
+  formatFxLine,
   formatRate,
   isDefaultRates,
   parseRatePercent,
@@ -206,5 +207,26 @@ describe('patchAssumptionDisplay', () => {
   it('节点不存在（别的页面没有这张清单）与 doc 缺失（SSR / node）都不抛错', () => {
     expect(() => patchAssumptionDisplay(assumptions(), fakeDoc({}))).not.toThrow();
     expect(() => patchAssumptionDisplay(assumptions(), null)).not.toThrow();
+  });
+
+  it('把汇率行改成真正在用的快照（zh / en 两条句子各一次）', () => {
+    const zh = fakeDoc({ '[data-assumption="fx"]': 'old' });
+    patchAssumptionDisplay(assumptions(), zh, 'zh');
+    expect(zh.nodes.get('[data-assumption="fx"]')?.textContent).toBe(
+      '汇率：按 1 USD = 7.12 CNY、0.92 EUR 折算；来源 static-snapshot，日期 2026-10-03。',
+    );
+
+    const en = fakeDoc({ '[data-assumption="fx"]': 'old' });
+    patchAssumptionDisplay(assumptions(), en, 'en');
+    expect(en.nodes.get('[data-assumption="fx"]')?.textContent).toBe(
+      'FX: 1 USD = 7.12 CNY and 0.92 EUR. Source static-snapshot, dated 2026-10-03.',
+    );
+  });
+
+  it('汇率行缺币种显示 —，不印 NaN（与 SSR 同一口径）', () => {
+    const noCny = assumptions({
+      fx: { ...fx, rates: { ...fx.rates, CNY: Number.NaN } },
+    });
+    expect(formatFxLine(noCny, 'zh')).toContain('= — CNY');
   });
 });

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ContinueDraft from '../components/ContinueDraft.tsx';
 import ClaimMillion from '../components/ClaimMillion';
+import LocaleSwitcher from '../components/LocaleSwitcher';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { DEFAULT_ASSUMPTIONS } from '../lib/defaults';
 import { SIM_CAPITAL_TIERS, claimBillRows } from '../lib/sim-content';
@@ -20,6 +21,9 @@ const claimRows = claimEnabled
 
 <BaseLayout title={t('home.metaTitle', locale)} locale={locale}>
   <main id="main" class="mx-auto max-w-3xl px-4 py-16">
+    <div class="mb-4 flex items-center justify-end gap-2">
+      <LocaleSwitcher client:load locale={locale} />
+    </div>
     <p class="text-xs font-medium uppercase tracking-widest text-accent">{t('home.eyebrow', locale)}</p>
     <h1 class="mt-3 text-3xl font-semibold tracking-tight">{t('home.h1', locale)}</h1>
     <p class="mt-3 text-base leading-relaxed text-muted">

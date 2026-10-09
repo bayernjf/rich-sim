@@ -66,6 +66,15 @@ describe('savePlan', () => {
     if (!plain.ok) throw new Error('unreachable');
     expect('goalOverride' in plain.plan).toBe(false);
   });
+
+  it('keeps goal（T0-3 净资产目标）only when the draft has one', () => {
+    const withGoal = savePlan(makeDraft({ goal: { kind: 'net-worth', value: 2_000_000 } }), '净资产版');
+    if (!withGoal.ok) throw new Error('unreachable');
+    expect(withGoal.plan.goal).toEqual({ kind: 'net-worth', value: 2_000_000 });
+    const plain = savePlan(makeDraft(), '普通版');
+    if (!plain.ok) throw new Error('unreachable');
+    expect('goal' in plain.plan).toBe(false);
+  });
 });
 
 describe('applyPlan', () => {
@@ -98,6 +107,18 @@ describe('applyPlan', () => {
     const withOverride = { ...saved.draft, goalOverride: { annualCost: 1, from: 'sim-cart' as const } };
     const loaded = applyPlan(withOverride, saved.plan.id);
     expect(loaded?.goalOverride).toBeUndefined();
+  });
+
+  it('restores a saved net-worth goal and clears a live one when absent（T0-3）', () => {
+    const saved = savePlan(makeDraft({ goal: { kind: 'net-worth', value: 3_000_000 } }), '净资产版');
+    if (!saved.ok) throw new Error('unreachable');
+    const loaded = applyPlan({ ...saved.draft, goal: { kind: 'net-worth', value: 999 } }, saved.plan.id);
+    expect(loaded?.goal).toEqual({ kind: 'net-worth', value: 3_000_000 });
+
+    const plain = savePlan(makeDraft(), '普通版');
+    if (!plain.ok) throw new Error('unreachable');
+    const live = { ...plain.draft, goal: { kind: 'net-worth' as const, value: 9_999 } };
+    expect(applyPlan(live, plain.plan.id)?.goal).toBeUndefined();
   });
 
   it('returns null for an unknown id', () => {
