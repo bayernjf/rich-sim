@@ -275,6 +275,38 @@ const ZH = {
   'sim.privLead':
     '被世界优待的感觉也有价签。私密剧情，不做社交展示；金额来自带来源的目录项：',
   'sim.privCost': '代价点：应酬排满日程、隐私消失——这两件没有价签，但每年都有。',
+  'sim.opH': '操作通道：加杠杆 / 收购谈判',
+  'sim.opLead':
+    '决策模拟的爽是掌控感，代价是现金流。以下倍数与利率是教学示意参数，不是任何机构的真实条款，也不是建议：',
+  'sim.opLeverageH': '加杠杆',
+  'sim.opLeverageBody':
+    '借 {borrow}（= 可支配现金流 × 2），年息 {interest}（5% 示意）——新的下一年账单 {total}，负担率 {rate}。',
+  'sim.opLeverageBreak': '临界点：杠杆超过 {m}×，利息就吃光现金流。',
+  'sim.opLeverageBroke': '当前现金流已断裂：没有余量可加杠杆。',
+  'sim.opAcqH': '收购谈判',
+  'sim.opAcqBody':
+    '标的年营收 {revenue}（示意按卡片收入），估值 {valuation}（× 6）。全杠杆收购的年息 {interest}——新账单 {total}，负担率 {rate}。',
+  'sim.opAcqBreak': '谈判底价：估值砍到 {m}× 年营收以内，这笔收购才不会把现金流吃断。',
+  'sim.opAcqBroke': '当前现金流已断裂：收购免谈。',
+  'sim.opNote': '模拟决策的算术教具：倍数、利率均为示意假设；不构成任何投资、借贷或收购建议。',
+  'sim.plotH': '剧情通道：三张随机事件卡',
+  'sim.plotLead':
+    '人生剧情不是只有顺利。以下事件「若发生」会怎样——参数为教学示意，不是预测：',
+  'sim.plot.lawsuitH': '诉讼',
+  'sim.plot.lawsuitBody': '一次性和解金 = 0.5 × 年现金流：现金被一次性掏空一半，当年负担率跳到 {rate}。',
+  'sim.plot.crisisH': '市场危机',
+  'sim.plot.crisisBody': '股权收入缩水 30%：现金流剩 {cashflow}，负担率 {rate}——账还付得出吗？',
+  'sim.plot.splitH': '家庭分产',
+  'sim.plot.splitBody': '可支配现金流永久减半：负担率翻倍到 {rate}——持有成本不会跟着分产减半。',
+  'sim.plotBroke': '现金流为负：这一年只能变卖资产（折价 75%）或增加收入。',
+  'sim.fxH': '汇率时间机',
+  'sim.fxLead':
+    '跨币种的资产，汇率每年都在悄悄改写它的价值。选一个历史日期，看同一笔钱当时值多少、今天值多少：',
+  'sim.fxPick': '选择历史日期：',
+  'sim.fxLoading': '读取中…',
+  'sim.fxError': '该日期汇率读取失败，请换一个日期。',
+  'sim.fxResult': '{date}：{cny} ≈ {value} · 与今日比 {delta}',
+  'sim.fxNote': '历史汇率来自 Frankfurter（ECB 参考汇率），仅供教育展示，不构成汇率建议。',
   'invest.title': '把起始金放进资产类别',
   'invest.intro':
     '把这笔虚拟起始金分配到五个资产类别，自己填每个类别的年收益率假设，看它按你的假设滚 1 / 5 / 10 年。只有资产类别，没有任何具体标的；收益率是你的假设，不是承诺。',
@@ -666,6 +698,39 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.privLead':
     'Being treated specially by the world has a price tag too. A private scene, not social display; amounts come from sourced catalog items:',
   'sim.privCost': 'The hidden costs: a calendar full of obligations and no privacy - no price tag, but billed every year.',
+  'sim.opH': 'The operator channel: leverage / an acquisition',
+  'sim.opLead':
+    'The fun of decision-making is control; the cost is cashflow. The multiples and the rate below are teaching illustrations, not any institution’s real terms - and not advice:',
+  'sim.opLeverageH': 'Add leverage',
+  'sim.opLeverageBody':
+    'Borrow {borrow} (= disposable cashflow × 2) at {interest} a year (5%, illustrative) - your next yearly bill becomes {total} with a burden rate of {rate}.',
+  'sim.opLeverageBreak': 'The breaking point: past {m}× leverage, interest eats the cashflow.',
+  'sim.opLeverageBroke': 'Cashflow is already broken: there is no headroom for leverage.',
+  'sim.opAcqH': 'Acquisition talks',
+  'sim.opAcqBody':
+    'The target earns {revenue} a year (illustrative, per the card) and is valued at {valuation} (× 6). A fully-leveraged buyout costs {interest} in annual interest - the new bill is {total}, burden rate {rate}.',
+  'sim.opAcqBreak': 'The negotiation floor: below {m}× revenue the deal stops eating your cashflow.',
+  'sim.opAcqBroke': 'Cashflow is already broken: no acquisition talks.',
+  'sim.opNote':
+    'Arithmetic teaching about simulated decisions: the multiples and rate are illustrative assumptions; this is not investment, lending or M&A advice.',
+  'sim.plotH': 'The story channel: three random-event cards',
+  'sim.plotLead':
+    'A life is not all smooth sailing. What happens if these events land? The parameters are teaching illustrations, not predictions:',
+  'sim.plot.lawsuitH': 'Lawsuit',
+  'sim.plot.lawsuitBody': 'A one-off settlement = 0.5 × yearly cashflow: half the cash is gone in one hit, and the burden rate jumps to {rate} that year.',
+  'sim.plot.crisisH': 'Market crisis',
+  'sim.plot.crisisBody': 'Equity income shrinks 30%: cashflow falls to {cashflow} and the burden rate becomes {rate} - can the bills still be paid?',
+  'sim.plot.splitH': 'Family split',
+  'sim.plot.splitBody': 'Disposable cashflow halves for good: the burden rate doubles to {rate} - holding costs do not halve with the split.',
+  'sim.plotBroke': 'Negative cashflow: that year assets must be sold (at 75%) or income raised.',
+  'sim.fxH': 'The exchange-rate time machine',
+  'sim.fxLead':
+    'For cross-currency assets, the exchange rate quietly rewrites their value every year. Pick a historical date and see what the same money was worth then and today:',
+  'sim.fxPick': 'Pick a historical date:',
+  'sim.fxLoading': 'Loading…',
+  'sim.fxError': 'Could not load that date’s rates. Try another date.',
+  'sim.fxResult': '{date}: {cny} ≈ {value} · vs today {delta}',
+  'sim.fxNote': 'Historical rates come from Frankfurter (ECB reference rates) and are for education only - not exchange-rate advice.',
   'invest.title': 'Allocate your starting capital',
   'invest.intro':
     'Split this virtual capital across five asset classes, enter your own annual return assumption for each, and watch it compound over 1 / 5 / 10 years on your assumptions. Asset classes only - no tickers, no products. The returns are your assumptions, not promises.',
