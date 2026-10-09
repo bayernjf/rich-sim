@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-10 现测：`docs/` 下 18 份、表内 18 行（gameplay-inventory.md 2026-10-10 入表，计数 17 → 18）
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-10 现测：`docs/` 下 19 份、表内 19 行（showcase-pitch.md 2026-10-10 入表，计数 18 → 19）
 - **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——2026-10-10 现测：`git rev-list --count origin/dev..dev` = **3**（T0/T1 三笔本地未推），`git rev-list --count origin/main..origin/dev` = **0**（dev 内容已全部合并进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -36,6 +36,7 @@
 | `docs/sim-shopping-mall.md` | 富豪商城设计 v1（2026-10-09）：清单式购物区升级为购物网站形态——商品卡片流 + 分类 tab + 购物车抽屉 + 「结算=账单日」反转；算术层零改动 | **S1–S3 已上线（2026-10-09）**：MallArea 替换旧 ShoppingArea（已删）、`mall:checkout` 埋点、copy-guard 增促销禁语闸门。**商城扩展三件同日上线（§8 已勾销）**：商品详情卡（`optionCostComponents` 拆项 + 75% 回笼/无一残值口径）、「逛而不买」收藏夹（sim 账本可选 `favorites`，永不进账单，`mall:favorite`/`mall:unfavorite` 零 props）、抽屉内年度账单 SVG 环形图（`cartKindCosts` 三桶 + 基线，单测钉三桶之和 = 新增总额）；账单日参数 2/4（`BILLS_PER_PAGE` / `RESALE_RECOVERY_RATE` / `resaleRecovery`）已参数化进 core，web 不再持有副本；冒烟步骤 8.6 新增 14 条、**170 条 FAILS 0**。§8 仅剩拟物衣柜（等衣物条目来源 + OPENAI_API_KEY）与 AI 商品插画（等 key） |
 | `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；S3（SIM 账同步 + 登出语义）同日完成，M5 三片代码齐；已随 PR #54 合并 main 上线（Supabase Pages 变量已配）；G3 隐私政策页已实现（/privacy 双语 SSR + 页脚入口，文案待发起人过目）；登录方式 2026-10-09 翻转为邮箱+密码（Confirm email 已关，注册即登录）；**真人联调已闭环（2026-10-09 凌晨）**：生产注册成功即登录、改存款 2s 防抖上行、`plans` 表 plan/sim 两行核对一致（payload 存款数字与页面输入逐位相符、时间戳吻合）——M5 端到端全通 |
 | `docs/gameplay-inventory.md` | 玩法清单（2026-10-10 新建，G1）：26 个玩法条目按新手引导路径重排（玩一把富豪 → 对照你自己 → 养账本 → 系统层），含计数口径、维护纪律、红线自查 | **唯一事实源 = 玩法说明页 `/app/guide`**（同批上线，SSR 双语 + `guide:view` 零 props 埋点，落地页与 sim 页入口；玩法增删改须三处同步：本文档 + guide.astro STEPS + messages.ts `guide.*` 键） |
+| `docs/showcase-pitch.md` | 发布素材包（2026-10-10 新建，G2 配套）：通用英文主帖 + Product Hunt 版 + 中文社区版 + 发布检查清单与备选标题；配图 `public/og-cover.png`（OG meta 已全站生效） | 就绪可用；渠道节奏与「付费墙待定」口径见文档本身 |
 | `docs/m4-task-breakdown.md` | M4 实施分解：F7 多情景推演 + F8 深度报告导出，含 G1–G6 六个闸门（报告生成位置 / 导出格式 / 付费墙 / 支付渠道 / 是否动冻结契约 / 报告挂载位） | **S1（F7）随 PR #43、S1.5 随 PR #44、S1.6（F6 本机版测算历史）、S1.7（本金口径）均已上线**（2026-10-08）。**S2（F8 报告 + 打印导出）已随 PR #47–#49 合并 main**：纯前端报告、`@media print` 样式与打印入口。**假付费信号已随 PR #51 上线**：报告页两个不收款选项（`paywall:intent:*`，props 只带档位），先攒 PRD §11.2 的付费意愿读数。**只剩 S4（付费墙 + 支付）**——M4 里唯一需要服务端的一片，等 G3 / G4 基于意愿读数拍板。现值（270 单测 / check 0 hint / 冒烟 127·121）统一写在 m4 分解顶部 |
 
 ## 已做的决策
