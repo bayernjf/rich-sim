@@ -1769,6 +1769,19 @@ try {
     `count=${countEvent(evGuide, 'guide:view')}`,
   );
 
+  // ── 步骤 13：分享门面（G2 · OG/Twitter meta + 分享图可达）──
+  const ogHref = await page.evaluate(() =>
+    document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '',
+  );
+  check(ogHref.includes('/og-cover.png'), '分享门面：og:image meta 指向分享图', ogHref);
+  const ogFetch = await fetch(`${BASE}/og-cover.png`);
+  const ogBody = ogFetch.ok ? await ogFetch.text() : '';
+  check(
+    ogFetch.ok && ogBody.length > 10_000,
+    '分享门面：og-cover.png 静态可达且非空',
+    `status=${ogFetch.status} bytes=${ogBody.length}`,
+  );
+
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {

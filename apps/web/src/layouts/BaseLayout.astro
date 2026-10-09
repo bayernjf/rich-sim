@@ -39,6 +39,18 @@ const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site).href :
     <meta name="description" content={description} />
     {canonicalURL && <link rel="canonical" href={canonicalURL} />}
 
+    <!-- 分享门面（G2 · 2026-10-10）：OG + Twitter Card，图片 = public/og-cover.png -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="rich-sim · 财富模拟" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonicalURL && <meta property="og:url" content={canonicalURL} />}
+    {Astro.site && <meta property="og:image" content={new URL('/og-cover.png', Astro.site).href} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {Astro.site && <meta name="twitter:image" content={new URL('/og-cover.png', Astro.site).href} />}
+
     <!-- PWA (B1) -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)" />
