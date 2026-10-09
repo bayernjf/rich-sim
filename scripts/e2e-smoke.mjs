@@ -1732,6 +1732,43 @@ try {
     `count=${countEvent(evProbe, 'paywall:intent:report')}`,
   );
 
+  // ── 步骤 12：玩法说明页（G1 · /app/guide）——新手路径四步 + 26 条目 + 双语 + 埋点 ──
+  await page.goto(`${BASE}/app/guide?smoke=1`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-guide-h1]');
+  check(
+    (await page.locator('[data-guide-step]').count()) === 4,
+    '玩法说明：四个新手路径分组',
+    '',
+  );
+  check(
+    (await page.locator('[data-guide-item]').count()) === 26,
+    '玩法说明：26 个玩法条目齐全',
+    '',
+  );
+  const guideZh = await page.locator('[data-guide-h1]').innerText();
+  check(guideZh.includes('玩法说明'), '玩法说明：中文态标题正确', guideZh);
+  const guideItems = await page.locator('[data-guide-item]').allInnerTexts();
+  check(
+    guideItems.some((s) => s.includes('加杠杆')) &&
+      guideItems.some((s) => s.includes('汇率时间机')) &&
+      guideItems.some((s) => s.includes('一键成目标')),
+    '玩法说明：包含本批新增玩法与桥接玩法',
+    '',
+  );
+
+  // 双语：?lang=en 重开 → 标题与条目切换为英文。
+  await page.goto(`${BASE}/app/guide?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-guide-h1]');
+  const guideEn = await page.locator('[data-guide-h1]').innerText();
+  check(guideEn.includes('How to play'), '玩法说明：英文态标题正确', guideEn);
+
+  const evGuide = await eventsSoFar();
+  check(
+    countEvent(evGuide, 'guide:view') >= 1,
+    '埋点：guide:view 已入队',
+    `count=${countEvent(evGuide, 'guide:view')}`,
+  );
+
 } catch (err) {
   check(false, '脚本未异常中断', err.message);
 } finally {
