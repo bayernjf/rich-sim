@@ -750,3 +750,59 @@ export function plotEvents(
     build('split', (annualIncome - lastYearCost) * (1 - PLOT_SPLIT_CASHFLOW_CUT)),
   ];
 }
+
+/* ── C-2 家族传承剧本（2026-10-10，设计稿 simulation-gameplay §4.5 实现）── */
+
+/**
+ * 教学示意参数（**示意**，非任何真实人物/家族；每个数字都有可查证来源）：
+ * - `taxableAssets` $100M：示意应税资产组合（设计稿 §4.5 定，非目录项、纯教学假设）。
+ * - `exemption` $15M：2026 起联邦遗产/赠与税基本免税额（IRS：2025 为 $13.99M，
+ *   One Big Beautiful Bill 后 2026 起 $15M、随通胀指数化）。
+ * - `rate` 40%：超过免税额部分最高税率（Cornell LII 概述）。
+ */
+export const LEGACY_ASSUMPTIONS = {
+  taxableAssets: 100_000_000,
+  exemption: 15_000_000,
+  rate: 0.4,
+} as const;
+
+export type LegacyBranchId = 'direct' | 'trust' | 'charity';
+
+export type LegacyBranch = {
+  id: LegacyBranchId;
+  /** 一次性税单：直接继承 = 超过免税额部分 × 税率；信托 / 慈善示意为零。 */
+  taxBill: number;
+  /** 按当前可支配现金流付清税单所需年数；无税单或现金流非正为 null。 */
+  paybackYears: number | null;
+};
+
+/**
+ * 家族传承三分支的税单算术：纯函数、不产 NaN；非法输入逐项回落
+ * （税单 0、年限 null），与全产品「非法输入不产 NaN」红线一致。
+ */
+export function legacyPlan(
+  assets: number,
+  exemption: number,
+  rate: number,
+  cashflow: number,
+): LegacyBranch[] {
+  if (
+    !Number.isFinite(assets) ||
+    !Number.isFinite(exemption) ||
+    !Number.isFinite(rate) ||
+    !Number.isFinite(cashflow)
+  ) {
+    return [
+      { id: 'direct', taxBill: 0, paybackYears: null },
+      { id: 'trust', taxBill: 0, paybackYears: null },
+      { id: 'charity', taxBill: 0, paybackYears: null },
+    ];
+  }
+  const directTax = Math.max(0, Math.max(0, assets - exemption) * rate);
+  const payback = directTax > 0 && cashflow > 0 ? directTax / cashflow : null;
+  return [
+    { id: 'direct', taxBill: directTax, paybackYears: payback },
+    { id: 'trust', taxBill: 0, paybackYears: null },
+    { id: 'charity', taxBill: 0, paybackYears: null },
+  ];
+}

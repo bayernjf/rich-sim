@@ -311,6 +311,23 @@ const ZH = {
   'sim.plot.splitH': '家庭分产',
   'sim.plot.splitBody': '可支配现金流永久减半：负担率翻倍到 {rate}——持有成本不会跟着分产减半。',
   'sim.plotBroke': '现金流为负：这一年只能变卖资产（折价 75%）或增加收入。',
+  'sim.plotDrawn': '本次抽中：黑天鹅不可预测，三张里这次先落在这张。',
+  'sim.legacyH': '家族传承剧本',
+  'sim.legacyLead':
+    '卡 B 专属：这笔财富是家族信托暂时代管的，不是你的。三种传承结构，看每种的税单与代价——参数为教学示意，不是任何机构的条款（来源见下）。',
+  'sim.legacy.directH': 'A · 直接继承（无结构）',
+  'sim.legacy.directBody':
+    '资产转个人名下：超过免税额 {exemption} 的部分按 40% 课税（示意），一次性税单 {tax}。',
+  'sim.legacy.trustH': 'B · 家族信托延续',
+  'sim.legacy.trustBody':
+    '资产留在信托：免税额内不触发遗产税，税单为零；但钱在信托里 ≠ 你能花的钱——控制权保留、流动性受约束。',
+  'sim.legacy.charityH': 'C · 慈善基金会',
+  'sim.legacy.charityBody':
+    '捐出部分资产：税单最小 / 零（示意），但资产不再属于家族——免税与名望的代价是控制权与流动性永久让渡。',
+  'sim.legacyTax': '一次性税单 {tax}（示意）',
+  'sim.legacyYears': '≈ {years} 年可支配现金流付清',
+  'sim.legacyDisclaimer':
+    '传承结构为教学示意，不是税务 / 法律建议；免税额与税率以 IRS 当年公布为准（2026 起 $15M / 人，最高 40%）。',
   'sim.fxH': '汇率时间机',
   'sim.fxLead':
     '跨币种的资产，汇率每年都在悄悄改写它的价值。选一个历史日期，看同一笔钱当时值多少、今天值多少：',
@@ -817,6 +834,23 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.plot.splitH': 'Family split',
   'sim.plot.splitBody': 'Disposable cashflow halves for good: the burden rate doubles to {rate} - holding costs do not halve with the split.',
   'sim.plotBroke': 'Negative cashflow: that year assets must be sold (at 75%) or income raised.',
+  'sim.plotDrawn': 'Drawn this visit: black swans are unpredictable - of the three, this one lands first this time.',
+  'sim.legacyH': 'Family legacy script',
+  'sim.legacyLead':
+    'Card B only: this wealth is held in a family trust on your behalf - it is not really yours. Three succession structures, and the tax bill and cost of each. Parameters are teaching illustrations, not any institution’s terms (sources below).',
+  'sim.legacy.directH': 'A · Direct inheritance (no structure)',
+  'sim.legacy.directBody':
+    'Assets pass to your name: the part above the {exemption} exclusion is taxed at 40% (illustrative) - a one-off bill of {tax}.',
+  'sim.legacy.trustH': 'B · Keep the family trust',
+  'sim.legacy.trustBody':
+    'Assets stay in trust: within the exclusion, no estate tax is triggered and the bill is zero; but money in trust ≠ money you can spend - control stays, liquidity is constrained.',
+  'sim.legacy.charityH': 'C · A charitable foundation',
+  'sim.legacy.charityBody':
+    'Donate part of the assets: the bill is minimal / zero (illustrative), but the assets are no longer the family’s - the price of tax relief and renown is permanently giving up control and liquidity.',
+  'sim.legacyTax': 'One-off tax bill {tax} (illustrative)',
+  'sim.legacyYears': '≈ {years} years of disposable cashflow to pay it off',
+  'sim.legacyDisclaimer':
+    'Succession structures are teaching illustrations, not tax / legal advice; the exclusion and rate follow the IRS figures in effect that year (from 2026: $15M / person, up to 40%).',
   'sim.fxH': 'The exchange-rate time machine',
   'sim.fxLead':
     'For cross-currency assets, the exchange rate quietly rewrites their value every year. Pick a historical date and see what the same money was worth then and today:',

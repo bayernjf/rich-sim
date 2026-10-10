@@ -1294,6 +1294,25 @@ try {
     '卡 B：切换器存在且当前卡高亮',
     '',
   );
+  // C-2（2026-10-10）：家族传承剧本（卡 B 专属）——三分支税单对比，带来源与免责。
+  const legacySection = page.locator('[data-sim-legacy]');
+  check((await legacySection.count()) === 1, '卡 B：家族传承剧本章节存在', '');
+  const legacyText = await legacySection.innerText();
+  check(
+    legacyText.includes('$34,000,000') &&
+      legacyText.includes('Source (IRS exclusion)') &&
+      legacyText.includes('Source (40% top rate)') &&
+      legacyText.includes('不是税务 / 法律建议'),
+    '家族传承剧本：直接继承税单 $34M（(100M−15M)×40% 手算核对）+ IRS/LII 来源 + 免责声明',
+    legacyText.replace(/\n/g, ' ').slice(0, 160),
+  );
+  // 卡 A 不该出现传承章节（专属卡 B）。
+  await page.goto(`${BASE}/app/sim?card=card-a&lang=zh`, { waitUntil: 'networkidle' });
+  check(
+    (await page.locator('[data-sim-legacy]').count()) === 0,
+    '卡 A：无家族传承章节（专属卡 B）',
+    '',
+  );
   check(!cardBText.includes('加一艘超级游艇'), '卡 B：无游艇断裂开关（老钱刻意不持有）', '');
   // 切回卡 A：切换器链接生效
   await page.goto(`${BASE}/app/sim?lang=zh`, { waitUntil: 'networkidle' });
@@ -1634,6 +1653,9 @@ try {
     'T3 剧情通道：诉讼/分产负担率 157%、危机 168% 且现金流 783k',
     plotText.replace(/\n/g, ' ').slice(0, 140),
   );
+  // C-3（2026-10-10）：三张全渲染 + 恰好一张「本次抽中」（data-drawn 高亮）。
+  const drawnCount = await page.locator('[data-sim-plot] [data-drawn]').count();
+  check(drawnCount === 1, 'T3 剧情通道（C-3 随机）：恰好一张卡标记本次抽中', `drawn=${drawnCount}`);
 
   // ③ 汇率时间机：SSR 有 section + 预设按钮；点 2025-10-09 → 结果文本出现 + 埋点。
   check(
