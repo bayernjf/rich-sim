@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import Interpolated from './Interpolated';
 import { formatRunway, runwayMonths } from '../lib/sim-content';
-import { readSimState } from '../lib/sim-draft';
+import { SIM_UPDATED_EVENT, readSimState } from '../lib/sim-draft';
 import { format, t } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 
@@ -40,8 +40,15 @@ export default function ClaimRunway({
   const [capital, setCapital] = useState<number | null>(initialCapital);
 
   useEffect(() => {
-    const sim = readSimState();
-    if (sim) setCapital(sim.startingCapital);
+    // 分子 = 起始金 + 二手变卖累计回笼（sim-resale-market §3）。同页的商城
+    // 卖出后账本更新，靠 SIM_UPDATED_EVENT 即时重读。
+    const refresh = () => {
+      const sim = readSimState();
+      if (sim) setCapital(sim.startingCapital + (sim.resaleProceeds ?? 0));
+    };
+    refresh();
+    window.addEventListener(SIM_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(SIM_UPDATED_EVENT, refresh);
   }, []);
 
   const months = capital === null ? null : runwayMonths(capital, annualCost);

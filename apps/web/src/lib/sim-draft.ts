@@ -14,6 +14,10 @@
  * 商城扩展起再多一个可选 `favorites`：收藏夹（「逛而不买」），与购物车同形状，
  * 但**永不参与**年成本 / 账单 / 一键成目标——它只表达「感兴趣但没买」。
  * 旧状态没有它，按空收藏处理，`schemaVersion` 同样维持 1。
+ *
+ * 二手变卖（`sim-resale-market.md`）起再多一个可选 `resaleProceeds`：累计卖出
+ * 回笼现金（USD），只留在 SIM 账本，不过 SIM→REAL 单向桥。旧状态没有它，
+ * 按 0 处理，`schemaVersion` 仍维持 1。
  */
 export const SIM_KEY = 'rich-sim:sim:v1';
 
@@ -47,6 +51,12 @@ export type SimState = {
    */
   favorites?: CartItem[];
   /**
+   * 二手变卖累计回笼现金（USD，可选）：卖出 = 年成本 × 75%（core 冻结的
+   * 教学示意口径），只进 SIM 的「够撑多久」分子，永远不过桥进 REAL。
+   * 旧状态没有它，按 0 处理。
+   */
+  resaleProceeds?: number;
+  /**
    * P3 投资线 · 起始金的资产类别配置（可选）。旧状态没有它，按「全部现金」处理；
    * 收益率一律用户自填（缺失 = 该类别按 0% 推演），不存任何标的或策略。
    */
@@ -76,6 +86,7 @@ export function readSimState(): SimState | null {
         cart: sanitizeCart(parsed.cart),
         favorites: sanitizeCart(parsed.favorites),
         invest: sanitizeAllocation(parsed.invest),
+        resaleProceeds: sanitizeProceeds(parsed.resaleProceeds),
       };
     }
     return null;
@@ -156,6 +167,47 @@ export function saveCartItem(cart: CartItem[], item: CartItem, add: boolean): Ca
 /** 读出当前购物车（无草稿/坏数据统一为空车）。 */
 export function readCart(): CartItem[] {
   return sanitizeCart(readSimState()?.cart);
+}
+
+/** 累计回笼只收非负有限数，其余一律收敛为 0。 */
+function sanitizeProceeds(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/** 读出累计二手变卖回笼（无草稿 / 坏数据统一为 0）。 */
+export function readResaleProceeds(): number {
+  return sanitizeProceeds(readSimState()?.resaleProceeds);
+}
+
+/**
+ * 二手变卖（sim-resale-market §3/§4）：幂等移出车项 + 回笼金额累加进 sim
+ * 账本，一次写盘。返回最新车与最新累计回笼。与购物车同一纪律：UI 持有
+ * 事实源；没领过起始金就没有现金池可挂，此时回笼是纯内存会话态（返回 0）。
+ */
+export function sellCartItem(
+  cart: CartItem[],
+  item: CartItem,
+  recovery: number,
+): { cart: CartItem[]; resaleProceeds: number } {
+  const nextCart = removeCartItem(sanitizeCart(cart), item);
+  const gain = Number.isFinite(recovery) && recovery > 0 ? Math.round(recovery) : 0;
+  let resaleProceeds = 0;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const state = readSimState();
+      if (state) {
+        resaleProceeds = readResaleProceeds() + gain;
+        localStorage.setItem(
+          SIM_KEY,
+          JSON.stringify({ ...state, cart: nextCart, resaleProceeds, updatedAt: new Date().toISOString() }),
+        );
+        notifySimUpdated();
+      }
+    }
+  } catch {
+    // 与购物车一致：本机记账失败不阻断页面交互。
+  }
+  return { cart: nextCart, resaleProceeds };
 }
 
 /* ── 收藏夹（商城扩展 ·「逛而不买」）──
