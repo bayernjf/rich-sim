@@ -29,12 +29,20 @@ const claimRows = claimEnabled
     <p class="mt-3 text-base leading-relaxed text-muted">
       {t('home.sub', locale)}
     </p>
-    <a
-      href="/app/designer"
-      class="mt-8 inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
-    >
-      {t('home.cta', locale)}
-    </a>
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a
+        href="/app/sim"
+        class="inline-flex min-h-11 items-center rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent"
+      >
+        {t('home.ctaPlay', locale)}
+      </a>
+      <a
+        href="/app/designer"
+        class="inline-flex min-h-11 items-center rounded-full border border-line bg-panel px-5 py-3 text-sm font-semibold text-ink"
+      >
+        {t('home.ctaReal', locale)}
+      </a>
+    </div>
     <div class="mt-4">
       <a
         href="/app/guide"

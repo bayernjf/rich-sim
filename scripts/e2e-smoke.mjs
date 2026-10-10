@@ -249,6 +249,27 @@ try {
     );
   }
 
+  // ── 步骤 0.6：UX 优化（G3 · 入口错位修正：模拟做钩子）──
+  await page.goto(`${BASE}/?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  const homeCtas = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('main a[href^="/app/"]')).map((a) => ({
+      href: a.getAttribute('href'),
+      text: (a.textContent ?? '').trim(),
+    })),
+  );
+  const playCta = homeCtas.find((c) => c.href === '/app/sim');
+  const realCta = homeCtas.find((c) => c.href === '/app/designer');
+  check(
+    Boolean(playCta && playCta.text.includes('Play rich first')),
+    'UX：落地页主 CTA 指向模拟（先玩一把富豪 → /app/sim）',
+    playCta ? playCta.text : 'missing',
+  );
+  check(
+    Boolean(realCta && realCta.text.includes('Run the math')),
+    'UX：落地页次 CTA 指向现实测算（/app/designer）',
+    realCta ? realCta.text : 'missing',
+  );
+
   // 干净起点（localStorage.clear() 只清队列，不动 sessionStorage 里的冒烟标记）
   await page.goto(`${BASE}/app/designer?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
@@ -1474,6 +1495,20 @@ try {
   // ── 步骤 8.7：T3 通道（操作·加杠杆/收购谈判 + 剧情·随机事件 + 汇率时间机）──
   await page.goto(`${BASE}/app/sim?smoke=1`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-sim-op]', { timeout: 5000 });
+
+  // UX 优化（G3）：空态轻引导 + 负担率首次解释。
+  const startGuide = await page.locator('[data-sim-start-guide]').innerText();
+  check(
+    startGuide.includes('从哪里开始'),
+    'UX：sim 页「从哪里开始」空态引导可见',
+    startGuide.slice(0, 60),
+  );
+  const billExplain = await page.locator('[data-sim-bill-explain]').innerText();
+  check(
+    billExplain.includes('负担率 = 年账单 ÷ 现金流'),
+    'UX：账单日首次解释负担率公式',
+    billExplain.slice(0, 60),
+  );
 
   // ① 操作通道：基态（无游艇）下的加杠杆与收购算术。
   const opText = await page.locator('[data-sim-op]').innerText();
