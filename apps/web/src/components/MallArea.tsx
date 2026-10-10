@@ -40,6 +40,7 @@ import {
   saveFavoriteItem,
   sellCartItem,
 } from '../lib/sim-draft';
+import { wardrobeImage, wardrobePool, type WardrobeItem } from '../lib/sim-wardrobe';
 import { adoptCartAsGoal } from '../lib/sim-bridge';
 import { format, t, type MessageKey } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
@@ -47,7 +48,7 @@ import { track } from '../lib/analytics';
 
 type Props = { items: ShoppingItem[]; baselineAnnualCost: number; locale?: Locale };
 type Band = 'green' | 'yellow' | 'red';
-type Tab = 'all' | 'asset' | 'consumer' | 'experience' | 'favorites';
+type Tab = 'all' | 'asset' | 'consumer' | 'experience' | 'wardrobe' | 'favorites';
 type Kind = 'asset' | 'consumer' | 'experience';
 
 const statusBanner = (locale: Locale): Record<Band, { label: string; cls: string; note: string }> => ({
@@ -61,6 +62,7 @@ const TABS: { id: Tab; kind?: Kind; label: MessageKey }[] = [
   { id: 'asset', kind: 'asset', label: 'mall.tab.asset' },
   { id: 'consumer', kind: 'consumer', label: 'mall.tab.consumer' },
   { id: 'experience', kind: 'experience', label: 'mall.tab.experience' },
+  { id: 'wardrobe', label: 'mall.tab.wardrobe' },
   { id: 'favorites', label: 'mall.tab.favorites' },
 ];
 
@@ -91,6 +93,95 @@ function money(value: number): string {
 }
 function itemKey(item: CartItem): string {
   return `${item.dimension}/${item.optionId}`;
+}
+
+/**
+ * 拟物衣橱（sim-wardrobe §3）：木纹柜体 + 挂杆 + 衣架位，纯 CSS 质感。
+ * 衣物图按约定路径 /mall/wardrobe/<optionId>.webp 取，<img onError> 回退到
+ * 占位衣架——图还没生成时衣柜照常渲染，后补图零代码改动即展示。
+ */
+function WardrobeCloset({
+  wardrobe,
+  selected,
+  onToggle,
+  locale,
+}: {
+  wardrobe: WardrobeItem[];
+  selected: Set<string>;
+  onToggle: (item: ShoppingItem, add: boolean) => void;
+  locale: Locale;
+}) {
+  return (
+    <div
+      data-wardrobe
+      className="mt-4 rounded-2xl border-2 border-[#8b6f4e] bg-[#a5835c] p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.25)] sm:p-4"
+    >
+      <div className="rounded-xl bg-[#6f573d] px-3 pb-4 pt-3 shadow-[inset_0_4px_14px_rgba(0,0,0,0.45)]">
+        <div aria-hidden="true" className="mx-1 h-2 rounded-full bg-gradient-to-b from-[#d8c9a8] to-[#9c8a68] shadow-sm" />
+        {wardrobe.length === 0 ? (
+          <p
+            data-wardrobe-empty
+            className="mt-4 rounded-lg border border-dashed border-[#d8c9a8]/60 px-4 py-8 text-center text-sm leading-relaxed text-[#f3ead8]"
+          >
+            {t('mall.wardrobeEmpty', locale)}
+          </p>
+        ) : (
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {wardrobe.map((item) => {
+              const key = itemKey({ dimension: item.dimension, optionId: item.option.id });
+              const inCart = selected.has(key);
+              return (
+                <li
+                  key={key}
+                  data-wardrobe-item={key}
+                  className={`flex flex-col gap-2 rounded-lg border bg-[#f3ead8] p-2 transition-colors ${
+                    inCart ? 'border-accent' : 'border-[#c9b891]'
+                  }`}
+                >
+                  <span aria-hidden="true" className="mx-auto -mt-1 block h-1.5 w-8 rounded-b-full border-b-2 border-[#9c8a68]" />
+                  <span className="relative block aspect-square overflow-hidden rounded-md bg-[#e6dcc4]">
+                    <img
+                      src={wardrobeImage(item)}
+                      alt=""
+                      loading="lazy"
+                      className="absolute inset-0 size-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-3xl">
+                      👔
+                    </span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-ink">
+                      {poolOptionLabel(item.option, locale)}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-xs tabular-nums text-muted">
+                      {money(item.option.annualCost)}/{t('mall.perYear', locale)}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    aria-pressed={inCart}
+                    data-mall-item-toggle={key}
+                    onClick={() => onToggle(item, !inCart)}
+                    className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      inCart
+                        ? 'border border-line-strong text-ink hover:bg-panel-2'
+                        : 'bg-accent text-on-accent hover:brightness-105'
+                    }`}
+                  >
+                    {inCart ? t('sim.cart.remove', locale) : t('sim.cart.add', locale)}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /** 年度账单环形图（纯 SVG，无第三方图表库；图例本身就是可读的文本等价物）。 */
@@ -191,6 +282,11 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
   const selected = useMemo(() => new Set(cart.map(itemKey)), [cart]);
   const favoredSet = useMemo(() => new Set(favorites.map(itemKey)), [favorites]);
 
+  // 衣柜件（sim-wardrobe §3）：不进卡片流 tab，但账务查找（负担率 / 抽屉 /
+  // 环形图 / 一键成目标 / 变卖提示）必须认得出它们，所以这里合并成 allItems。
+  const wardrobe = useMemo(() => wardrobePool(), []);
+  const allItems = useMemo<ShoppingItem[]>(() => [...items, ...wardrobe], [items, wardrobe]);
+
   const baselineChoices: CartEntry[] = CARD_A.choices.map((choice) => ({
     dimension: choice.dimension,
     optionId: choice.optionId,
@@ -200,26 +296,26 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
     () =>
       cartBurdenSummary(
         cart,
-        items,
+        allItems,
         baselineChoices,
         baselineAnnualCost,
         CARD_A_ANNUAL_INCOME - CARD_A_LAST_YEAR_COST,
       ),
     // baselineChoices 内容恒定，不进依赖。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cart, items, baselineAnnualCost],
+    [cart, allItems, baselineAnnualCost],
   );
 
   const kindCosts = useMemo(
-    () => cartKindCosts(cart, items, baselineChoices),
+    () => cartKindCosts(cart, allItems, baselineChoices),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cart, items],
+    [cart, allItems],
   );
 
   const resellValue = useMemo(() => {
     const asset = cart
       .map((ci) =>
-        items.find(
+        allItems.find(
           (entry) =>
             entry.dimension === ci.dimension && entry.option.id === ci.optionId && entry.option.kind === 'asset',
         ),
@@ -232,9 +328,11 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
           value: Math.round(resaleRecovery(asset.option.annualCost)),
         }
       : null;
-  }, [cart, items, locale]);
+  }, [cart, allItems, locale]);
 
   const visibleItems = useMemo(() => {
+    // 衣柜 tab 走独立的拟物陈列（WardrobeCloset），不走卡片流。
+    if (tab === 'wardrobe') return [];
     if (tab === 'favorites') {
       return favorites
         .map((fav) =>
@@ -252,9 +350,9 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
   const cartItems = useMemo(
     () =>
       cart
-        .map((ci) => items.find((entry) => entry.dimension === ci.dimension && entry.option.id === ci.optionId))
+        .map((ci) => allItems.find((entry) => entry.dimension === ci.dimension && entry.option.id === ci.optionId))
         .filter((entry): entry is ShoppingItem => Boolean(entry)),
-    [cart, items],
+    [cart, allItems],
   );
 
   const slices: BillSlice[] = [
@@ -350,6 +448,10 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
         <p data-fav-empty className="mt-4 rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-sm leading-relaxed text-muted">
           {t('mall.favEmpty', locale)}
         </p>
+      )}
+
+      {tab === 'wardrobe' && (
+        <WardrobeCloset wardrobe={wardrobe} selected={selected} onToggle={toggle} locale={locale} />
       )}
 
       <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
