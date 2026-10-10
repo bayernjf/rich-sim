@@ -1843,8 +1843,8 @@ try {
     '',
   );
   check(
-    (await page.locator('[data-guide-item]').count()) === 26,
-    '玩法说明：26 个玩法条目齐全',
+    (await page.locator('[data-guide-item]').count()) === 28,
+    '玩法说明：28 个玩法条目齐全',
     '',
   );
   const guideZh = await page.locator('[data-guide-h1]').innerText();
