@@ -1230,14 +1230,20 @@ try {
   );
   await page.keyboard.press('Escape');
 
-  // 衣柜英文态（框架 S1：空态走词典）。
+  // 衣柜英文态（S2：首批带来源衣物已上架，英文名无中文漏网）。
   await page.click('[data-mall-tab="wardrobe"]');
   await page.waitForSelector('[data-wardrobe]', { timeout: 5000 });
   const wardrobeEn = await page.locator('[data-wardrobe]').innerText();
+  const wardrobeEnCount = await page.locator('[data-wardrobe-item]').count();
   check(
-    wardrobeEn.includes('being stocked'),
-    'i18n：衣柜英文态空态走词典',
-    `text=${wardrobeEn.replace(/\n/g, ' ').slice(0, 40)}`,
+    wardrobeEnCount >= 5,
+    'i18n/衣柜：英文态首批至少 5 件衣物上架',
+    `count=${wardrobeEnCount}`,
+  );
+  check(
+    wardrobeEn.includes('bespoke') && !/[一-鿿]/.test(wardrobeEn),
+    'i18n：衣柜英文态衣物名走英文词典、整柜无中文',
+    `text=${wardrobeEn.replace(/\n/g, ' ').slice(0, 60)}`,
   );
   await page.click('[data-mall-tab="all"]');
 
@@ -1262,6 +1268,11 @@ try {
     '特权价目：两项带来源金额呈现',
     '',
   );
+  check(
+    privText.includes('$16,500,000') && privText.includes('$42,000,000'),
+    '特权价目（C-1 细化）：CEO 任命 $16.5M/年 + 冠名一次性 $42M 均带价签呈现',
+    '',
+  );
 
   // ── 步骤 7.7：卡 B（老钱继承人）——?card=card-b 切卡、年成本与绿区负担率、切换器 ──
   await page.goto(`${BASE}/app/sim?card=card-b&lang=zh`, { waitUntil: 'networkidle' });
@@ -1281,6 +1292,25 @@ try {
   check(
     (await activeCardLink.count()) === 1 && (await activeCardLink.innerText()).includes('家族企业继承人'),
     '卡 B：切换器存在且当前卡高亮',
+    '',
+  );
+  // C-2（2026-10-10）：家族传承剧本（卡 B 专属）——三分支税单对比，带来源与免责。
+  const legacySection = page.locator('[data-sim-legacy]');
+  check((await legacySection.count()) === 1, '卡 B：家族传承剧本章节存在', '');
+  const legacyText = await legacySection.innerText();
+  check(
+    legacyText.includes('$34,000,000') &&
+      legacyText.includes('Source (IRS exclusion)') &&
+      legacyText.includes('Source (40% top rate)') &&
+      legacyText.includes('不是税务 / 法律建议'),
+    '家族传承剧本：直接继承税单 $34M（(100M−15M)×40% 手算核对）+ IRS/LII 来源 + 免责声明',
+    legacyText.replace(/\n/g, ' ').slice(0, 160),
+  );
+  // 卡 A 不该出现传承章节（专属卡 B）。
+  await page.goto(`${BASE}/app/sim?card=card-a&lang=zh`, { waitUntil: 'networkidle' });
+  check(
+    (await page.locator('[data-sim-legacy]').count()) === 0,
+    '卡 A：无家族传承章节（专属卡 B）',
     '',
   );
   check(!cardBText.includes('加一艘超级游艇'), '卡 B：无游艇断裂开关（老钱刻意不持有）', '');
@@ -1406,21 +1436,43 @@ try {
   const evSell = await eventsSoFar();
   check(countEvent(evSell, 'sim:sell') >= 1, '埋点：sim:sell 已入队', `count=${countEvent(evSell, 'sim:sell')}`);
 
-  // ── 步骤 8.9：拟物衣柜（sim-wardrobe S1 框架）——tab 在、空态在（英文断言在 7.6）──
+  // ── 步骤 8.9：拟物衣柜（sim-wardrobe S2 内容）——有货、英文名在 7.6，这里走加购链路 ──
   await page.keyboard.press('Escape');
   await page.click('[data-mall-tab="wardrobe"]');
   await page.waitForSelector('[data-wardrobe]', { timeout: 5000 });
   const wardrobeZh = await page.locator('[data-wardrobe]').innerText();
   check(
-    wardrobeZh.includes('衣柜上新中'),
-    '衣柜：衣物池为空时显示空态（框架照常渲染）',
-    `text=${wardrobeZh.replace(/\n/g, ' ').slice(0, 40)}`,
+    (await page.locator('[data-wardrobe-item]').count()) >= 5,
+    '衣柜：首批带来源衣物上架（≥5 件，无来源不入池闸门由单测钉）',
+    `count=${await page.locator('[data-wardrobe-item]').count()}`,
   );
   check(
-    (await page.locator('[data-wardrobe-item]').count()) === 0,
-    '衣柜：无来源条目不上架（当前 0 件）',
+    wardrobeZh.includes('西装'),
+    '衣柜：中文态衣物名正常渲染',
+    `text=${wardrobeZh.replace(/\n/g, ' ').slice(0, 40)}`,
+  );
+  // 加购第一件（全定制西装），验证选中态，再验证抽屉账务（allItems 合并）认得它。
+  const suitToggle = '[data-mall-item-toggle="wardrobe/wardrobe-bespoke-suit"]';
+  await page.locator(suitToggle).click();
+  check(
+    (await page.locator(suitToggle).getAttribute('aria-pressed')) === 'true',
+    '衣柜：点选衣物进入购物车（aria-pressed=true）',
     '',
   );
+  await page.click('[data-mall-tab="all"]');
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
+  const drawerWithWardrobe = await page.locator('[data-mall-drawer]').innerText();
+  check(
+    drawerWithWardrobe.includes('西装'),
+    '衣柜：加购后抽屉账单认得衣柜件（allItems 账务合并）',
+    '',
+  );
+  // 移除该件、恢复空车，避免污染步骤 9 的一键成目标金额断言。
+  await page.keyboard.press('Escape');
+  await page.click('[data-mall-tab="wardrobe"]');
+  await page.waitForSelector('[data-wardrobe]', { timeout: 5000 });
+  await page.locator(suitToggle).click();
   // 不跳页（跳转会丢无账本的内存车）：切回卡片流并重开抽屉，接步骤 9。
   await page.click('[data-mall-tab="all"]');
   await page.click('[data-mall-cart-open]');
@@ -1601,6 +1653,9 @@ try {
     'T3 剧情通道：诉讼/分产负担率 157%、危机 168% 且现金流 783k',
     plotText.replace(/\n/g, ' ').slice(0, 140),
   );
+  // C-3（2026-10-10）：三张全渲染 + 恰好一张「本次抽中」（data-drawn 高亮）。
+  const drawnCount = await page.locator('[data-sim-plot] [data-drawn]').count();
+  check(drawnCount === 1, 'T3 剧情通道（C-3 随机）：恰好一张卡标记本次抽中', `drawn=${drawnCount}`);
 
   // ③ 汇率时间机：SSR 有 section + 预设按钮；点 2025-10-09 → 结果文本出现 + 埋点。
   check(

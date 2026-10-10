@@ -26,6 +26,9 @@ import {
   runwayMonths,
   shoppingPool,
   topTierChoices,
+  ONEOFF_PERKS,
+  LEGACY_ASSUMPTIONS,
+  legacyPlan,
 } from './sim-content';
 
 const catalog = initialCatalogUSD;
@@ -232,17 +235,18 @@ describe('购物池（M3 · S1）', () => {
     }
   });
 
-  it('web 侧补的两个纯体验项在池里，池总数 = 12 目录项 + 2 体验项 = 14', () => {
+  it('web 侧补的纯体验项在池里，池总数 = 12 目录项 + 3 体验项 = 15', () => {
     const pool = shoppingPool(catalog);
-    expect(pool).toHaveLength(14);
+    expect(pool).toHaveLength(15);
     const ids = pool.map((item) => item.option.id);
     expect(ids).toContain('exp-private-jet-world-tour');
     expect(ids).toContain('exp-met-gala-ticket');
+    expect(ids).toContain('exp-hire-ceo');
   });
 
   it('纯体验项是一次性花费：不可转卖、无持有情绪、无购买价', () => {
     const pool = shoppingPool(catalog);
-    for (const id of ['exp-private-jet-world-tour', 'exp-met-gala-ticket']) {
+    for (const id of ['exp-private-jet-world-tour', 'exp-met-gala-ticket', 'exp-hire-ceo']) {
       const item = pool.find((entry) => entry.option.id === id);
       expect(item?.option.kind).toBe('experience');
       expect(item?.option.resellable).toBe(false);
@@ -467,5 +471,91 @@ describe('剧情通道（T3 · 随机事件：危机 / 诉讼 / 分产）', () =
         expect(Number.isNaN(e.rate)).toBe(false);
       }
     }
+  });
+});
+
+describe('一次性特权价签（C-1 · 2026-10-10）', () => {
+  it('每条都有来源、双语标签与说明，金额为正', () => {
+    expect(ONEOFF_PERKS.length).toBeGreaterThan(0);
+    for (const perk of ONEOFF_PERKS) {
+      expect(perk.id).toBeTruthy();
+      expect(perk.amount).toBeGreaterThan(0);
+      expect(perk.source).toMatch(/^https?:\/\//);
+      expect(perk.label.zh.length).toBeGreaterThan(0);
+      expect(perk.label.en.length).toBeGreaterThan(0);
+      expect(perk.note.zh.length).toBeGreaterThan(0);
+      expect(perk.note.en.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('冠名是带来源的一次性价签（$42M · Purdue 2026-10 新闻）', () => {
+    const naming = ONEOFF_PERKS.find((perk) => perk.id === 'perk-building-naming');
+    expect(naming).toBeDefined();
+    expect(naming?.amount).toBe(42_000_000);
+    expect(naming?.source).toContain('purdue.edu');
+  });
+
+  it('一次性价签不进购物池（与年成本口径隔离，不进账单）', () => {
+    const poolIds = shoppingPool(catalog).map((item) => item.option.id);
+    for (const perk of ONEOFF_PERKS) {
+      expect(poolIds).not.toContain(perk.id);
+    }
+  });
+});
+
+describe('家族传承剧本（C-2 · 2026-10-10，设计稿 §4.5 实现）', () => {
+  // 卡 B 可支配现金流 = 8,000,000 − 407,000 = 7,593,000（与 §4.4 画像一致）。
+  const CARD_B_CASHFLOW = 8_000_000 - 407_000;
+
+  it('直接继承：税单 = (应税资产 − 免税额) × 税率 = (100M − 15M) × 40% = $34M', () => {
+    const branches = legacyPlan(
+      LEGACY_ASSUMPTIONS.taxableAssets,
+      LEGACY_ASSUMPTIONS.exemption,
+      LEGACY_ASSUMPTIONS.rate,
+      CARD_B_CASHFLOW,
+    );
+    const direct = branches.find((b) => b.id === 'direct');
+    expect(direct?.taxBill).toBe(34_000_000);
+  });
+
+  it('直接继承：付清年限 = 税单 ÷ 可支配现金流 ≈ 4.5 年', () => {
+    const direct = legacyPlan(
+      LEGACY_ASSUMPTIONS.taxableAssets,
+      LEGACY_ASSUMPTIONS.exemption,
+      LEGACY_ASSUMPTIONS.rate,
+      CARD_B_CASHFLOW,
+    ).find((b) => b.id === 'direct');
+    expect(direct?.paybackYears).toBeCloseTo(34_000_000 / CARD_B_CASHFLOW, 1);
+  });
+
+  it('免税额内：税单为零、无付清年限（信托/慈善恒零）', () => {
+    const branches = legacyPlan(10_000_000, LEGACY_ASSUMPTIONS.exemption, LEGACY_ASSUMPTIONS.rate, CARD_B_CASHFLOW);
+    for (const b of branches) {
+      expect(b.taxBill).toBe(0);
+      expect(b.paybackYears).toBeNull();
+    }
+  });
+
+  it('非法输入：任一参数非有限数 → 三分支全零、不产 NaN', () => {
+    for (const args of [
+      [NaN, 15_000_000, 0.4, 7_593_000],
+      [100_000_000, NaN, 0.4, 7_593_000],
+      [100_000_000, 15_000_000, NaN, 7_593_000],
+      [100_000_000, 15_000_000, 0.4, NaN],
+      [-1, -1, -1, -1],
+    ] as const) {
+      const branches = legacyPlan(args[0], args[1], args[2], args[3]);
+      for (const b of branches) {
+        expect(Number.isNaN(b.taxBill)).toBe(false);
+        expect(b.taxBill).toBe(0);
+        expect(b.paybackYears).toBeNull();
+      }
+    }
+  });
+
+  it('示意参数有来源口径（免税额 = 2026 起 IRS $15M；税率 = 40% 最高档）', () => {
+    expect(LEGACY_ASSUMPTIONS.exemption).toBe(15_000_000);
+    expect(LEGACY_ASSUMPTIONS.rate).toBe(0.4);
+    expect(LEGACY_ASSUMPTIONS.taxableAssets).toBe(100_000_000);
   });
 });

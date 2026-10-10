@@ -262,7 +262,7 @@ const ZH = {
   'mall.noResale': '体验无法转卖',
   'mall.tab.wardrobe': '衣柜',
   'mall.wardrobeEmpty':
-    '衣柜上新中：衣物条目正在核对公开来源，上架后可以直接从挂杆上取下来试穿、加购。',
+    '衣柜暂时没有可试穿的衣物。',
   'mall.favAdd': '收藏',
   'mall.favRemove': '取消收藏',
   'mall.favEmpty': '还没有收藏。看到想了解但没打算买的，点书签存下来——收藏只留作浏览，不进入任何账单。',
@@ -286,6 +286,7 @@ const ZH = {
   'sim.privLead':
     '被世界优待的感觉也有价签。私密剧情，不做社交展示；金额来自带来源的目录项：',
   'sim.privCost': '代价点：应酬排满日程、隐私消失——这两件没有价签，但每年都有。',
+  'sim.privOnceH': '一次性价签（不是年账单）：',
   'sim.opH': '操作通道：加杠杆 / 收购谈判',
   'sim.opLead':
     '决策模拟的爽是掌控感，代价是现金流。以下倍数与利率是教学示意参数，不是任何机构的真实条款，也不是建议：',
@@ -310,6 +311,23 @@ const ZH = {
   'sim.plot.splitH': '家庭分产',
   'sim.plot.splitBody': '可支配现金流永久减半：负担率翻倍到 {rate}——持有成本不会跟着分产减半。',
   'sim.plotBroke': '现金流为负：这一年只能变卖资产（折价 75%）或增加收入。',
+  'sim.plotDrawn': '本次抽中：黑天鹅不可预测，三张里这次先落在这张。',
+  'sim.legacyH': '家族传承剧本',
+  'sim.legacyLead':
+    '卡 B 专属：这笔财富是家族信托暂时代管的，不是你的。三种传承结构，看每种的税单与代价——参数为教学示意，不是任何机构的条款（来源见下）。',
+  'sim.legacy.directH': 'A · 直接继承（无结构）',
+  'sim.legacy.directBody':
+    '资产转个人名下：超过免税额 {exemption} 的部分按 40% 课税（示意），一次性税单 {tax}。',
+  'sim.legacy.trustH': 'B · 家族信托延续',
+  'sim.legacy.trustBody':
+    '资产留在信托：免税额内不触发遗产税，税单为零；但钱在信托里 ≠ 你能花的钱——控制权保留、流动性受约束。',
+  'sim.legacy.charityH': 'C · 慈善基金会',
+  'sim.legacy.charityBody':
+    '捐出部分资产：税单最小 / 零（示意），但资产不再属于家族——免税与名望的代价是控制权与流动性永久让渡。',
+  'sim.legacyTax': '一次性税单 {tax}（示意）',
+  'sim.legacyYears': '≈ {years} 年可支配现金流付清',
+  'sim.legacyDisclaimer':
+    '传承结构为教学示意，不是税务 / 法律建议；免税额与税率以 IRS 当年公布为准（2026 起 $15M / 人，最高 40%）。',
   'sim.fxH': '汇率时间机',
   'sim.fxLead':
     '跨币种的资产，汇率每年都在悄悄改写它的价值。选一个历史日期，看同一笔钱当时值多少、今天值多少：',
@@ -464,7 +482,7 @@ const ZH = {
   'guide.resale.title': '二手变卖',
   'guide.resale.desc': '账单太疼就把资产二手卖掉：按年成本 75% 一次性回血（教学示意），下一期账单立刻回落。',
   'guide.wardrobe.title': '拟物衣柜',
-  'guide.wardrobe.desc': '打开木纹衣橱，从挂杆上取衣服加购；衣物条目正在核对公开来源，陆续上架。',
+  'guide.wardrobe.desc': '打开木纹衣橱，从挂杆取下全定制西装、高定礼服、复杂功能腕表等 5 件衣物试穿加购；标价是年持有成本（零售价按年限摊提，来源可查）。',
   'guide.favorites.title': '收藏夹',
   'guide.favorites.desc': '逛而不买：收藏不产生任何账单行为，只看不动。',
   'guide.billChart.title': '年度账单饼图',
@@ -764,7 +782,7 @@ const EN: Record<keyof typeof ZH, string> = {
     'Sold {item}, recovered {amount} (teaching approximation) - added to your runway.',
   'mall.noResale': 'Not resellable',
   'mall.wardrobeEmpty':
-    'The wardrobe is being stocked: clothing entries are being checked against public sources - once they are on the rack you can take them down, try them on and add them to the cart.',
+    'The wardrobe is currently empty.',
   'mall.favAdd': 'Save',
   'mall.favRemove': 'Unsave',
   'mall.favEmpty':
@@ -790,6 +808,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.privLead':
     'Being treated specially by the world has a price tag too. A private scene, not social display; amounts come from sourced catalog items:',
   'sim.privCost': 'The hidden costs: a calendar full of obligations and no privacy - no price tag, but billed every year.',
+  'sim.privOnceH': 'One-time price tags (not annual bills):',
   'sim.opH': 'The operator channel: leverage / an acquisition',
   'sim.opLead':
     'The fun of decision-making is control; the cost is cashflow. The multiples and the rate below are teaching illustrations, not any institution’s real terms - and not advice:',
@@ -815,6 +834,23 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.plot.splitH': 'Family split',
   'sim.plot.splitBody': 'Disposable cashflow halves for good: the burden rate doubles to {rate} - holding costs do not halve with the split.',
   'sim.plotBroke': 'Negative cashflow: that year assets must be sold (at 75%) or income raised.',
+  'sim.plotDrawn': 'Drawn this visit: black swans are unpredictable - of the three, this one lands first this time.',
+  'sim.legacyH': 'Family legacy script',
+  'sim.legacyLead':
+    'Card B only: this wealth is held in a family trust on your behalf - it is not really yours. Three succession structures, and the tax bill and cost of each. Parameters are teaching illustrations, not any institution’s terms (sources below).',
+  'sim.legacy.directH': 'A · Direct inheritance (no structure)',
+  'sim.legacy.directBody':
+    'Assets pass to your name: the part above the {exemption} exclusion is taxed at 40% (illustrative) - a one-off bill of {tax}.',
+  'sim.legacy.trustH': 'B · Keep the family trust',
+  'sim.legacy.trustBody':
+    'Assets stay in trust: within the exclusion, no estate tax is triggered and the bill is zero; but money in trust ≠ money you can spend - control stays, liquidity is constrained.',
+  'sim.legacy.charityH': 'C · A charitable foundation',
+  'sim.legacy.charityBody':
+    'Donate part of the assets: the bill is minimal / zero (illustrative), but the assets are no longer the family’s - the price of tax relief and renown is permanently giving up control and liquidity.',
+  'sim.legacyTax': 'One-off tax bill {tax} (illustrative)',
+  'sim.legacyYears': '≈ {years} years of disposable cashflow to pay it off',
+  'sim.legacyDisclaimer':
+    'Succession structures are teaching illustrations, not tax / legal advice; the exclusion and rate follow the IRS figures in effect that year (from 2026: $15M / person, up to 40%).',
   'sim.fxH': 'The exchange-rate time machine',
   'sim.fxLead':
     'For cross-currency assets, the exchange rate quietly rewrites their value every year. Pick a historical date and see what the same money was worth then and today:',
@@ -972,7 +1008,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'guide.resale.title': 'Resale',
   'guide.resale.desc': 'Bill too heavy? Resell an asset for a one-off 75% of its annual cost (teaching approximation) - the next bill drops straight away.',
   'guide.wardrobe.title': 'Wardrobe',
-  'guide.wardrobe.desc': 'Open the wooden closet and take clothes off the rack into the cart; clothing entries are being source-checked and added over time.',
+  'guide.wardrobe.desc': 'Open the wooden closet and take five pieces off the rack—a bespoke suit, couture gown, grand-complication watch and more; the price is the yearly holding cost (retail amortised over years, sources cited).',
   'guide.favorites.title': 'Favorites',
   'guide.favorites.desc': 'Browse without buying: favoriting changes no bill behavior at all.',
   'guide.billChart.title': 'Annual bill donut',

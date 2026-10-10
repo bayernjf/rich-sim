@@ -40,7 +40,13 @@ import {
   saveFavoriteItem,
   sellCartItem,
 } from '../lib/sim-draft';
-import { wardrobeImage, wardrobePool, type WardrobeItem } from '../lib/sim-wardrobe';
+import {
+  WARDROBE_LABELS_EN,
+  wardrobeImage,
+  wardrobeOptionLabel,
+  wardrobePool,
+  type WardrobeItem,
+} from '../lib/sim-wardrobe';
 import { adoptCartAsGoal } from '../lib/sim-bridge';
 import { format, t, type MessageKey } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
@@ -155,7 +161,7 @@ function WardrobeCloset({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-xs font-semibold text-ink">
-                      {poolOptionLabel(item.option, locale)}
+                      {wardrobeOptionLabel(item.option, locale)}
                     </span>
                     <span className="mt-0.5 block font-mono text-xs tabular-nums text-muted">
                       {money(item.option.annualCost)}/{t('mall.perYear', locale)}
@@ -287,6 +293,11 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
   const wardrobe = useMemo(() => wardrobePool(), []);
   const allItems = useMemo<ShoppingItem[]>(() => [...items, ...wardrobe], [items, wardrobe]);
 
+  // 物品名统一入口：体验/目录走 poolOptionLabel，衣柜件额外查 WARDROBE_LABELS_EN，
+  // 保证抽屉 / 账单 / 环形图 / 变卖播报里的衣柜件在英文态不露出中文。
+  const labelOf = (option: ShoppingItem['option']) =>
+    poolOptionLabel(option, locale, WARDROBE_LABELS_EN);
+
   const baselineChoices: CartEntry[] = CARD_A.choices.map((choice) => ({
     dimension: choice.dimension,
     optionId: choice.optionId,
@@ -324,7 +335,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
       .sort((a, b) => b.option.annualCost - a.option.annualCost)[0];
     return asset
       ? {
-          label: poolOptionLabel(asset.option, locale),
+          label: labelOf(asset.option),
           value: Math.round(resaleRecovery(asset.option.annualCost)),
         }
       : null;
@@ -379,7 +390,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
     const amount = Math.round(resaleRecovery(item.option.annualCost));
     const result = sellCartItem(cart, entry, amount);
     setCart(result.cart);
-    setSoldNotice({ label: poolOptionLabel(item.option, locale), amount });
+    setSoldNotice({ label: labelOf(item.option), amount });
     track('sim:sell');
   };
 
@@ -472,7 +483,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                   {DIMENSION_ICON[item.dimension] ?? '🛍️'}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-ink">{poolOptionLabel(item.option, locale)}</p>
+                  <p className="text-sm font-semibold text-ink">{labelOf(item.option)}</p>
                   <p className="mt-0.5 text-xs text-muted">
                     {dimensionLabel({ id: item.dimension, label: item.dimensionLabel }, locale)}
                   </p>
@@ -585,7 +596,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                 <ul className="space-y-2">
                   {cartItems.map((item) => (
                     <li key={item.option.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel px-3 py-2 text-sm">
-                      <span className="min-w-0 truncate text-ink">{poolOptionLabel(item.option, locale)}</span>
+                      <span className="min-w-0 truncate text-ink">{labelOf(item.option)}</span>
                       <span className="shrink-0 font-mono text-xs tabular-nums text-muted">{money(item.option.annualCost)}</span>
                       <span className="flex shrink-0 items-center gap-1.5">
                         {sellable(item) ? (

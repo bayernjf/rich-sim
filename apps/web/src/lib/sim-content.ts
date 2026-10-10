@@ -169,12 +169,13 @@ export function swanBurden(
 }
 
 /**
- * 两个纯体验项刻意不进 core catalog（那边有每维 3–5 项、维内递增等契约），
+ * 三个纯体验项刻意不进 core catalog（那边有每维 3–5 项、维内递增等契约），
  * 所以它们的英文名也只能在这一侧——同样由 sim-l10n.test.ts 穷尽性钉住。
  */
 export const EXPERIENCE_LABELS_EN: Record<string, string> = {
   'exp-private-jet-world-tour': 'Private-jet world tour (26 days)',
   'exp-met-gala-ticket': 'Met Gala charity gala, one seat',
+  'exp-hire-ceo': 'Hire an S&P 500-level CEO (annual comp)',
 };
 
 export function experienceLabel(option: CatalogOption, locale: Locale): string {
@@ -184,11 +185,24 @@ export function experienceLabel(option: CatalogOption, locale: Locale): string {
 /**
  * 购物池里的名字：先查体验项表，再退回 core 的目录表（目录项走 CATALOG_LABELS_EN，
  * 未知 id 一律退回中文原文）。购物池是两种来源拼起来的，视图不该各自判一遍。
+ *
+ * `extraLabelsEn` 给第三类来源（拟物衣柜，见 sim-wardrobe）用：它的英文词典在
+ * 自己模块里、不进 core 也不进体验表，由上层（MallArea）合并 allItems 时传入。
  */
-export function poolOptionLabel(option: CatalogOption, locale: Locale): string {
-  const experience = EXPERIENCE_LABELS_EN[option.id];
-  if (locale === 'en' && experience) return experience;
-  return locale === 'en' ? (coreOptionLabel(option, 'en') ?? option.label) : option.label;
+export function poolOptionLabel(
+  option: CatalogOption,
+  locale: Locale,
+  extraLabelsEn?: Record<string, string>,
+): string {
+  if (locale === 'en') {
+    return (
+      EXPERIENCE_LABELS_EN[option.id] ??
+      extraLabelsEn?.[option.id] ??
+      coreOptionLabel(option, 'en') ??
+      option.label
+    );
+  }
+  return option.label;
 }
 
 export type Bill = {
@@ -448,6 +462,53 @@ const EXPERIENCE_ITEMS: { dimension: string; option: CatalogOption }[] = [
       resellable: false,
     },
   },
+  {
+    dimension: 'flexibility',
+    option: {
+      id: 'exp-hire-ceo',
+      label: '任命一位标普 500 级别 CEO（年薪酬）',
+      annualCost: 16_500_000,
+      source: 'https://www.prnewswire.com/news-releases/report-women-ceos-outearn-men-and-companies-increase-ceo-security-packages-302621526.html',
+      note: 'Equilar 2025 报告（PR Newswire 引述）：标普 500 CEO 中位总薪酬 $16.5M（同比 +7%，含股权授予面值）。此处按每年付一份中位薪酬的口径；教学点：一位顶级 CEO 的年薪高于卡 A / 卡 B 的可支配现金流——「雇一个比你更贵的人」。',
+      kind: 'experience',
+      joy: 3,
+      resellable: false,
+    },
+  },
+];
+
+/* ── 一次性特权价签（C-1 · 2026-10-10）── */
+
+/**
+ * 一次性特权价签：金额是一次性承诺、不是年成本——**不进购物池**（不参与
+ * 年账单 / 一键成目标），只在特权价目通道（地位）里作为「单次价签」展示，
+ * 与购物池里「每年一次」的体验项口径分开。教学点：有些特权根本没有年账单，
+ * 它们是一次性把一大笔钱交出去换一个名字。
+ */
+export type OneoffPerk = {
+  id: string;
+  label: { zh: string; en: string };
+  /** 单次金额（一次性承诺，非年成本）。 */
+  amount: number;
+  source: string;
+  note: { zh: string; en: string };
+};
+
+export const ONEOFF_PERKS: OneoffPerk[] = [
+  {
+    id: 'perk-building-naming',
+    label: {
+      zh: '捐赠冠名一所商学院楼（一次性）',
+      en: 'Name a business-school building (one-time)',
+    },
+    amount: 42_000_000,
+    source:
+      'https://www.purdue.edu/newsroom/2026/Q4/longtime-purdue-benefactor-parrish-commits-42m-to-name-new-daniels-school-building/',
+    note: {
+      zh: '普渡大学 2026 年 10 月新闻：校友 Roland G. Parrish 承诺 $42M 命名商学院新主楼（Roland G. Parrish Hall of Business，2027 秋启用）。一次性捐赠承诺、不是年成本——此处按单次价签展示，不进购物车与账单。',
+      en: 'Purdue University (Oct 2026): alumnus Roland G. Parrish committed $42M to name the new Daniels School of Business flagship (Roland G. Parrish Hall of Business, opening fall 2027). A one-time commitment, not an annual cost - shown as a one-time price tag, never added to cart or bills.',
+    },
+  },
 ];
 
 /* ── 领钱入口（S4 · homepage-claim-experience.md §7 P1）── */
@@ -687,5 +748,61 @@ export function plotEvents(
     build('lawsuit', (annualIncome - lastYearCost) * (1 - PLOT_LAWSUIT_CASHFLOW_CUT)),
     build('crisis', annualIncome * (1 - PLOT_CRISIS_INCOME_CUT) - lastYearCost),
     build('split', (annualIncome - lastYearCost) * (1 - PLOT_SPLIT_CASHFLOW_CUT)),
+  ];
+}
+
+/* ── C-2 家族传承剧本（2026-10-10，设计稿 simulation-gameplay §4.5 实现）── */
+
+/**
+ * 教学示意参数（**示意**，非任何真实人物/家族；每个数字都有可查证来源）：
+ * - `taxableAssets` $100M：示意应税资产组合（设计稿 §4.5 定，非目录项、纯教学假设）。
+ * - `exemption` $15M：2026 起联邦遗产/赠与税基本免税额（IRS：2025 为 $13.99M，
+ *   One Big Beautiful Bill 后 2026 起 $15M、随通胀指数化）。
+ * - `rate` 40%：超过免税额部分最高税率（Cornell LII 概述）。
+ */
+export const LEGACY_ASSUMPTIONS = {
+  taxableAssets: 100_000_000,
+  exemption: 15_000_000,
+  rate: 0.4,
+} as const;
+
+export type LegacyBranchId = 'direct' | 'trust' | 'charity';
+
+export type LegacyBranch = {
+  id: LegacyBranchId;
+  /** 一次性税单：直接继承 = 超过免税额部分 × 税率；信托 / 慈善示意为零。 */
+  taxBill: number;
+  /** 按当前可支配现金流付清税单所需年数；无税单或现金流非正为 null。 */
+  paybackYears: number | null;
+};
+
+/**
+ * 家族传承三分支的税单算术：纯函数、不产 NaN；非法输入逐项回落
+ * （税单 0、年限 null），与全产品「非法输入不产 NaN」红线一致。
+ */
+export function legacyPlan(
+  assets: number,
+  exemption: number,
+  rate: number,
+  cashflow: number,
+): LegacyBranch[] {
+  if (
+    !Number.isFinite(assets) ||
+    !Number.isFinite(exemption) ||
+    !Number.isFinite(rate) ||
+    !Number.isFinite(cashflow)
+  ) {
+    return [
+      { id: 'direct', taxBill: 0, paybackYears: null },
+      { id: 'trust', taxBill: 0, paybackYears: null },
+      { id: 'charity', taxBill: 0, paybackYears: null },
+    ];
+  }
+  const directTax = Math.max(0, Math.max(0, assets - exemption) * rate);
+  const payback = directTax > 0 && cashflow > 0 ? directTax / cashflow : null;
+  return [
+    { id: 'direct', taxBill: directTax, paybackYears: payback },
+    { id: 'trust', taxBill: 0, paybackYears: null },
+    { id: 'charity', taxBill: 0, paybackYears: null },
   ];
 }

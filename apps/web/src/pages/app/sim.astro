@@ -28,6 +28,9 @@ import {
   cardBills,
   cardView,
   shoppingPool,
+  ONEOFF_PERKS,
+  LEGACY_ASSUMPTIONS,
+  legacyPlan,
 } from '../../lib/sim-content';
 
 const catalog = initialCatalogUSD;
@@ -65,8 +68,24 @@ const fmtMultiple = (m: number | null) => (m === null ? '—' : m.toFixed(2).rep
 const fmtRateShort = (r: number | null) => (r === null ? '—' : `${Math.round(r * 100)}%`);
 
 // T3 剧情通道（随机事件卡）：三张黑天鹅，参数从卡片数值推导。
+// C-3（2026-10-10）：三张全渲染（教育完整、可测试），本次「抽中」的一张随机置顶高亮——
+// 黑天鹅不可预测的「真实随机」感由展示层承担，算术仍是确定性纯函数 plotEvents。
 const plot = plotEvents(cardIncome, simCost, cardLastYearCost);
 const plotById = Object.fromEntries(plot.map((e) => [e.id, e]));
+const PLOT_IDS = ['lawsuit', 'crisis', 'split'] as const;
+const drawnPlotId = PLOT_IDS[Math.floor(Math.random() * PLOT_IDS.length)];
+
+// C-2 家族传承剧本（卡 B 专属）：三分支税单算术，纯函数 legacyPlan；参数教学示意。
+const legacy =
+  isCardA === false
+    ? legacyPlan(
+        LEGACY_ASSUMPTIONS.taxableAssets,
+        LEGACY_ASSUMPTIONS.exemption,
+        LEGACY_ASSUMPTIONS.rate,
+        cardIncome - cardLastYearCost,
+      )
+    : null;
+const legacyById = Object.fromEntries((legacy ?? []).map((b) => [b.id, b]));
 
 const bills = cardBills(simChoices, catalog, locale);
 const pageCount = Math.ceil(bills.length / BILLS_PER_PAGE);
@@ -335,6 +354,18 @@ const assetBars = card.assetStructure.map((part, index) => ({
           </li>
         ))}
       </ul>
+      <p class="mt-3 text-xs font-medium text-muted">{t('sim.privOnceH', locale)}</p>
+      <ul class="mt-1 space-y-1">
+        {ONEOFF_PERKS.map((perk) => (
+          <li class="flex items-baseline justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-2 text-sm">
+            <span class="text-muted">{locale === 'en' ? perk.label.en : perk.label.zh}</span>
+            <span class="font-mono tabular-nums text-ink">
+              {fmt(perk.amount)}
+              <a href={perk.source} class="ml-2 text-xs text-accent underline-offset-2 hover:underline">Source</a>
+            </span>
+          </li>
+        ))}
+      </ul>
       <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.privCost', locale)}</p>
     </section>
 
@@ -386,18 +417,21 @@ const assetBars = card.assetStructure.map((part, index) => ({
     </section>
 
     {/* T3 · 剧情通道（随机事件：诉讼 / 市场危机 / 家庭分产）。
-        三张卡 SSR 全渲染（确定性、可测试）；「若发生」的算术在 sim-content.ts。 */}
+        三张卡 SSR 全渲染（确定性、可测试）；「若发生」的算术在 sim-content.ts。
+        C-3：本次「抽中」的一张随机置顶高亮（data-drawn），其余照常展示。 */}
     <section aria-labelledby="sim-plot-heading" class="mt-8" data-sim-plot>
       <h2 id="sim-plot-heading" class="text-base font-semibold text-ink">{t('sim.plotH', locale)}</h2>
       <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.plotLead', locale)}</p>
       <ul class="mt-3 space-y-2">
-        {(['lawsuit', 'crisis', 'split'] as const).map((id) => {
+        {PLOT_IDS.map((id) => {
           const ev = plotById[id];
           const rateText = fmtRateShort(ev.rate);
+          const drawn = id === drawnPlotId;
           return (
             <li
               class:list={[
                 'rounded-xl border px-4 py-3',
+                drawn ? 'ring-2 ring-accent' : '',
                 ev.status === 'red'
                   ? 'border-danger bg-panel'
                   : ev.status === 'yellow'
@@ -405,6 +439,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
                     : 'border-accent bg-accent-soft',
               ]}
               data-plot={id}
+              data-drawn={drawn ? '' : undefined}
             >
               <div class="flex items-baseline justify-between gap-3">
                 <h3 class="text-sm font-semibold text-ink">{t(`sim.plot.${id}H` as const, locale)}</h3>
@@ -412,6 +447,11 @@ const assetBars = card.assetStructure.map((part, index) => ({
                   {t('sim.burdenRate', locale).replace('{rate}', rateText)}
                 </span>
               </div>
+              {drawn && (
+                <p class="mt-1 inline-block rounded bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">
+                  {t('sim.plotDrawn', locale)}
+                </p>
+              )}
               <p class="mt-1 text-xs leading-relaxed text-muted">
                 {t(`sim.plot.${id}Body` as const, locale)
                   .replace('{cashflow}', fmt(Math.round(ev.cashflow)))
@@ -425,6 +465,59 @@ const assetBars = card.assetStructure.map((part, index) => ({
         })}
       </ul>
     </section>
+
+    {/* C-2 · 家族传承剧本（卡 B 专属，2026-10-10）：三分支税单对比。
+        纯 SSR 全渲染（三选并列，教育完整）；税单 = legacyPlan 纯函数；
+        免税额 / 税率带 IRS / LII 来源，参数显式标注教学示意。 */}
+    {legacy !== null && (
+      <section aria-labelledby="sim-legacy-heading" class="mt-8" data-sim-legacy>
+        <h2 id="sim-legacy-heading" class="text-base font-semibold text-ink">{t('sim.legacyH', locale)}</h2>
+        <p class="mt-1 text-sm leading-relaxed text-muted">{t('sim.legacyLead', locale)}</p>
+        <ul class="mt-3 space-y-2">
+          {(['direct', 'trust', 'charity'] as const).map((id) => {
+            const branch = legacyById[id];
+            return (
+              <li
+                class="rounded-xl border border-line bg-panel px-4 py-3"
+                data-legacy={id}
+              >
+                <h3 class="text-sm font-semibold text-ink">{t(`sim.legacy.${id}H` as const, locale)}</h3>
+                <p class="mt-1 text-xs leading-relaxed text-muted">
+                  {t(`sim.legacy.${id}Body` as const, locale)
+                    .replace('{exemption}', fmt(LEGACY_ASSUMPTIONS.exemption))
+                    .replace('{tax}', fmt(Math.round(branch.taxBill)))}
+                </p>
+                {branch.taxBill > 0 && (
+                  <p class="mt-1 font-mono tabular-nums text-sm text-ink">
+                    {t('sim.legacyTax', locale).replace('{tax}', fmt(branch.taxBill))}
+                    {branch.paybackYears !== null &&
+                      ` · ${t('sim.legacyYears', locale).replace('{years}', branch.paybackYears.toFixed(1))}`}
+                  </p>
+                )}
+                {id === 'direct' && (
+                  <p class="mt-1 text-xs">
+                    <a
+                      href="https://www.irs.gov/businesses/small-businesses-self-employed/whats-new-estate-and-gift-tax"
+                      class="text-accent underline-offset-2 hover:underline"
+                    >
+                      Source (IRS exclusion)
+                    </a>
+                    {' · '}
+                    <a
+                      href="https://www.law.cornell.edu/wex/estate_tax"
+                      class="text-accent underline-offset-2 hover:underline"
+                    >
+                      Source (40% top rate)
+                    </a>
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <p class="mt-2 text-xs leading-relaxed text-muted">{t('sim.legacyDisclaimer', locale)}</p>
+      </section>
+    )}
 
     {/* T3 · 汇率时间机（历史汇率 + 波动教育点，technical-design §4.2 M2）。
         客户端拉 /api/fx?date=，历史汇率只做教育展示、不写进任何假设。 */}
