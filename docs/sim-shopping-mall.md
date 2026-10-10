@@ -92,5 +92,5 @@ S1+S2 可一次交付，S3 紧随其后。商品图（AI 插画）若想要，�
 | **商品详情卡** | 每张卡可展开「成本构成」：有 `costComponents` 的档位列拆项（走 core `optionCostComponents`，中英双语），无拆项的显示来源口径说明；资产类明示强制变现只回笼原价 75%（`RESALE_RECOVERY_RATE`），体验类明示无一残值 | **已上线 2026-10-09**（原生 `<details>`，钩子 `data-item-detail` / `data-item-components` / `data-item-resell`） |
 | **「逛而不买」收藏夹** | 书签按钮 + 独立「收藏」tab + 空态；收藏与购物车同形状但**永不进**年成本 / 账单 / 一键成目标；持久化在 sim 账本可选 `favorites`（无账本时为会话态，与购物车同纪律）；事件 `mall:favorite` / `mall:unfavorite` 零 props | **已上线 2026-10-09**（钩子 `data-fav` / `data-fav-empty` / `data-mall-tab="favorites"`） |
 | **年度账单按品类饼图** | 抽屉内 SVG 环形图：基线 + 加购按资产 / 消费品 / 体验拆桶（`cartKindCosts`，口径与新增年成本求和逐位一致，单测钉住三桶之和 = 新增总额），图例带金额与占比，收藏项不在其中 | **已上线 2026-10-09**（钩子 `data-bill-chart` / `data-bill-slice` / `data-bill-ring`） |
-| **拟物衣柜** | 拟物（skeuomorphic）效果的衣柜：可视化衣橱里挑衣服——挂杆、衣物件、点击试穿/收起，选中件计入购物车年成本 | **未动，两个前置**：①衣物项需新增 catalog 条目或 web 侧标注项，金额必须先补公开来源再进池；②拟物视觉重头，候选 AI 插画 + CSS 质感，需要 OPENAI_API_KEY；红线不变：不用真实品牌 |
+| **拟物衣柜** | 拟物（skeuomorphic）效果的衣柜：可视化衣橱里挑衣服——挂杆、衣物件、点击试穿/收起，选中件计入购物车年成本 | **S1 框架已上线（2026-10-10，独立设计见 `sim-wardrobe.md`）**：衣柜 tab + 纯 CSS 拟物衣橱 + 空态 + 图片槽位回退 + allItems 账务合并；S2 仍等两个前置：衣物条目公开来源 + AI 衣物图（OPENAI_API_KEY），红线不变：不用真实品牌 |
 | **AI 商品插画** | 本设计 §6 P2，替代 emoji 占位图标 | 未动：需要 OPENAI_API_KEY 与出图风格验收，不阻塞读数 |
