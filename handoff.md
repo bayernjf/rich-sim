@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-10 现测：`docs/` 下 19 份、表内 19 行（showcase-pitch.md 2026-10-10 入表，计数 18 → 19）
+- **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-10 现测：`docs/` 下 20 份、表内 20 行（sim-resale-market.md 2026-10-10 入表，计数 19 → 20）
 - **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——2026-10-10 现测：`git rev-list --count origin/dev..dev` = **3**（T0/T1 三笔本地未推），`git rev-list --count origin/main..origin/dev` = **0**（dev 内容已全部合并进 main）。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
@@ -34,6 +34,7 @@
 | `docs/m2-task-breakdown.md` | M2 实施分解 S1–S4：卡 A 看板 / 账单日 / 换算条 / 领钱入口，含两个必须先过的冻结契约闸门与内容取值规则 | **S1–S4 全部上线（2026-10-05）**；埋点管道同日接通并修掉 sendBeacon 静默丢事件缺陷，§5 已更新 |
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
 | `docs/sim-shopping-mall.md` | 富豪商城设计 v1（2026-10-09）：清单式购物区升级为购物网站形态——商品卡片流 + 分类 tab + 购物车抽屉 + 「结算=账单日」反转；算术层零改动 | **S1–S3 已上线（2026-10-09）**：MallArea 替换旧 ShoppingArea（已删）、`mall:checkout` 埋点、copy-guard 增促销禁语闸门。**商城扩展三件同日上线（§8 已勾销）**：商品详情卡（`optionCostComponents` 拆项 + 75% 回笼/无一残值口径）、「逛而不买」收藏夹（sim 账本可选 `favorites`，永不进账单，`mall:favorite`/`mall:unfavorite` 零 props）、抽屉内年度账单 SVG 环形图（`cartKindCosts` 三桶 + 基线，单测钉三桶之和 = 新增总额）；账单日参数 2/4（`BILLS_PER_PAGE` / `RESALE_RECOVERY_RATE` / `resaleRecovery`）已参数化进 core，web 不再持有副本；冒烟步骤 8.6 新增 14 条、**170 条 FAILS 0**。§8 仅剩拟物衣柜（等衣物条目来源 + OPENAI_API_KEY）与 AI 商品插画（等 key） |
+| `docs/sim-resale-market.md` | 二手变卖设计 v1（2026-10-10）：商城已持有资产可卖出——账单消失 + 一次性回笼现金（`annualCost` × 75% 教学口径）进 sim 账本；含「加购不扣本金 ⇒ 卖出不能按本金回笼」的口径取舍与红线对照 | **草案，待发起人过目** |
 | `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；S3（SIM 账同步 + 登出语义）同日完成，M5 三片代码齐；已随 PR #54 合并 main 上线（Supabase Pages 变量已配）；G3 隐私政策页已实现（/privacy 双语 SSR + 页脚入口，文案待发起人过目）；登录方式 2026-10-09 翻转为邮箱+密码（Confirm email 已关，注册即登录）；**真人联调已闭环（2026-10-09 凌晨）**：生产注册成功即登录、改存款 2s 防抖上行、`plans` 表 plan/sim 两行核对一致（payload 存款数字与页面输入逐位相符、时间戳吻合）——M5 端到端全通 |
 | `docs/gameplay-inventory.md` | 玩法清单（2026-10-10 新建，G1）：26 个玩法条目按新手引导路径重排（玩一把富豪 → 对照你自己 → 养账本 → 系统层），含计数口径、维护纪律、红线自查 | **唯一事实源 = 玩法说明页 `/app/guide`**（同批上线，SSR 双语 + `guide:view` 零 props 埋点，落地页与 sim 页入口；玩法增删改须三处同步：本文档 + guide.astro STEPS + messages.ts `guide.*` 键） |
 | `docs/showcase-pitch.md` | 发布素材包（2026-10-10 新建，G2 配套）：通用英文主帖 + Product Hunt 版 + 中文社区版 + 发布检查清单与备选标题；配图 `public/og-cover.png`（OG meta 已全站生效） | 就绪可用；渠道节奏与「付费墙待定」口径见文档本身 |
