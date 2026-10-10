@@ -1359,6 +1359,42 @@ try {
   check((await cartAdded()).includes('100,000'), '购物区：移出游艇后新增回落到 $100,000', `added=${await cartAdded()}`);
   check(await cartStatus() === 'yellow', '购物即记账：移出后回到黄色', `status=${await cartStatus()}`);
 
+  // ── 步骤 8.8：二手变卖（sim-resale-market）——卖出游艇：账单落、现金回血 ──
+  // 抽屉正开着时卡片被遮罩挡住，先 Esc 关抽屉再重新加购游艇。
+  await page.keyboard.press('Escape');
+  await yachtCard.getByRole('button', { name: '加入购物车' }).click();
+  await page.waitForTimeout(200);
+  check(await cartCount() === 2, '二手变卖：重新加购游艇后件数 = 2', `count=${await cartCount()}`);
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
+  // 体验类（Met Gala）没有卖出按钮，只有「无法转卖」说明——这本身是教育点。
+  check(
+    (await page.locator('[data-mall-drawer] [data-mall-nosell]').count()) === 1 &&
+      (await page.locator('[data-mall-drawer] [data-mall-sell]').count()) === 1,
+    '二手变卖：体验项无卖出按钮、资产项有（各 1）',
+    '',
+  );
+  await page.click('[data-mall-sell="travel/superyacht"]');
+  await page.waitForTimeout(200);
+  check(await cartCount() === 1, '二手变卖：卖出游艇后件数回落 = 1', `count=${await cartCount()}`);
+  const soldText = await page.locator('[data-mall-sold]').innerText();
+  check(
+    soldText.includes('已卖出') && soldText.includes('4,050,000'),
+    '二手变卖：播报卖出与回笼 $4,050,000（年成本 75%）',
+    `text=${soldText.replace(/\n/g, ' ').slice(0, 60)}`,
+  );
+  check(await cartStatus() === 'yellow', '二手变卖：卖出后账单回到黄区', `status=${await cartStatus()}`);
+  // 步骤 1.5 的 localStorage.clear() 已把 sim 账本清掉，此处卖出走的是
+  // 「没领钱的人没有现金池」路径：回笼是纯内存会话态、不落盘，runway 行
+  // 也因此整行不出现。有账本的累加路径由 sim-draft.test.ts 钉住。
+  check(
+    (await page.locator('[data-claim-runway]').count()) === 0,
+    '二手变卖：无账本时卖出不凭空建现金池（runway 行不出现）',
+    '',
+  );
+  const evSell = await eventsSoFar();
+  check(countEvent(evSell, 'sim:sell') >= 1, '埋点：sim:sell 已入队', `count=${countEvent(evSell, 'sim:sell')}`);
+
   // ── 步骤 9：一键成目标（M3 S4 · SIM→REAL 单向桥）──
   const ledgersBefore = await page.evaluate(() => ({
     sim: localStorage.getItem('rich-sim:sim:v1'),

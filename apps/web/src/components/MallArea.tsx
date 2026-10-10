@@ -38,6 +38,7 @@ import {
   readFavorites,
   saveCartItem,
   saveFavoriteItem,
+  sellCartItem,
 } from '../lib/sim-draft';
 import { adoptCartAsGoal } from '../lib/sim-bridge';
 import { format, t, type MessageKey } from '../lib/messages';
@@ -167,6 +168,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
   const [favorites, setFavorites] = useState<CartItem[]>([]);
   const [tab, setTab] = useState<Tab>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [soldNotice, setSoldNotice] = useState<{ label: string; amount: number } | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -268,6 +270,19 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
     const entry = { dimension: item.dimension, optionId: item.option.id };
     setCart(saveCartItem(cart, entry, add));
     track(add ? 'sim:add' : 'sim:remove');
+  };
+
+  /** 二手变卖（sim-resale-market §3）：只有资产/消费品可卖，体验不可转卖。 */
+  const sellable = (item: ShoppingItem) =>
+    (item.option.kind === 'asset' || item.option.kind === 'consumer') && item.option.resellable !== false;
+
+  const sell = (item: ShoppingItem) => {
+    const entry = { dimension: item.dimension, optionId: item.option.id };
+    const amount = Math.round(resaleRecovery(item.option.annualCost));
+    const result = sellCartItem(cart, entry, amount);
+    setCart(result.cart);
+    setSoldNotice({ label: poolOptionLabel(item.option, locale), amount });
+    track('sim:sell');
   };
 
   const toggleFavorite = (item: ShoppingItem, add: boolean) => {
@@ -470,16 +485,44 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                     <li key={item.option.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel px-3 py-2 text-sm">
                       <span className="min-w-0 truncate text-ink">{poolOptionLabel(item.option, locale)}</span>
                       <span className="shrink-0 font-mono text-xs tabular-nums text-muted">{money(item.option.annualCost)}</span>
-                      <button
-                        type="button"
-                        onClick={() => toggle(item, false)}
-                        className="shrink-0 rounded-full border border-line px-2 py-1 text-xs text-ink hover:bg-panel-2"
-                      >
-                        {t('sim.cart.remove', locale)}
-                      </button>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {sellable(item) ? (
+                          <button
+                            type="button"
+                            data-mall-sell={`${item.dimension}/${item.option.id}`}
+                            title={format(t('mall.sellHint', locale), {
+                              amount: money(Math.round(resaleRecovery(item.option.annualCost))),
+                            })}
+                            onClick={() => sell(item)}
+                            className="rounded-full border border-accent px-2 py-1 text-xs font-semibold text-accent hover:bg-accent-soft"
+                          >
+                            {t('mall.sell', locale)}
+                          </button>
+                        ) : (
+                          <span data-mall-nosell className="text-xs text-muted">{t('mall.noResale', locale)}</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggle(item, false)}
+                          className="rounded-full border border-line px-2 py-1 text-xs text-ink hover:bg-panel-2"
+                        >
+                          {t('sim.cart.remove', locale)}
+                        </button>
+                      </span>
                     </li>
                   ))}
                 </ul>
+              )}
+
+              <p aria-live="polite" className="sr-only" data-mall-sold>
+                {soldNotice
+                  ? format(t('mall.sold', locale), { item: soldNotice.label, amount: money(soldNotice.amount) })
+                  : ''}
+              </p>
+              {soldNotice && (
+                <p className="mt-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-xs leading-relaxed text-ink">
+                  {format(t('mall.sold', locale), { item: soldNotice.label, amount: money(soldNotice.amount) })}
+                </p>
               )}
 
               <div

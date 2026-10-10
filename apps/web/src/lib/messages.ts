@@ -254,8 +254,12 @@ const ZH = {
   'mall.tab.favorites': '收藏',
   'mall.detail': '成本构成',
   'mall.detailEmpty': '该档位是按公开来源校准的年度花费，没有再拆细项；点来源链接可查口径。',
-  'mall.resellable': '断裂时可强制变卖：资产不能原价变现，强制变现只回笼原价的 {rate}。',
+  'mall.resellable': '断裂时可强制变卖：按年成本的 {rate} 一次性回笼（教学示意口径），不是资产本金。',
   'mall.notResellable': '一次性体验：当年花完，没有持有成本，也没有可变卖的残值。',
+  'mall.sell': '卖出',
+  'mall.sellHint': '二手变卖：一次性回笼 {amount}（年成本 75% · 教学示意口径），下一期账单立即回落。',
+  'mall.sold': '已卖出 {item}，回笼 {amount}（教学示意口径）——已计入「够撑多久」。',
+  'mall.noResale': '体验无法转卖',
   'mall.favAdd': '收藏',
   'mall.favRemove': '取消收藏',
   'mall.favEmpty': '还没有收藏。看到想了解但没打算买的，点书签存下来——收藏只留作浏览，不进入任何账单。',
@@ -742,9 +746,15 @@ const EN: Record<keyof typeof ZH, string> = {
   'mall.detailEmpty':
     'This tier is an annual figure calibrated to public sources, with no finer split; follow the source link for the basis.',
   'mall.resellable':
-    'When cashflow breaks it can be force-sold: assets do not liquidate at face value - a forced sale recovers only {rate}.',
+    'When cashflow breaks it can be force-sold: a forced sale recovers {rate} of the annual cost as a one-off (teaching approximation), not the asset principal.',
   'mall.notResellable':
     'A one-off experience: spent within the year, no carrying cost and nothing to resell.',
+  'mall.sell': 'Sell',
+  'mall.sellHint':
+    'Resell: recover {amount} as a one-off (75% of annual cost, teaching approximation) - the next bill drops straight away.',
+  'mall.sold':
+    'Sold {item}, recovered {amount} (teaching approximation) - added to your runway.',
+  'mall.noResale': 'Not resellable',
   'mall.favAdd': 'Save',
   'mall.favRemove': 'Unsave',
   'mall.favEmpty':

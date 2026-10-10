@@ -18,11 +18,13 @@ import {
   clearSimState,
   readCart,
   readFavorites,
+  readResaleProceeds,
   readSimState,
   removeCartItem,
   sanitizeCart,
   saveCartItem,
   saveFavoriteItem,
+  sellCartItem,
 } from './sim-draft';
 
 function installStorage(): Map<string, string> {
@@ -311,5 +313,64 @@ describe('updatedAt 与更新事件（M5 S3）', () => {
       g.window = saved;
     }
     expect(seen.filter((type) => type === SIM_UPDATED_EVENT)).toHaveLength(2);
+  });
+});
+
+describe('二手变卖（sim-resale-market）', () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  it('旧草稿（无 resaleProceeds 字段）读出来是 0，schemaVersion 仍是 1', () => {
+    claimSim(1_000_000);
+    expect(readResaleProceeds()).toBe(0);
+    expect(JSON.parse(localStorage.getItem(SIM_KEY)!).schemaVersion).toBe(1);
+  });
+
+  it('卖出 = 移出车项 + 回笼累加，一次写盘；重复卖出同一项只回一次', () => {
+    claimSim(1_000_000);
+    const cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    const first = sellCartItem(cart, { dimension: 'travel', optionId: 'superyacht' }, 4_050_000);
+    expect(first.cart).toEqual([]);
+    expect(first.resaleProceeds).toBe(4_050_000);
+    expect(readCart()).toEqual([]);
+    expect(readResaleProceeds()).toBe(4_050_000);
+    // 再卖一件别的，回笼累计；账面起始金不被改写。
+    const cart2 = saveCartItem([], { dimension: 'living', optionId: 'mansion' }, true);
+    const second = sellCartItem(cart2, { dimension: 'living', optionId: 'mansion' }, 100_000);
+    expect(second.resaleProceeds).toBe(4_150_000);
+    expect(readSimState()?.startingCapital).toBe(1_000_000);
+  });
+
+  it('非法回笼（NaN / 负数）只移车不加钱；坏数据字段收敛为 0', () => {
+    claimSim(1_000_000);
+    const cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    const sold = sellCartItem(cart, { dimension: 'travel', optionId: 'superyacht' }, NaN);
+    expect(sold.cart).toEqual([]);
+    expect(sold.resaleProceeds).toBe(0);
+    localStorage.setItem(
+      SIM_KEY,
+      JSON.stringify({ ...readSimState(), resaleProceeds: -50 }),
+    );
+    expect(readResaleProceeds()).toBe(0);
+  });
+
+  it('没领过起始金：卖出只动车，回笼是内存态 0，不凭空建账', () => {
+    const sold = sellCartItem(
+      [{ dimension: 'travel', optionId: 'superyacht' }],
+      { dimension: 'travel', optionId: 'superyacht' },
+      4_050_000,
+    );
+    expect(sold.cart).toEqual([]);
+    expect(sold.resaleProceeds).toBe(0);
+    expect(readSimState()).toBeNull();
+  });
+
+  it('卖出只动 sim 账本，真实方案账一个字节不变', () => {
+    localStorage.setItem(DRAFT_KEY, REAL_PLAN);
+    claimSim(1_000_000);
+    const cart = saveCartItem([], { dimension: 'travel', optionId: 'superyacht' }, true);
+    sellCartItem(cart, { dimension: 'travel', optionId: 'superyacht' }, 4_050_000);
+    expect(localStorage.getItem(DRAFT_KEY)).toBe(REAL_PLAN);
   });
 });
