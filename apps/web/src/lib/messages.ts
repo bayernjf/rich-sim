@@ -262,7 +262,7 @@ const ZH = {
   'mall.noResale': '体验无法转卖',
   'mall.tab.wardrobe': '衣柜',
   'mall.wardrobeEmpty':
-    '衣柜上新中：衣物条目正在核对公开来源，上架后可以直接从挂杆上取下来试穿、加购。',
+    '衣柜暂时没有可试穿的衣物。',
   'mall.favAdd': '收藏',
   'mall.favRemove': '取消收藏',
   'mall.favEmpty': '还没有收藏。看到想了解但没打算买的，点书签存下来——收藏只留作浏览，不进入任何账单。',
@@ -464,7 +464,7 @@ const ZH = {
   'guide.resale.title': '二手变卖',
   'guide.resale.desc': '账单太疼就把资产二手卖掉：按年成本 75% 一次性回血（教学示意），下一期账单立刻回落。',
   'guide.wardrobe.title': '拟物衣柜',
-  'guide.wardrobe.desc': '打开木纹衣橱，从挂杆上取衣服加购；衣物条目正在核对公开来源，陆续上架。',
+  'guide.wardrobe.desc': '打开木纹衣橱，从挂杆取下全定制西装、高定礼服、复杂功能腕表等 5 件衣物试穿加购；标价是年持有成本（零售价按年限摊提，来源可查）。',
   'guide.favorites.title': '收藏夹',
   'guide.favorites.desc': '逛而不买：收藏不产生任何账单行为，只看不动。',
   'guide.billChart.title': '年度账单饼图',
@@ -764,7 +764,7 @@ const EN: Record<keyof typeof ZH, string> = {
     'Sold {item}, recovered {amount} (teaching approximation) - added to your runway.',
   'mall.noResale': 'Not resellable',
   'mall.wardrobeEmpty':
-    'The wardrobe is being stocked: clothing entries are being checked against public sources - once they are on the rack you can take them down, try them on and add them to the cart.',
+    'The wardrobe is currently empty.',
   'mall.favAdd': 'Save',
   'mall.favRemove': 'Unsave',
   'mall.favEmpty':
@@ -972,7 +972,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'guide.resale.title': 'Resale',
   'guide.resale.desc': 'Bill too heavy? Resell an asset for a one-off 75% of its annual cost (teaching approximation) - the next bill drops straight away.',
   'guide.wardrobe.title': 'Wardrobe',
-  'guide.wardrobe.desc': 'Open the wooden closet and take clothes off the rack into the cart; clothing entries are being source-checked and added over time.',
+  'guide.wardrobe.desc': 'Open the wooden closet and take five pieces off the rack—a bespoke suit, couture gown, grand-complication watch and more; the price is the yearly holding cost (retail amortised over years, sources cited).',
   'guide.favorites.title': 'Favorites',
   'guide.favorites.desc': 'Browse without buying: favoriting changes no bill behavior at all.',
   'guide.billChart.title': 'Annual bill donut',

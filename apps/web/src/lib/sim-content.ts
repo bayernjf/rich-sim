@@ -184,11 +184,24 @@ export function experienceLabel(option: CatalogOption, locale: Locale): string {
 /**
  * 购物池里的名字：先查体验项表，再退回 core 的目录表（目录项走 CATALOG_LABELS_EN，
  * 未知 id 一律退回中文原文）。购物池是两种来源拼起来的，视图不该各自判一遍。
+ *
+ * `extraLabelsEn` 给第三类来源（拟物衣柜，见 sim-wardrobe）用：它的英文词典在
+ * 自己模块里、不进 core 也不进体验表，由上层（MallArea）合并 allItems 时传入。
  */
-export function poolOptionLabel(option: CatalogOption, locale: Locale): string {
-  const experience = EXPERIENCE_LABELS_EN[option.id];
-  if (locale === 'en' && experience) return experience;
-  return locale === 'en' ? (coreOptionLabel(option, 'en') ?? option.label) : option.label;
+export function poolOptionLabel(
+  option: CatalogOption,
+  locale: Locale,
+  extraLabelsEn?: Record<string, string>,
+): string {
+  if (locale === 'en') {
+    return (
+      EXPERIENCE_LABELS_EN[option.id] ??
+      extraLabelsEn?.[option.id] ??
+      coreOptionLabel(option, 'en') ??
+      option.label
+    );
+  }
+  return option.label;
 }
 
 export type Bill = {
