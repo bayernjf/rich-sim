@@ -1230,6 +1230,17 @@ try {
   );
   await page.keyboard.press('Escape');
 
+  // 衣柜英文态（框架 S1：空态走词典）。
+  await page.click('[data-mall-tab="wardrobe"]');
+  await page.waitForSelector('[data-wardrobe]', { timeout: 5000 });
+  const wardrobeEn = await page.locator('[data-wardrobe]').innerText();
+  check(
+    wardrobeEn.includes('being stocked'),
+    'i18n：衣柜英文态空态走词典',
+    `text=${wardrobeEn.replace(/\n/g, ' ').slice(0, 40)}`,
+  );
+  await page.click('[data-mall-tab="all"]');
+
   // ── 步骤 7.8：三通道（经历·快进 / 感受·黑天鹅 / 地位·特权价目）──
   // 卡 A 基态：收入 $3M、年成本 $1,317,000 → 30 年累计结余 (3,000,000−1,317,000)×30 = $50,490,000。
   const lifeText = await page.locator('[data-sim-life]').innerText();
@@ -1394,6 +1405,26 @@ try {
   );
   const evSell = await eventsSoFar();
   check(countEvent(evSell, 'sim:sell') >= 1, '埋点：sim:sell 已入队', `count=${countEvent(evSell, 'sim:sell')}`);
+
+  // ── 步骤 8.9：拟物衣柜（sim-wardrobe S1 框架）——tab 在、空态在（英文断言在 7.6）──
+  await page.keyboard.press('Escape');
+  await page.click('[data-mall-tab="wardrobe"]');
+  await page.waitForSelector('[data-wardrobe]', { timeout: 5000 });
+  const wardrobeZh = await page.locator('[data-wardrobe]').innerText();
+  check(
+    wardrobeZh.includes('衣柜上新中'),
+    '衣柜：衣物池为空时显示空态（框架照常渲染）',
+    `text=${wardrobeZh.replace(/\n/g, ' ').slice(0, 40)}`,
+  );
+  check(
+    (await page.locator('[data-wardrobe-item]').count()) === 0,
+    '衣柜：无来源条目不上架（当前 0 件）',
+    '',
+  );
+  // 不跳页（跳转会丢无账本的内存车）：切回卡片流并重开抽屉，接步骤 9。
+  await page.click('[data-mall-tab="all"]');
+  await page.click('[data-mall-cart-open]');
+  await page.waitForSelector('[data-mall-drawer]', { timeout: 5000 });
 
   // ── 步骤 9：一键成目标（M3 S4 · SIM→REAL 单向桥）──
   const ledgersBefore = await page.evaluate(() => ({

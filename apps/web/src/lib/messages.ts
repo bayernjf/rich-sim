@@ -260,6 +260,9 @@ const ZH = {
   'mall.sellHint': '二手变卖：一次性回笼 {amount}（年成本 75% · 教学示意口径），下一期账单立即回落。',
   'mall.sold': '已卖出 {item}，回笼 {amount}（教学示意口径）——已计入「够撑多久」。',
   'mall.noResale': '体验无法转卖',
+  'mall.tab.wardrobe': '衣柜',
+  'mall.wardrobeEmpty':
+    '衣柜上新中：衣物条目正在核对公开来源，上架后可以直接从挂杆上取下来试穿、加购。',
   'mall.favAdd': '收藏',
   'mall.favRemove': '取消收藏',
   'mall.favEmpty': '还没有收藏。看到想了解但没打算买的，点书签存下来——收藏只留作浏览，不进入任何账单。',
@@ -742,6 +745,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'mall.close': 'Close',
   'mall.checkout': 'Checkout - see bill day',
   'mall.tab.favorites': 'Saved',
+  'mall.tab.wardrobe': 'Wardrobe',
   'mall.detail': 'Cost breakdown',
   'mall.detailEmpty':
     'This tier is an annual figure calibrated to public sources, with no finer split; follow the source link for the basis.',
@@ -755,6 +759,8 @@ const EN: Record<keyof typeof ZH, string> = {
   'mall.sold':
     'Sold {item}, recovered {amount} (teaching approximation) - added to your runway.',
   'mall.noResale': 'Not resellable',
+  'mall.wardrobeEmpty':
+    'The wardrobe is being stocked: clothing entries are being checked against public sources - once they are on the rack you can take them down, try them on and add them to the cart.',
   'mall.favAdd': 'Save',
   'mall.favRemove': 'Unsave',
   'mall.favEmpty':
