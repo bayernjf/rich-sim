@@ -1268,6 +1268,11 @@ try {
     '特权价目：两项带来源金额呈现',
     '',
   );
+  check(
+    privText.includes('$16,500,000') && privText.includes('$42,000,000'),
+    '特权价目（C-1 细化）：CEO 任命 $16.5M/年 + 冠名一次性 $42M 均带价签呈现',
+    '',
+  );
 
   // ── 步骤 7.7：卡 B（老钱继承人）——?card=card-b 切卡、年成本与绿区负担率、切换器 ──
   await page.goto(`${BASE}/app/sim?card=card-b&lang=zh`, { waitUntil: 'networkidle' });

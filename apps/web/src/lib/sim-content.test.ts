@@ -26,6 +26,7 @@ import {
   runwayMonths,
   shoppingPool,
   topTierChoices,
+  ONEOFF_PERKS,
 } from './sim-content';
 
 const catalog = initialCatalogUSD;
@@ -232,17 +233,18 @@ describe('购物池（M3 · S1）', () => {
     }
   });
 
-  it('web 侧补的两个纯体验项在池里，池总数 = 12 目录项 + 2 体验项 = 14', () => {
+  it('web 侧补的纯体验项在池里，池总数 = 12 目录项 + 3 体验项 = 15', () => {
     const pool = shoppingPool(catalog);
-    expect(pool).toHaveLength(14);
+    expect(pool).toHaveLength(15);
     const ids = pool.map((item) => item.option.id);
     expect(ids).toContain('exp-private-jet-world-tour');
     expect(ids).toContain('exp-met-gala-ticket');
+    expect(ids).toContain('exp-hire-ceo');
   });
 
   it('纯体验项是一次性花费：不可转卖、无持有情绪、无购买价', () => {
     const pool = shoppingPool(catalog);
-    for (const id of ['exp-private-jet-world-tour', 'exp-met-gala-ticket']) {
+    for (const id of ['exp-private-jet-world-tour', 'exp-met-gala-ticket', 'exp-hire-ceo']) {
       const item = pool.find((entry) => entry.option.id === id);
       expect(item?.option.kind).toBe('experience');
       expect(item?.option.resellable).toBe(false);
@@ -466,6 +468,35 @@ describe('剧情通道（T3 · 随机事件：危机 / 诉讼 / 分产）', () =
       for (const e of plotEvents(i, c, last)) {
         expect(Number.isNaN(e.rate)).toBe(false);
       }
+    }
+  });
+});
+
+describe('一次性特权价签（C-1 · 2026-10-10）', () => {
+  it('每条都有来源、双语标签与说明，金额为正', () => {
+    expect(ONEOFF_PERKS.length).toBeGreaterThan(0);
+    for (const perk of ONEOFF_PERKS) {
+      expect(perk.id).toBeTruthy();
+      expect(perk.amount).toBeGreaterThan(0);
+      expect(perk.source).toMatch(/^https?:\/\//);
+      expect(perk.label.zh.length).toBeGreaterThan(0);
+      expect(perk.label.en.length).toBeGreaterThan(0);
+      expect(perk.note.zh.length).toBeGreaterThan(0);
+      expect(perk.note.en.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('冠名是带来源的一次性价签（$42M · Purdue 2026-10 新闻）', () => {
+    const naming = ONEOFF_PERKS.find((perk) => perk.id === 'perk-building-naming');
+    expect(naming).toBeDefined();
+    expect(naming?.amount).toBe(42_000_000);
+    expect(naming?.source).toContain('purdue.edu');
+  });
+
+  it('一次性价签不进购物池（与年成本口径隔离，不进账单）', () => {
+    const poolIds = shoppingPool(catalog).map((item) => item.option.id);
+    for (const perk of ONEOFF_PERKS) {
+      expect(poolIds).not.toContain(perk.id);
     }
   });
 });

@@ -286,6 +286,7 @@ const ZH = {
   'sim.privLead':
     '被世界优待的感觉也有价签。私密剧情，不做社交展示；金额来自带来源的目录项：',
   'sim.privCost': '代价点：应酬排满日程、隐私消失——这两件没有价签，但每年都有。',
+  'sim.privOnceH': '一次性价签（不是年账单）：',
   'sim.opH': '操作通道：加杠杆 / 收购谈判',
   'sim.opLead':
     '决策模拟的爽是掌控感，代价是现金流。以下倍数与利率是教学示意参数，不是任何机构的真实条款，也不是建议：',
@@ -790,6 +791,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.privLead':
     'Being treated specially by the world has a price tag too. A private scene, not social display; amounts come from sourced catalog items:',
   'sim.privCost': 'The hidden costs: a calendar full of obligations and no privacy - no price tag, but billed every year.',
+  'sim.privOnceH': 'One-time price tags (not annual bills):',
   'sim.opH': 'The operator channel: leverage / an acquisition',
   'sim.opLead':
     'The fun of decision-making is control; the cost is cashflow. The multiples and the rate below are teaching illustrations, not any institution’s real terms - and not advice:',
