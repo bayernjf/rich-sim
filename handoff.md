@@ -1,6 +1,6 @@
 # Handoff · rich-sim（财富模拟 · 产品）
 
-> 更新时间：2026-10-10（二手变卖 `9dc93ca` + 拟物衣柜框架 `98a278e` 已上线并 push；玩法清单三处同步：二手变卖/拟物衣柜入表，28 项）
+> 更新时间：2026-10-10（拟物衣柜 S2a：首批 5 件带来源衣物已上架并本地提交，冒烟 224；二手变卖 `9dc93ca` + 拟物衣柜框架 `98a278e` 已上线 push；玩法清单维持 28 项）
 > 本仓库是**产品仓库：文档 + 应用代码一体**（M1 代码已并入，2026-10-04）。
 
 ---
@@ -12,7 +12,7 @@
 ## 当前状态
 
 - **文档**：见下表——**这张表就是本仓库的唯一文档清单**，别在别处复制份数或文件名（`README` 与 `AGENTS.md` 只指到这里）。2026-10-10 现测：`docs/` 下 21 份、表内 21 行（sim-wardrobe.md 2026-10-10 入表，计数 20 → 21）
-- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交，**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——2026-10-10 现测：`git rev-list --count origin/dev..dev` = **3**（T0/T1 三笔本地未推），`git rev-list --count origin/main..origin/dev` = **0**（dev 内容已全部合并进 main）。
+- **分支**：`dev`。S1 已随 PR #31 合并进 main（2026-10-05），生产已上；体验项补源是其上的后续提交。**同步/领先状态不写死**（AGENTS.md「不要写死会变的结论」）——需要时现测：`git rev-list --count origin/dev..dev`（本地未推）与 `git rev-list --count origin/main..origin/dev`（dev 未合并进 main）。2026-10-10 衣柜 S2a 提交前现测两者均为 **0**；提交后本地领先数以 `git status`/`git log` 为准。
 - **发布路径**：`dev → main` 的 PR 由 **pr-helper**（用户自建的 GitHub App）按 `ahead_by >= 1` 自动创建并自动合并，main 推送即触发 Cloudflare Pages 生产构建；见「下一步」与 `docs/DEPLOYMENT.md`。
 - **默认分支**：`main`
 - **远程**：`git@github.com:bayernjf/rich-sim.git`（public）
@@ -35,7 +35,7 @@
 | `docs/m3-task-breakdown.md` | M3 实施分解 S1–S5：购物机制 / 购物车 / 购物即记账 / 一键成目标（SIM→REAL 单向桥），含 G1–G4 四个契约闸门与体验项内容规则 | **已开工（2026-10-06）**：G4 拍板走方案 (a)（`goalOverride`）；**S1–S5 全部已上线**（S1 随 PR #31，S5 随 PR #36，均已合并 main） |
 | `docs/sim-shopping-mall.md` | 富豪商城设计 v1（2026-10-09）：清单式购物区升级为购物网站形态——商品卡片流 + 分类 tab + 购物车抽屉 + 「结算=账单日」反转；算术层零改动 | **S1–S3 已上线（2026-10-09）**：MallArea 替换旧 ShoppingArea（已删）、`mall:checkout` 埋点、copy-guard 增促销禁语闸门。**商城扩展三件同日上线（§8 已勾销）**：商品详情卡（`optionCostComponents` 拆项 + 75% 回笼/无一残值口径）、「逛而不买」收藏夹（sim 账本可选 `favorites`，永不进账单，`mall:favorite`/`mall:unfavorite` 零 props）、抽屉内年度账单 SVG 环形图（`cartKindCosts` 三桶 + 基线，单测钉三桶之和 = 新增总额）；账单日参数 2/4（`BILLS_PER_PAGE` / `RESALE_RECOVERY_RATE` / `resaleRecovery`）已参数化进 core，web 不再持有副本；冒烟步骤 8.6 新增 14 条、**170 条 FAILS 0**。§8 仅剩 AI 商品插画（等 OPENAI_API_KEY）；拟物衣柜 S1 框架已上线（2026-10-10，见 `sim-wardrobe.md`） |
 | `docs/sim-resale-market.md` | 二手变卖设计 v1（2026-10-10）：商城已持有资产可卖出——账单消失 + 一次性回笼现金（`annualCost` × 75% 教学口径）进 sim 账本；含「加购不扣本金 ⇒ 卖出不能按本金回笼」的口径取舍与红线对照 | **S1+S2 已上线（2026-10-10）**：`resaleProceeds` 账本字段 + `sellCartItem` + 抽屉卖出按钮/播报 + runway 新分子 + `sim:sell` 埋点 + 文案口径修正；冒烟步骤 8.8 新增 7 条、**218 条 FAILS 0** |
-| `docs/sim-wardrobe.md` | 拟物衣柜设计 v1（2026-10-10）：商城内拟物衣橱挑衣服——木纹柜体/挂杆/衣架纯 CSS，选中件计入购物车；图片槽位按 `/mall/wardrobe/<optionId>.webp` 约定、缺失自动回退占位 | **S1 框架已上线（2026-10-10）**：`sim-wardrobe.ts`（入池闸门与购物池同规则）+ 衣柜 tab + 空态 + allItems 账务合并；冒烟步骤 8.9/7.6 新增 3 条、**221 条 FAILS 0**。S2 待补：衣物条目公开来源 + AI 衣物图（等 OPENAI_API_KEY），解除后只改数据与图片、零代码改动 |
+| `docs/sim-wardrobe.md` | 拟物衣柜设计 v1（2026-10-10）：商城内拟物衣橱挑衣服——木纹柜体/挂杆/衣架纯 CSS，选中件计入购物车；图片槽位按 `/mall/wardrobe/<optionId>.webp` 约定、缺失自动回退占位 | **S1 框架 + S2a 首批衣物已上线（2026-10-10）**：S1 `sim-wardrobe.ts`（入池闸门与购物池同规则）+ 衣柜 tab + 空态 + allItems 账务合并；S2a 首批 5 件通用品类（全定制西装/高定礼服/复杂功能腕表/稀有皮手袋/定制皮鞋）全部带 http(s) 公开来源（Huntsman/Couture Notebook/Jomashop/苏富比/George Cleverley），年成本走「零售价按 10–30 年教学摊提」持有口径、算式入 `note`，英文词典 `WARDROBE_LABELS_EN` 经 `poolOptionLabel(…, extraEn)` 覆盖抽屉/账单，`sim-wardrobe.test.ts` 3 条钉闸门/英文穷尽/摊提；冒烟 7.6/8.9 由空态改为有货+加购链路（净 +3）、**224 条 FAILS 0**，web 299 单测绿、check 0/0/0、build 通过。**仅剩 S2b AI 衣物图（等 OPENAI_API_KEY），补图零代码改动** |
 | `docs/m5-task-breakdown.md` | M5 实施分解：账号体系（2026-10-08 发起人拍板立项，D4 翻转）——Supabase Auth + 草稿云端同步，localStorage 优先不动摇，含隐私/契约闸门 | **S1 Auth 代码完成（2026-10-08）**：magic link 登录岛挂三页，未配置 env 零渲染；G1（Supabase 项目）/G2（magic link）已过；dashboard 两步已完成（agent 浏览器代办）；S2 草稿同步代码已完成（decideSync + SyncBridge，web 244 测试绿、冒烟 142 条 FAILS 0）；S3（SIM 账同步 + 登出语义）同日完成，M5 三片代码齐；已随 PR #54 合并 main 上线（Supabase Pages 变量已配）；G3 隐私政策页已实现（/privacy 双语 SSR + 页脚入口，文案待发起人过目）；登录方式 2026-10-09 翻转为邮箱+密码（Confirm email 已关，注册即登录）；**真人联调已闭环（2026-10-09 凌晨）**：生产注册成功即登录、改存款 2s 防抖上行、`plans` 表 plan/sim 两行核对一致（payload 存款数字与页面输入逐位相符、时间戳吻合）——M5 端到端全通 |
 | `docs/gameplay-inventory.md` | 玩法清单（2026-10-10 新建，G1）：26 个玩法条目按新手引导路径重排（玩一把富豪 → 对照你自己 → 养账本 → 系统层），含计数口径、维护纪律、红线自查 | **唯一事实源 = 玩法说明页 `/app/guide`**（同批上线，SSR 双语 + `guide:view` 零 props 埋点，落地页与 sim 页入口；玩法增删改须三处同步：本文档 + guide.astro STEPS + messages.ts `guide.*` 键） |
 | `docs/showcase-pitch.md` | 发布素材包（2026-10-10 新建，G2 配套）：通用英文主帖 + Product Hunt 版 + 中文社区版 + 发布检查清单与备选标题；配图 `public/og-cover.png`（OG meta 已全站生效） | 就绪可用；渠道节奏与「付费墙待定」口径见文档本身 |
@@ -126,6 +126,13 @@
 **2026-10-10 · 玩法说明（G1，同 T3 之后本地提交，未 push）**：①**玩法清单落成文档** `docs/gameplay-inventory.md`（新建，26 个玩法条目按新手引导路径重排：玩一把富豪 → 对照你自己 → 养账本 → 系统层；含计数口径、维护纪律、红线自查）；②**产品内玩法说明页 `/app/guide`**（新路由，SSR 双语，四步分组 + 26 条目，落地页与 sim 页各加入口链接；`guide.*` zh/en 各 27 键，i18n 测试强制成对）；③埋点 `guide:view` 零 props（一次访问报一次），DEPLOYMENT 事件清单已加；冒烟新增步骤 12 共 6 条 → **205 条 FAILS 0**；现值 core 70 / web 291 全绿、check 0/0/0、build 通过。维护纪律：玩法增删改须三处同步（gameplay-inventory.md + guide.astro STEPS + messages.ts `guide.*` 键）。
 
 **2026-10-09 深夜 · T0/T1 收尾（路线图盘点出的「可落地批次」，发起人指派执行）**：①**T0-1 收集端去重版已部署**——`COUNT(DISTINCT event, ts)` 经 `wrangler deploy` 上线（Version `21e00ced`），线上 `/summary` 现返回去重计数（原「代码已改未部署」关闭；上文第 97 行读数段与 DEPLOYMENT 已同步修正）；②**T0-2 汇率行切币种刷新已修**——`AssumptionsPanel` 汇率行加 `[data-assumption="fx"]` 钩子，新 `formatFxLine(a, locale)` 纯函数（zh/en 两条句子、缺币种显示 —），`patchAssumptionDisplay` 扩 locale 参数并 patch 汇率行，`AssumptionsEditor` / `DesignerShell` 传真实 locale；切币种/改假设后随清单同步（M4 遗留段「汇率行仍未做」关闭，+3 单测）；③**T0-3 目标净资产入口已实现（方案 A，进契约）**——见「已做的决策」T0-3 行与 `CONVENTIONS.md`：`Draft`/`SavedPlan` 增可选 `goal`、`results.ts` 新 `goalFor` 口径切换、结果页「目标口径」切换器（提交才写盘、清空即回够用线）、报告 goal 小节随口径、zh/en 各 8 key；单测 277 全绿、check 0 错、冒烟 **190 条 FAILS 0**（开领钱开关实测 2026-10-09 深夜；关开关 182——步骤 5.3 六条 + 步骤 1.1 五条 + 步骤 0.5 首页切换器一条，见 DEPLOYMENT）；④**T0-4 键盘走查 + reduced-motion 已补机器断言**——`e2e-smoke.mjs` 步骤 1.1 五条（第一个 Tab 落 skip link / Tab 可达 radio / 无焦点陷阱 / `reducedMotion:'reduce'` 下点选仍生效 / 无未捕获 JS 错误；「重新导航=新进一页」语义，blur 在 React 页不可靠），「没有机器断言的两项」关闭；⑤**T0-5 读数通道规范化**——`READ_TOKEN` 已 `wrangler secret put`（值存 `~/.rich-sim-read-token`、600 权限、不入仓库；无 token 401 / 带 token 200 实测），本机带代理 `/summary` 命令与「先按 `(event, ts)` 去重」纪律固化进 DEPLOYMENT；⑥**T1-6 /privacy 文案过目清单已交付**——逐句核对与真实代码行为一致，剩 3 个承诺性条款待发起人一句话确认（账号删除走人工流程 / 联系渠道用公开 GitHub issue / 最小政策不补 GDPR 等缺失条款），确认后 M5 彻底收尾（**2026-10-10 已确认，见上**）；⑦**首页补挂语言切换器（2026-10-09 深夜，`0ce6bfd` 之后未提交）**——`index.astro` 顶部右上角与 app 页同款位置、同一组件（`data-locale-switcher`，SSR 渲染），此前首页无切换入口（生产同样没有），补挂后首页语言不再只能靠 `?lang=`/浏览器语言；SSR 断言 +1 条（步骤 0.5）。**本批改动已提交**（`f9867a8` feat(web): net-worth goal + fx-line refresh + keyboard smoke asserts；`08240d0` docs: T0/T1 wrap-up + deploy dedup worker + read-token discipline；`0ce6bfd` docs: mark T0/T1 commits landed），**未 push**；首页切换器一批（index.astro / e2e-smoke.mjs / DEPLOYMENT.md）在 `0ce6bfd` 之后待提交。**下一批推进按路线图**：T2 付费墙 + 支付（先读 `paywall:intent:*` 意愿读数再拍 G3/G4/付费场景/商业模式，唯一服务端切片）→ T3 内容（历史汇率切换 + 汇率波动教育点、六通道剩余「收购谈判/加杠杆 + 随机事件」）→ T4 等外部条件（deferred #5 法务 / OPENAI_API_KEY 拟物衣柜+商品插画 / 品牌视觉商标）→ T5 触发门（大陆阶段 / 竞品深调 B 端原生 App / 匿名社区 F10）。
+
+**2026-10-10 · 分享门面 + UX 修正 + 拟物衣柜 S2a（均已 push 或本地提交）**：
+- **分享门面件（G2，已随 PR #66 合并上线）**：`public/og-cover.png`（1200×630，深色主题 + 负担率面板，Chrome headless 渲染 + OCR 复核）、`BaseLayout` 全站 og/twitter meta、README 展示段、`docs/showcase-pitch.md` 发布素材包（英文主帖/PH 版/中文社区版 + 检查清单）；sitemap 补全 `/app/sim`、`/app/guide`、`/privacy`。
+- **UX 三修正（已 push）**：落地页主 CTA 改为「先玩一把富豪 →」`/app/sim`（模拟做钩子挂门口）+ 次 CTA「用我的收入算账 →」`/app/designer`；sim 账单日加负担率首次解释（年账单÷现金流、>100% 断裂）；sim 顶部「从哪里开始」空态轻引导。
+- **拟物衣柜 S2a（本地提交，见上表 sim-wardrobe 行）**：首批 5 件带来源衣物上架，年成本走持有摊提口径；冒烟 **224 条 FAILS 0**、web 299 单测绿、check 0/0/0、build 通过。
+- **D1 读数（2026-10-10 复拉）**：裸名事件仍只有 **10-05（15）/ 10-08（26，未去重口径）**，**无 10-09/10-10 新访问日、`paywall:intent` 仍为 0**——发布素材包就绪但尚未对外发布，T2 付费墙维持暂缓；**当前全局瓶颈是真实访客与付费意愿读数，最高杠杆动作是把产品发出去**（素材包已备好）。
+- **仍外部阻塞**：S2b AI 衣物图 / 商城 AI 商品插画（`OPENAI_API_KEY`）、名人原型卡（deferred #5 法务）、付费墙+支付（意愿读数 0）、品牌商标（拍板）；**低优待拍板内容项**：特权通道细化（任命高管/捐赠冠名，需带来源金额）、家族传承剧本（设计）、剧情「真实随机」（玩法改动）。
 
 ## 待决问题
 
