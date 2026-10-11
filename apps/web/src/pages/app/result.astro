@@ -12,6 +12,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { initialCatalogUSD } from '@rich-sim/core';
 import { localeFromRequest } from '../../lib/i18n';
 import { t } from '../../lib/messages';
+import { DRAFT_KEY } from '../../lib/draft';
 
 const locale = localeFromRequest(Astro.request, Astro.url);
 ---
@@ -21,6 +22,23 @@ const locale = localeFromRequest(Astro.request, Astro.url);
   description={t('result.metaDesc', locale)}
   locale={locale}
 >
+  {/*
+    CLS 预留（PRD §9 预算 0.1）：本页的数字全靠 localStorage，服务端一无所知，
+    所以 SSR 只能印一个「正在计算」占位，hydration 后整屏撑开——位移曾把合规
+    面板推下去 3.6 屏。**首帧之前**同步读一次本机草稿（只看 profile 存不存在，
+    不取值、不上传），给 <html> 打上标记，让 CSS 在绘制前就预留好对应高度。
+    没有 JS 时标记不存在，也就没有预留——那种情况下本来也不存在 hydration 位移。
+  */}
+  <script is:inline slot="head" define:vars={{ draftKey: DRAFT_KEY }}>
+    try {
+      var raw = localStorage.getItem(draftKey);
+      var draft = raw ? JSON.parse(raw) : null;
+      document.documentElement.dataset.plan = draft && draft.profile ? 'full' : 'empty';
+    } catch (e) {
+      document.documentElement.dataset.plan = 'empty';
+    }
+  </script>
+
   <main id="main" class="mx-auto max-w-3xl px-4 py-8">
     <div class="mb-4 flex items-center justify-end gap-2">
       <AuthButton client:load locale={locale} />
