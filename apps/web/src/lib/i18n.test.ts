@@ -67,6 +67,18 @@ describe('词典完整性', () => {
     }
   });
 
+  it('两边的占位符集合逐 key 一致（改模板时最容易只改一边）', () => {
+    // 为什么钉这条：花括号少一个，tsc / astro check / SSR 源码抓取全是绿的，
+    // 只有浏览器里露出 `{hist}` 这种残token——format 对未知占位符故意原样留着。
+    const tokens = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+    for (const key of zhKeys as MessageKey[]) {
+      expect(
+        tokens(MESSAGES.en[key]),
+        `en/zh 占位符不一致：${key} → zh{${tokens(MESSAGES.zh[key])}} en{${tokens(MESSAGES.en[key])}}`,
+      ).toBe(tokens(MESSAGES.zh[key]));
+    }
+  });
+
   it('红线禁语的英文对应说法同样不许出现（合规文本不是可意译的营销文案）', () => {
     const banned = /guarantee|guaranteed|steady gains|risk-?free|you will (own|have|earn)/i;
     for (const key of zhKeys as MessageKey[]) {
