@@ -348,7 +348,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
             <span class="font-mono tabular-nums text-ink">
               {fmt(item.option.annualCost)}
               {typeof item.option.source === 'string' && (
-                <a href={item.option.source} class="ml-2 text-xs text-accent underline-offset-2 hover:underline">Source</a>
+                <a href={item.option.source} data-source-label class="ml-2 text-xs text-accent underline-offset-2 hover:underline">{t('sim.source', locale)}</a>
               )}
             </span>
           </li>
@@ -361,7 +361,7 @@ const assetBars = card.assetStructure.map((part, index) => ({
             <span class="text-muted">{locale === 'en' ? perk.label.en : perk.label.zh}</span>
             <span class="font-mono tabular-nums text-ink">
               {fmt(perk.amount)}
-              <a href={perk.source} class="ml-2 text-xs text-accent underline-offset-2 hover:underline">Source</a>
+              <a href={perk.source} data-source-label class="ml-2 text-xs text-accent underline-offset-2 hover:underline">{t('sim.source', locale)}</a>
             </span>
           </li>
         ))}

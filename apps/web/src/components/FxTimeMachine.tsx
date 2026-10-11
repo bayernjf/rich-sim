@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { convert, type FxSnapshot } from '@rich-sim/core';
-import { t } from '../lib/messages';
+import { t, format } from '../lib/messages';
 import type { Locale } from '../lib/i18n';
 import { track } from '../lib/analytics';
 
@@ -112,7 +112,12 @@ export default function FxTimeMachine({ locale = 'zh' }: { locale?: Locale }) {
         </p>
       ) : date && histValue !== null && todayValue !== null && delta !== null ? (
         <p className="mt-2 text-sm leading-relaxed text-ink" data-fx-result>
-          {date}：$1M ≈ {fmtMoney(histValue)} · 今天 ≈ {fmtMoney(todayValue)} · 波动 {fmtDelta(delta)}
+          {format(t('sim.fxResult', locale), {
+            date,
+            hist: fmtMoney(histValue),
+            today: fmtMoney(todayValue),
+            delta: fmtDelta(delta),
+          })}
         </p>
       ) : (
         <p className="mt-2 text-xs text-muted" data-fx-result>

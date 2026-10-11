@@ -107,7 +107,8 @@ const ZH = {
   'finance.error.nan': '请输入有效数字',
   'finance.saved': '已自动保存到本机',
   'finance.unfilled': '4 项填齐后自动保存到本机',
-  'finance.privacy': '这 4 个数只存在这台设备上，不会上传——上报的漏斗事件只有事件名与时间。',
+  'finance.privacy':
+    '这 4 个数默认不出这台设备；只有你登录后（可选）才会把草稿同步到你自己的云端账户（见隐私政策）。上报的漏斗事件只有事件名与时间，没有任何数值。',
   'finance.prev': '← 上一步：设计理想生活',
   'finance.next': '下一步：看测算结果 →',
   'result.metaTitle': '测算结果 · 财富模拟',
@@ -334,7 +335,7 @@ const ZH = {
   'sim.fxPick': '选择历史日期：',
   'sim.fxLoading': '读取中…',
   'sim.fxError': '该日期汇率读取失败，请换一个日期。',
-  'sim.fxResult': '{date}：{cny} ≈ {value} · 与今日比 {delta}',
+  'sim.fxResult': '{date}：$1M ≈ {hist} · 今天 ≈ {today} · 波动 {delta}',
   'sim.fxNote': '历史汇率来自 Frankfurter（ECB 参考汇率），仅供教育展示，不构成汇率建议。',
   'invest.title': '把起始金放进资产类别',
   'invest.intro':
@@ -621,7 +622,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'finance.saved': 'Saved automatically on this device',
   'finance.unfilled': 'Saves automatically once all 4 are filled in',
   'finance.privacy':
-    'These four numbers stay on this device and are never uploaded — funnel events carry an event name and a timestamp only.',
+    'These four numbers stay on this device by default; they sync to your own cloud account only if you sign in (optional) — see the privacy policy. Funnel events carry an event name and a timestamp, never a value.',
   'finance.prev': '← Back: design your ideal life',
   'finance.next': 'Next: see your projection →',
   'result.metaTitle': 'Your projection · rich-sim',
@@ -857,7 +858,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.fxPick': 'Pick a historical date:',
   'sim.fxLoading': 'Loading…',
   'sim.fxError': 'Could not load that date’s rates. Try another date.',
-  'sim.fxResult': '{date}: {cny} ≈ {value} · vs today {delta}',
+  'sim.fxResult': '{date}: $1M ≈ {hist} · today ≈ {today} · change {delta}',
   'sim.fxNote': 'Historical rates come from Frankfurter (ECB reference rates) and are for education only - not exchange-rate advice.',
   'invest.title': 'Allocate your starting capital',
   'invest.intro':

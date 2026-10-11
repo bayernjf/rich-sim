@@ -456,13 +456,26 @@ try {
     'i18n：财务页英文界面不夹中文标签',
     '',
   );
+  // 隐私说明必须与隐私政策同一套说法：「默认不出这台设备 + 登录后可选同步」。
+  // 同时钉住旧的绝对说法不得回来——账号那一步上线后「永不上传」就是假承诺，
+  // 而这是展示给用户的一句话。
   check(
-    finEn.includes('never uploaded'),
-    'i18n：隐私说明（数据不出本机）在英文页也在',
+    finEn.includes('stay on this device by default') &&
+      finEn.includes('only if you sign in') &&
+      !finEn.includes('never uploaded'),
+    '隐私说明：英文页不再承诺「永不上传」',
     '',
   );
 
   await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  const finZh = await page.content();
+  check(
+    finZh.includes('默认不出这台设备') &&
+      finZh.includes('登录后（可选）') &&
+      !finZh.includes('不会上传'),
+    '隐私说明：中文页与英文页同一套口径（默认本机、登录后可选同步）',
+    '',
+  );
   await page.fill('#field-income', '15000');
   await page.fill('#field-expenseTotal', '8000');
   await page.fill('#field-savings', '100000');
@@ -1679,6 +1692,36 @@ try {
     countEvent(evFx, 'fx:historical') >= 1,
     '埋点：fx:historical 已入队',
     `n=${countEvent(evFx, 'fx:historical')}`,
+  );
+
+  // ④ 词典闸门：来源链接与汇率结果行都必须由词典渲染。
+  // 这两处曾写死字面量（英文 "Source" 印在中文页、中文「今天 / 波动」印在英文页），
+  // SSR 源码抓不到岛内文案，所以只能在真实浏览器里读渲染后的文本。
+  const srcZh = await page.$$eval('[data-source-label]', (els) => els.map((e) => e.textContent?.trim() ?? ''));
+  check(
+    srcZh.length > 0 && srcZh.every((s) => s === '来源'),
+    'i18n：中文 sim 页三处来源链接都走同一个词典 key（商城 / 特权 / 一次性）',
+    `n=${srcZh.length} first=${srcZh[0]}`,
+  );
+
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-sim-fx] [data-fx-preset]', { timeout: 8000 });
+  const srcEn = await page.$$eval('[data-source-label]', (els) => els.map((e) => e.textContent?.trim() ?? ''));
+  check(
+    srcEn.length > 0 && srcEn.every((s) => s === 'Source'),
+    'i18n：英文 sim 页的来源链接是 Source 且不夹中文',
+    `n=${srcEn.length} first=${srcEn[0]}`,
+  );
+  await page.click('[data-fx-preset="2025-10-09"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-fx-result]')?.textContent?.includes('≈') ?? false,
+    { timeout: 8000 },
+  );
+  const fxEn = await page.locator('[data-fx-result]').innerText();
+  check(
+    !/[\u4e00-\u9fff]/.test(fxEn) && fxEn.includes('today ≈') && fxEn.includes('2025-10-09'),
+    'i18n：汇率时间机结果行在英文页零中文（曾写死「今天 / 波动」）',
+    fxEn.replace(/\n/g, ' ').slice(0, 130),
   );
 
   // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──

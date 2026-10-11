@@ -20,8 +20,8 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 
 | 闸门 | 内容 | 状态 |
 |---|---|---|
-| **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ✅ **已过（2026-10-08）**：项目 `aqpiqakykraobfyfbdow`，publishable key 已入 `apps/web/.env`（gitignored）；Pages 环境变量待上线时配 |
-| **M5-G2** | **登录方式**：~~只做 magic link 邮箱登录~~ **2026-10-09 翻转：邮箱+密码注册/登录**（发起人拍板；Supabase Confirm email 已关，注册即拿 session，无邮件环节）；magic link 与 Google OAuth 后置 | ✅ **已拍板（2026-10-09，发起人）** |
+| **M5-G1** | **Supabase 项目与密钥**：需要发起人创建 Supabase 项目（海外区域），提供 `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`（Pages 环境变量）；service key 不进前端、暂不需要 | ✅ **已过（2026-10-08）**：项目 `aqpiqakykraobfyfbdow`，publishable key 已入 `apps/web/.env`（gitignored）；**Pages Production 变量也已配**（2026-10-11 用线上构建产物证明：vendor chunk 内联了本项目前缀的 `*.supabase.co` URL 与 `sb_publishable_…` key，读法与「为什么不能抓 DOM 判断」见 `docs/DEPLOYMENT.md` §环境变量） |
+| **M5-G2** | **登录方式**：~~只做 magic link 邮箱登录~~ **2026-10-09 翻转：邮箱+密码注册/登录**（发起人拍板；Supabase Confirm email 已关，注册即拿 session，无邮件环节）；magic link 与 Google OAuth 后置。**代码侧已按此实现**（`lib/auth.ts` 只导出 `signInWithPassword` / `signUpWithPassword`，`magicLink` 无调用点） | ✅ **已拍板（2026-10-09，发起人）** |
 | **M5-G3** | **隐私政策 / 条款页**：有了账号与云端存储，就需要最小隐私政策页（收集什么、存哪、怎么删）。文案需发起人确认 | ✅ **已确认（2026-10-10，发起人「按清单来」）**：`/privacy` 纯 SSR 双语页 + 全站页脚入口已实现（路由表已登记）。文案逐句对应真实代码行为，三个承诺性条款已确认：**① 账号删除走人工流程**（页内明示「contact us below and we will delete them」）；**② 联系渠道用公开 GitHub issue**（`github.com/bayernjf/rich-sim/issues`，不公开邮箱）；**③ 保持最小政策、不补 GDPR 等缺失条款**。M5 至此彻底收尾 |
 
 ## 1. 切片
@@ -30,7 +30,7 @@ M5 是本仓库第一次引入「用户数据离开本机」，红线压力最�
 
 | 切片 | 内容 | 依赖 | 规模 |
 |---|---|---|---|
-| **S1** ✅ 代码完成（2026-10-08） | **Auth 接入**：`@supabase/supabase-js` 客户端（懒加载，未配置环境变量时零行为，沿用 Analytics 的开关纪律）；导航区「登录」入口 + magic link 表单 + 会话恢复；`auth:login` / `auth:logout` 事件 | G1、G2 | M |
+| **S1** ✅ 代码完成（2026-10-08） | **Auth 接入**：`@supabase/supabase-js` 客户端（懒加载，未配置环境变量时零行为，沿用 Analytics 的开关纪律）；导航区「登录」入口 + 邮箱+密码表单（G2 于 2026-10-09 从 magic link 翻转，`lib/auth.ts` 无 magic link 调用点）+ 会话恢复；`auth:login` / `auth:logout` 事件 | G1、G2 | M |
 | **S2** ✅ 代码完成（2026-10-08） | **草稿同步（REAL 账）**：登录后首次把本机草稿上云；此后 `writeDraft` 时防抖上云；冷启动时云端新于本机则拉取（冲突规则见 §3）。RLS：`auth.uid() = user_id` 才能读写自己的行 | S1 | M |
 | **S3** ✅ 代码完成（2026-10-08） | **草稿同步（SIM 账）+ 登出语义**：SIM 账同 S2 口径；登出**不清本机草稿**（明示「本机副本保留」），只断同步 | S2 | S |
 
@@ -77,6 +77,6 @@ create policy "own rows" on plans
 
 ## 6. Dashboard 侧待办（发起人手点，代码帮不了）
 
-1. **建表**：SQL Editor 里跑 §2 的 `plans` 表 + RLS 两段 SQL。
-2. **Redirect URL**：Authentication → URL Configuration，把 `http://localhost:4335/**`（联调用）与 `https://app.rich-sim.bayjf.com/**`（上线用）加进 Additional Redirect URLs；Site URL 填线上域名。
-3. （可选）Authentication → Emails 里改 magic link 邮件模板的品牌文案；默认模板即可联调。
+1. **建表**：~~dashboard 手点~~ **已完成**（2026-10-08，agent 经浏览器执行 §2 的 `plans` 表 + RLS 两段 SQL，返回 Success）。
+2. **Redirect URL**：~~dashboard 手点~~ **已完成**（2026-10-08，Site URL 与两条 Redirect URL 已保存并截图核验）。邮箱+密码模式下这一步不再是登录必需（没有邮件回跳），留着无害。
+3. ~~（可选）Authentication → Emails 里改 magic link 邮件模板的品牌文案~~ **作废（2026-10-09 G2 翻转）**：注册即拿到 session，不存在 magic link 邮件；只有将来开密码重置时才需要碰邮件模板。
