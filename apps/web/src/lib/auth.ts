@@ -1,8 +1,8 @@
 /**
- * M5 S1 · Auth 逻辑层（magic link 邮箱登录，G2 拍板项）。
+ * M5 S1 · Auth 逻辑层（邮箱+密码注册/登录，2026-10-09 起取代 magic link）。
  *
- * 为什么只做 magic link：免密码（没有密码就没有密码库要守）、Supabase Auth
- * 内置、海外合规压力最小。Google OAuth 是后置项（m5-task-breakdown §1 S1）。
+ * 为什么用邮箱+密码：注册即拿到 session（Supabase Confirm email 已关），无邮件环节、
+ * 不依赖发信域名。Google OAuth 仍是后置项（m5-task-breakdown §1 S1）。
  *
  * 事件纪律：`auth:login` / `auth:logout` 零 props——邮箱地址是 PII，
  * 不出本机（与 plan:* / progress:view 同一条红线）。
