@@ -21,7 +21,7 @@ rich-sim is a financial-literacy simulation, not an advisor. Two tracks:
 
 Rules that matter: every number is arithmetic on your own assumptions, all illustrative multiples are labeled as such, no recommendations, no financial products, no predictions — and no user financial data ever leaves the device unless you sign in and sync it yourself.
 
-26 interactive mechanics, bilingual, PWA, no account needed.
+28 interactive mechanics, bilingual, PWA, no account needed.
 
 https://app.rich-sim.bayjf.com
 
@@ -31,7 +31,7 @@ https://app.rich-sim.bayjf.com
 
 - **Tagline**: See the real cost of being rich. Then run the math on your own income.
 - **Description**（~200 词，可裁）:
-  rich-sim is a financial-literacy simulator with two tracks. Play rich: pick new-money or old-money, and feel what $1.3M/year of holding costs does to a $3M income — fast-forward 30 years, halve your income with a black swan, add 2× leverage and watch it break, negotiate a 6× fully-leveraged acquisition, draw lawsuit/crisis/split event cards, shop (every item lands on next year's bill), and time-travel exchange rates with $1M as the anchor. Then measure yourself: import your own income and expenses and get the sufficiency line, the gap and the years — reachable, unreachable, or no net savings, as first-class states. 26 mechanics, bilingual, PWA, works signed-out. Educational tool — every number is arithmetic on your own assumptions, illustrated parameters are labeled, no investment advice.
+  rich-sim is a financial-literacy simulator with two tracks. Play rich: pick new-money or old-money, and feel what $1.3M/year of holding costs does to a $3M income — fast-forward 30 years, halve your income with a black swan, add 2× leverage and watch it break, negotiate a 6× fully-leveraged acquisition, draw lawsuit/crisis/split event cards, shop (every item lands on next year's bill), and time-travel exchange rates with $1M as the anchor. Then measure yourself: import your own income and expenses and get the sufficiency line, the gap and the years — reachable, unreachable, or no net savings, as first-class states. 28 mechanics, bilingual, PWA, works signed-out. Educational tool — every number is arithmetic on your own assumptions, illustrated parameters are labeled, no investment advice.
 
 ---
 
@@ -61,7 +61,7 @@ https://app.rich-sim.bayjf.com
 2. 链接：产品地址 + 仓库（`github.com/bayernjf/rich-sim`，public）可选附
 3. 免责：任何回复都守住「不构成投资建议」；不承诺收益
 4. 渠道节奏：先发 1 个平台，观察反馈（匿名分析只记录事件名，可回看 `paywall:intent` 与访问日读数判断引流效果）
-5. 若被问「怎么赚钱」：付费墙仍在意愿探针阶段（`待定`），如实说「先攒意愿读数再决定」
+5. 若被问「怎么赚钱」：付费墙仍在意愿探针阶段；当前先把真实访客与意愿读数攒起来再据此定方案，不实说具体时间表（见 待决 #2 / #5 决策）
 
 ## 附：一句话备选（各渠道标题 A/B）
 
