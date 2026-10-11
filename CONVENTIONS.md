@@ -31,7 +31,7 @@ key：`rich-sim:plan:v1`；读写一律走 `apps/web/src/lib/draft.ts`（`readDr
 
 **`history` 的两条例外纪律**（与上面「不得绕过 draft.ts」配套）：
 1. `writeDraft` 对 `history`（与后来的 `savedPlans`）做**隐式保留**——调用方不显式传就等于不动它。原因：每个写方都是重建整个 `Draft` 字面量，逐条透传漏一处就把用户的历史抹干净，而且抹得很安静。要清历史请显式传 `history: []`。
-2. 历史只存在这一本账里，**不出本机**：`workers/analytics-collector` 收到的只有一个事件名（`progress:view`），没有任何数值。红线见 AGENTS.md「用户自填的财务数据不得上传」。
+2. 历史**不进分析管道**：`workers/analytics-collector` 收到的只有一个事件名（`progress:view`），没有任何数值。**未登录时它不出本机**（两本账都只在 `localStorage`）；登录后它会随草稿一起同步到**用户自己的**云端行（RLS 按 `auth.uid()` 隔离，`lib/sync.ts`）。所以「同步是用户显式登录后的主动行为」这条口径要连着读，红线现口径见 AGENTS.md「用户自填的财务数据不进分析管道」与 `handoff.md`「已做的决策」的 MVP 形态行。
 
 **第二个独立 key `rich-sim:sim:v1`**（`docs/homepage-claim-experience.md` §3.1，随 M2 切片 S4 加入）：模拟态的虚拟起始金，读写一律走 `apps/web/src/lib/sim-draft.ts`。两个模块**互不 import、互不读写对方的 key**——这条是「两本账不混」的结构保证，由 `sim-draft.test.ts` 钉住：改任何一侧都要连测试一起改。真实测算只用前者，模拟态只用后者。M5 S3 起 `SimState` 多一个可选 `updatedAt`（云同步对时戳，旧状态兜底 `claimedAt`）与 `SIM_UPDATED_EVENT`（写入广播，地位同 `DRAFT_UPDATED_EVENT`）；schemaVersion 维持 1。同一「可选字段不加版本号」纪律下，sim 账本后续又挂了三个可选字段：`cart`（M3 购物车，`CartItem[]`）、`invest`（M5 投资线配置）、`favorites`（商城扩展收藏夹，与 `cart` 同形状）、`resaleProceeds`（二手变卖累计回笼现金，USD，`sim-resale-market.md`；卖出 = 年成本 × core `RESALE_RECOVERY_RATE` 的教学口径，只进 SIM「够撑多久」分子，永不过 SIM→REAL 桥）——四者旧状态读出来都按空收敛。**`favorites` 只表达「感兴趣但没买」，任何年成本 / 账单 / 一键成目标路径都只读 `cart`，不读 `favorites`**（结构上保证「收藏不花钱」，由 `sim-draft.test.ts` 钉住）；无 sim 账本时购物车与收藏都只是会话态，不凭空建账。
 
