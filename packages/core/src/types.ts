@@ -123,6 +123,13 @@ export type CatalogOption = {
   annualCost: number;
   /** Value source URL, or the literal marker 「待校准」 when unverified. */
   source?: string;
+  /**
+   * Calibration / provenance note for the `annualCost` — sources used, ranges,
+   * and conversion caliber (e.g. "Zillow ZORI 2026-07; metro areas higher").
+   * **Maintainer-facing documentation only: no page or formula reads it.**
+   * It is intentionally Chinese-only and is NOT UI copy, so it is excluded from
+   * the i18n surface (see handoff 待决 #11, decision (b)).
+   */
   note?: string;
   /** Designer default selection (exactly one per dimension is recommended). */
   isDefault?: boolean;
