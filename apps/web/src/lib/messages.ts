@@ -335,7 +335,7 @@ const ZH = {
   'sim.fxPick': '选择历史日期：',
   'sim.fxLoading': '读取中…',
   'sim.fxError': '该日期汇率读取失败，请换一个日期。',
-  'sim.fxResult': '{date}：{cny} ≈ {value} · 与今日比 {delta}',
+  'sim.fxResult': '{date}：$1M ≈ {hist} · 今天 ≈ {today} · 波动 {delta}',
   'sim.fxNote': '历史汇率来自 Frankfurter（ECB 参考汇率），仅供教育展示，不构成汇率建议。',
   'invest.title': '把起始金放进资产类别',
   'invest.intro':
@@ -858,7 +858,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'sim.fxPick': 'Pick a historical date:',
   'sim.fxLoading': 'Loading…',
   'sim.fxError': 'Could not load that date’s rates. Try another date.',
-  'sim.fxResult': '{date}: {cny} ≈ {value} · vs today {delta}',
+  'sim.fxResult': '{date}: $1M ≈ {hist} · today ≈ {today} · change {delta}',
   'sim.fxNote': 'Historical rates come from Frankfurter (ECB reference rates) and are for education only - not exchange-rate advice.',
   'invest.title': 'Allocate your starting capital',
   'invest.intro':

@@ -1694,6 +1694,36 @@ try {
     `n=${countEvent(evFx, 'fx:historical')}`,
   );
 
+  // ④ 词典闸门：来源链接与汇率结果行都必须由词典渲染。
+  // 这两处曾写死字面量（英文 "Source" 印在中文页、中文「今天 / 波动」印在英文页），
+  // SSR 源码抓不到岛内文案，所以只能在真实浏览器里读渲染后的文本。
+  const srcZh = await page.$$eval('[data-source-label]', (els) => els.map((e) => e.textContent?.trim() ?? ''));
+  check(
+    srcZh.length > 0 && srcZh.every((s) => s === '来源'),
+    'i18n：中文 sim 页三处来源链接都走同一个词典 key（商城 / 特权 / 一次性）',
+    `n=${srcZh.length} first=${srcZh[0]}`,
+  );
+
+  await page.goto(`${BASE}/app/sim?smoke=1&lang=en`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-sim-fx] [data-fx-preset]', { timeout: 8000 });
+  const srcEn = await page.$$eval('[data-source-label]', (els) => els.map((e) => e.textContent?.trim() ?? ''));
+  check(
+    srcEn.length > 0 && srcEn.every((s) => s === 'Source'),
+    'i18n：英文 sim 页的来源链接是 Source 且不夹中文',
+    `n=${srcEn.length} first=${srcEn[0]}`,
+  );
+  await page.click('[data-fx-preset="2025-10-09"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-fx-result]')?.textContent?.includes('≈') ?? false,
+    { timeout: 8000 },
+  );
+  const fxEn = await page.locator('[data-fx-result]').innerText();
+  check(
+    !/[\u4e00-\u9fff]/.test(fxEn) && fxEn.includes('today ≈') && fxEn.includes('2025-10-09'),
+    'i18n：汇率时间机结果行在英文页零中文（曾写死「今天 / 波动」）',
+    fxEn.replace(/\n/g, ' ').slice(0, 130),
+  );
+
   // ── 步骤 9.5：投资线（P3）——配置权重与自填收益率 → 推演 → 本机账 ──
   // 步骤 1.5 的 localStorage.clear() 把 sim 账本清掉了，这里先补领 $10M。
   await page.goto(`${BASE}/?lang=zh`, { waitUntil: 'networkidle' });

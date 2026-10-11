@@ -556,7 +556,7 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                 </button>
               </div>
               {typeof item.option.source === 'string' && (
-                <a href={item.option.source} target="_blank" rel="noopener noreferrer" className="text-xs text-accent underline-offset-2 hover:underline">Source</a>
+                <a href={item.option.source} data-source-label target="_blank" rel="noopener noreferrer" className="text-xs text-accent underline-offset-2 hover:underline">{t('sim.source', locale)}</a>
               )}
             </li>
           );
