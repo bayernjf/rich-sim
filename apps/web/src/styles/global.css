@@ -122,6 +122,29 @@
   pointer-events: none;
 }
 
+/*
+  M5 · 结果页 CLS 预留（PRD §9 预算 0.1，实测基线 0.9751→见 handoff「待决问题 #12」）。
+  结果区的数字来自本机草稿，服务端印不出来，hydration 才撑开整屏；不预留的话，
+  已经在屏幕上的合规面板会被推下去约 3.6 屏。`<html data-plan>` 由 result.astro
+  在首帧前的行内脚本写好（只看 profile 存不存在），这里按它选预留档：
+
+  - full  = 有草稿：留到「有完整结果」时的高度
+  - empty = 无草稿 / 草稿没有财务档案：留到空态卡片的高度
+
+  两个数字都是 390×844 实测（scripts/measure-perf.mjs 同款漏斗），见 docs/DEPLOYMENT.md。
+  宁可**偏低**不要偏高：低了只会把本来就在首屏之外的东西再往下推（不计位移），
+  高了则可能把下面已经画好的内容拽回首屏。
+
+  只在**还在算**的时候留（组件算完把标记换成 ready）：算完就撤掉这道下限，
+  免得结果本来更短时在页面上留一块解释不了的空白。
+*/
+[data-plan='full'] [data-results-root='loading'] {
+  min-height: 1414px;
+}
+[data-plan='empty'] [data-results-root='loading'] {
+  min-height: 346px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .claim-coin {
     display: none;

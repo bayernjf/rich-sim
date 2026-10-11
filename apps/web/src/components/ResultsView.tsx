@@ -130,7 +130,9 @@ export default function ResultsView({
   const money = (n: number, c: Currency) => fmtMoney(n, c, locale);
 
   return (
-    <section data-results-root className="pb-10">
+    // data-results-root 的值只有 CLS 预留用：loading = 还在算，此刻由 global.css
+    // 撑住高度（PRD §9 预算 0.1）；算完换成 ready，下限即撤，不留无解释的空白。
+    <section data-results-root={view === 'loading' ? 'loading' : 'ready'} className="pb-10">
       <header>
         <p className="text-xs font-medium uppercase tracking-widest text-accent">
           {t('result.eyebrow', locale)}
