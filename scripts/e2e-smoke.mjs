@@ -456,13 +456,26 @@ try {
     'i18n：财务页英文界面不夹中文标签',
     '',
   );
+  // 隐私说明必须与隐私政策同一套说法：「默认不出这台设备 + 登录后可选同步」。
+  // 同时钉住旧的绝对说法不得回来——账号那一步上线后「永不上传」就是假承诺，
+  // 而这是展示给用户的一句话。
   check(
-    finEn.includes('never uploaded'),
-    'i18n：隐私说明（数据不出本机）在英文页也在',
+    finEn.includes('stay on this device by default') &&
+      finEn.includes('only if you sign in') &&
+      !finEn.includes('never uploaded'),
+    '隐私说明：英文页不再承诺「永不上传」',
     '',
   );
 
   await page.goto(`${BASE}/app/finance?smoke=1&lang=zh`, { waitUntil: 'networkidle' });
+  const finZh = await page.content();
+  check(
+    finZh.includes('默认不出这台设备') &&
+      finZh.includes('登录后（可选）') &&
+      !finZh.includes('不会上传'),
+    '隐私说明：中文页与英文页同一套口径（默认本机、登录后可选同步）',
+    '',
+  );
   await page.fill('#field-income', '15000');
   await page.fill('#field-expenseTotal', '8000');
   await page.fill('#field-savings', '100000');

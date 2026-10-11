@@ -107,7 +107,8 @@ const ZH = {
   'finance.error.nan': '请输入有效数字',
   'finance.saved': '已自动保存到本机',
   'finance.unfilled': '4 项填齐后自动保存到本机',
-  'finance.privacy': '这 4 个数只存在这台设备上，不会上传——上报的漏斗事件只有事件名与时间。',
+  'finance.privacy':
+    '这 4 个数默认不出这台设备；只有你登录后（可选）才会把草稿同步到你自己的云端账户（见隐私政策）。上报的漏斗事件只有事件名与时间，没有任何数值。',
   'finance.prev': '← 上一步：设计理想生活',
   'finance.next': '下一步：看测算结果 →',
   'result.metaTitle': '测算结果 · 财富模拟',
@@ -621,7 +622,7 @@ const EN: Record<keyof typeof ZH, string> = {
   'finance.saved': 'Saved automatically on this device',
   'finance.unfilled': 'Saves automatically once all 4 are filled in',
   'finance.privacy':
-    'These four numbers stay on this device and are never uploaded — funnel events carry an event name and a timestamp only.',
+    'These four numbers stay on this device by default; they sync to your own cloud account only if you sign in (optional) — see the privacy policy. Funnel events carry an event name and a timestamp, never a value.',
   'finance.prev': '← Back: design your ideal life',
   'finance.next': 'Next: see your projection →',
   'result.metaTitle': 'Your projection · rich-sim',
