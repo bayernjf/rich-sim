@@ -1557,12 +1557,30 @@ try {
   );
   check(yachtDetail.includes('75%'), '商城扩展：资产详情明示强制变现只回笼原价 75%', '');
 
+  // 情绪字段出口（待决 #10 · 方案 a 轻量版）：详情卡相对呈现爽感 / 持有感，不给分。
+  const yachtThrillCount = await extYachtCard.locator('[data-item-thrill]').count();
+  check(yachtThrillCount === 1, '待决#10：游艇详情卡显示爽感档位（相对呈现）', `count=${yachtThrillCount}`);
+  const yachtThrillLine = (yachtDetail.match(/爽感：[^\n]*/) ?? [''])[0];
+  check(
+    yachtThrillLine.includes('高') && !/\d/.test(yachtThrillLine),
+    '待决#10：爽感行只给档位文案、不带 1–5 分数',
+    yachtThrillLine,
+  );
+  check(
+    yachtDetail.includes('持有它的情绪') && yachtDetail.includes('负担'),
+    '待决#10：资产类显示持有期情绪（游艇 = 负担）',
+    '',
+  );
+
   // 体验项：无拆项 → 来源口径空态 + 无一残值提示。
   const extGalaCard = page.locator('[data-shopping-area] li', { hasText: 'Met Gala 慈善晚宴单张门票' }).first();
   await extGalaCard.locator('[data-item-detail] summary').click();
   const galaDetail = await extGalaCard.locator('[data-item-detail]').innerText();
   check(galaDetail.includes('公开来源'), '商城扩展：无拆项档位显示来源口径说明', '');
   check(galaDetail.includes('一次性体验'), '商城扩展：体验项明示没有可变现残值', '');
+  const galaThrillCount = await extGalaCard.locator('[data-item-thrill]').count();
+  check(galaThrillCount === 1 && galaDetail.includes('爽感'), '待决#10：体验项也显示爽感档位', `count=${galaThrillCount}`);
+  check(!galaDetail.includes('持有它的情绪'), '待决#10：体验项无持有期情绪行（口径：无持有）', '');
 
   // ② 收藏夹：空态 → 收藏游艇 → 不进车、持久化、tab 可见 → 取消回空态。
   await page.click('[data-mall-tab="favorites"]');
