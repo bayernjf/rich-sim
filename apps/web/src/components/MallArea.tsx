@@ -26,8 +26,10 @@ import {
   CARD_A,
   CARD_A_ANNUAL_INCOME,
   CARD_A_LAST_YEAR_COST,
+  carryingJoyTone,
   cartBurdenSummary,
   cartKindCosts,
+  joyTier,
   poolOptionLabel,
   type CartEntry,
   type ShoppingItem,
@@ -470,6 +472,8 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
           const inCart = selected.has(itemKey({ dimension: item.dimension, optionId: item.option.id }));
           const favored = favoredSet.has(itemKey({ dimension: item.dimension, optionId: item.option.id }));
           const components = optionCostComponents(item.option, locale) ?? [];
+          const thrill = joyTier(item.option.joy);
+          const carry = carryingJoyTone(item.option.carryingJoy);
           return (
             <li
               key={`${item.dimension}/${item.option.id}`}
@@ -534,6 +538,30 @@ export default function MallArea({ items, baselineAnnualCost, locale = 'zh' }: P
                     <p data-item-resell className="mt-2">
                       {t('mall.notResellable', locale)}
                     </p>
+                  )}
+                  {(thrill || carry) && (
+                    <div className="mt-2 space-y-1">
+                      {thrill && (
+                        <p data-item-thrill className="flex gap-2">
+                          <span aria-hidden="true" className="shrink-0 text-accent">·</span>
+                          <span>
+                            {format(t('sim.joyRow', locale), {
+                              tier: t(`sim.joy.${thrill}` as MessageKey, locale),
+                            })}
+                          </span>
+                        </p>
+                      )}
+                      {carry && (
+                        <p data-item-carry className="flex gap-2">
+                          <span aria-hidden="true" className="shrink-0 text-accent">·</span>
+                          <span>
+                            {format(t('sim.carryRow', locale), {
+                              tone: t(`sim.carry.${carry}` as MessageKey, locale),
+                            })}
+                          </span>
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </details>

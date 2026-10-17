@@ -751,6 +751,35 @@ export function plotEvents(
   ];
 }
 
+/* ── 待决 #10：情绪字段的呈现出口（2026-10-17，方案 a 轻量版）── */
+
+/**
+ * `joy`（1–5，购买当下情绪强度）→ 相对档位（高 / 中 / 低）。
+ * `simulation-gameplay.md` §5.2 明令：只做相对排序、不做伪精确打分——
+ * 界面永远不显示 1–5 数字本身，只给这个档位。阈值口径：≥4 高 / 3 中 /
+ * ≤2 低（对购物池与衣柜的取值域 2–5 稳定；域越界时防御回落）。
+ */
+export function joyTier(joy: number | undefined): 'high' | 'mid' | 'low' | null {
+  if (joy === undefined || !Number.isFinite(joy)) return null;
+  if (joy >= 4) return 'high';
+  if (joy >= 3) return 'mid';
+  return 'low';
+}
+
+/**
+ * `carryingJoy`（−2…+2，持有期每年净情绪）→ 呈现语气。资产多为 0 或负
+ * （体验类无持有，应为 undefined）：>0 轻快 / 0 平淡 / <0 负担。
+ * 同为相对呈现、不给分。
+ */
+export function carryingJoyTone(
+  carryingJoy: number | undefined,
+): 'positive' | 'flat' | 'heavy' | null {
+  if (carryingJoy === undefined || !Number.isFinite(carryingJoy)) return null;
+  if (carryingJoy > 0) return 'positive';
+  if (carryingJoy === 0) return 'flat';
+  return 'heavy';
+}
+
 /* ── C-2 家族传承剧本（2026-10-10，设计稿 simulation-gameplay §4.5 实现）── */
 
 /**

@@ -15,12 +15,14 @@ import {
   cardAnnualCost,
   cardBills,
   cardBurden,
+  carryingJoyTone,
   cartAddedAnnualCost,
   cartBurdenSummary,
   cartKindCosts,
   cartKindCounts,
   claimBillRows,
   formatRunway,
+  joyTier,
   leverageDeal,
   plotEvents,
   runwayMonths,
@@ -557,5 +559,54 @@ describe('家族传承剧本（C-2 · 2026-10-10，设计稿 §4.5 实现）', (
     expect(LEGACY_ASSUMPTIONS.exemption).toBe(15_000_000);
     expect(LEGACY_ASSUMPTIONS.rate).toBe(0.4);
     expect(LEGACY_ASSUMPTIONS.taxableAssets).toBe(100_000_000);
+  });
+});
+
+describe('待决 #10：情绪字段呈现出口（2026-10-17，方案 a 轻量版）', () => {
+  // §5.2 明令：只做相对分档、界面不给 1–5 分数。这里钉的是分档口径与
+  // 「数据域不越界」，不是任何「打分」语义。
+
+  it('joyTier：≥4 高 / 3 中 / ≤2 低，边界与非法输入回落 null', () => {
+    expect(joyTier(5)).toBe('high');
+    expect(joyTier(4)).toBe('high');
+    expect(joyTier(3)).toBe('mid');
+    expect(joyTier(2)).toBe('low');
+    expect(joyTier(1)).toBe('low');
+    expect(joyTier(undefined)).toBeNull();
+    expect(joyTier(Number.NaN)).toBeNull();
+    expect(joyTier(Infinity)).toBeNull();
+  });
+
+  it('carryingJoyTone：>0 轻快 / 0 平淡 / <0 负担，非法输入回落 null', () => {
+    expect(carryingJoyTone(2)).toBe('positive');
+    expect(carryingJoyTone(1)).toBe('positive');
+    expect(carryingJoyTone(0)).toBe('flat');
+    expect(carryingJoyTone(-1)).toBe('heavy');
+    expect(carryingJoyTone(-2)).toBe('heavy');
+    expect(carryingJoyTone(undefined)).toBeNull();
+    expect(carryingJoyTone(Number.NaN)).toBeNull();
+  });
+
+  it('购物池每项都能分档：joy 有值且在 1–5 域内，体验类无持有情绪', () => {
+    for (const item of shoppingPool(catalog)) {
+      const joy = item.option.joy;
+      expect(joy, `${item.option.id} joy 缺失`).toBeDefined();
+      expect(joy! >= 1 && joy! <= 5, `${item.option.id} joy 越出 1–5`).toBe(true);
+      expect(joyTier(joy), `${item.option.id} 分不出档`).not.toBeNull();
+      if (item.option.kind === 'experience') {
+        expect(carryingJoyTone(item.option.carryingJoy), `${item.option.id} 体验类不该有持有情绪`).toBeNull();
+      }
+    }
+  });
+
+  it('资产类携带 carryingJoy 时能分出档位（域 −2…+2）', () => {
+    const assetsWithFeel = shoppingPool(catalog).filter((item) => item.option.carryingJoy !== undefined);
+    // 域断言：若未来资产类补了 −2…+2 之外的值，这里先红。
+    for (const item of assetsWithFeel) {
+      const v = item.option.carryingJoy!;
+      expect(v >= -2 && v <= 2, `${item.option.id} carryingJoy 越出 −2…+2`).toBe(true);
+      expect(carryingJoyTone(v), `${item.option.id} 分不出持有语气`).not.toBeNull();
+    }
+    expect(assetsWithFeel.length).toBeGreaterThan(0);
   });
 });
