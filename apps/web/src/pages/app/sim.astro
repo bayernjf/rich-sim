@@ -192,12 +192,12 @@ const assetBars = card.assetStructure.map((part, index) => ({
 
       <dl class="mt-3 divide-y divide-line rounded-2xl border border-line bg-panel px-4">
         {rows.map((row) => (
-          <div class="flex items-baseline justify-between gap-3 py-3">
-            <dt class="text-sm text-muted">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3">
+            <dt class="min-w-0 basis-full text-sm text-muted sm:basis-auto">
               {row.optionLabel}
               <span class="ml-1 text-xs text-muted/70">{row.dimensionLabel}</span>
             </dt>
-            <dd class="font-mono tabular-nums text-ink">
+            <dd class="w-full shrink-0 text-right font-mono tabular-nums text-ink sm:w-auto">
               {row.option ? fmt(row.option.annualCost) : '—'}
               {row.option?.source && (
                 <a
@@ -266,8 +266,8 @@ const assetBars = card.assetStructure.map((part, index) => ({
         {pageBills.map((bill) => (
           <li class="rounded-xl border border-line bg-panel px-4 py-3">
             <div class="flex items-baseline justify-between gap-3">
-              <span class="text-sm text-ink">{bill.optionLabel}</span>
-              <span class="font-mono tabular-nums text-ink">{format(t('sim.perYear', locale), { amount: fmt(bill.annualCost) })}</span>
+              <span class="min-w-0 text-sm text-ink">{bill.optionLabel}</span>
+              <span class="shrink-0 font-mono tabular-nums text-ink">{format(t('sim.perYear', locale), { amount: fmt(bill.annualCost) })}</span>
             </div>
             <div class="mt-1 flex items-baseline justify-between gap-3">
               <span class="text-xs text-muted">
