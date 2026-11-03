@@ -36,7 +36,13 @@ function writeSimPulled(payload: SimState): void {
   }
 }
 
-async function reconcileKind(supabase: SupabaseClient, userId: string, kind: LedgerKind): Promise<void> {
+async function reconcileKind(
+  supabase: SupabaseClient,
+  userId: string,
+  kind: LedgerKind,
+  /** 冷启动上行失败时调用（评审 P2：交给防抖调度器走退避重试，不再本会话静默）。 */
+  onPushFailed?: () => void,
+): Promise<void> {
   const cloud = await pullLedger(supabase, userId, kind);
   if (kind === 'plan') {
     const local = readDraft();
@@ -48,8 +54,13 @@ async function reconcileKind(supabase: SupabaseClient, userId: string, kind: Led
         }
         break;
       case 'push':
-        if (local && (await pushLedger(supabase, userId, kind, local, local.updatedAt)))
-          track('sync:push', { kind });
+        if (local) {
+          if (await pushLedger(supabase, userId, kind, local, local.updatedAt)) {
+            track('sync:push', { kind });
+          } else {
+            onPushFailed?.();
+          }
+        }
         break;
       default:
         break;
@@ -66,8 +77,13 @@ async function reconcileKind(supabase: SupabaseClient, userId: string, kind: Led
       }
       break;
     case 'push':
-      if (local && (await pushLedger(supabase, userId, kind, local, simTimestamp(local))))
-        track('sync:push', { kind });
+      if (local) {
+        if (await pushLedger(supabase, userId, kind, local, simTimestamp(local))) {
+          track('sync:push', { kind });
+        } else {
+          onPushFailed?.();
+        }
+      }
       break;
     default:
       break;
@@ -79,31 +95,38 @@ export default function SyncBridge() {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    // P1 修复：两本账各持各的防抖 timer（原共享单 timer，2s 内先后写入时
+    // 先排期的上行被静默取消，当次会话再无补偿）。
+    // 评审 P2 追加：push 返回 false（上行失败）时调度器按指数退避重试。
+    const scheduler = createLedgerPushScheduler(DEBOUNCE_MS, async (kind: LedgerKind) => {
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      // 未登录无需上行：返回 true（成功语义），避免无谓重试。
+      if (!userId) return true;
+      if (kind === 'plan') {
+        const local = readDraft();
+        if (!local) return true;
+        const ok = await pushLedger(supabase, userId, 'plan', local, local.updatedAt);
+        if (ok) track('sync:push', { kind });
+        return ok;
+      }
+      const local = readSimState();
+      if (!local) return true;
+      const ok = await pushLedger(supabase, userId, 'sim', local, simTimestamp(local));
+      if (ok) track('sync:push', { kind });
+      return ok;
+    });
+
     const reconcile = async () => {
       const { data } = await supabase.auth.getSession();
       const userId = data.session?.user?.id;
       if (!userId) return;
-      await reconcileKind(supabase, userId, 'plan');
-      await reconcileKind(supabase, userId, 'sim');
+      // 冷启动上行失败 → 交回调度器走防抖+退避重试（评审 P2）。
+      await reconcileKind(supabase, userId, 'plan', () => scheduler.schedule('plan'));
+      await reconcileKind(supabase, userId, 'sim', () => scheduler.schedule('sim'));
     };
     void reconcile();
 
-    // P1 修复：两本账各持各的防抖 timer（原共享单 timer，2s 内先后写入时
-    // 先排期的上行被静默取消，当次会话再无补偿）。
-    const scheduler = createLedgerPushScheduler(DEBOUNCE_MS, async (kind: LedgerKind) => {
-      const { data } = await supabase.auth.getSession();
-      const userId = data.session?.user?.id;
-      if (!userId) return;
-      if (kind === 'plan') {
-        const local = readDraft();
-        if (local && (await pushLedger(supabase, userId, 'plan', local, local.updatedAt)))
-          track('sync:push', { kind });
-      } else {
-        const local = readSimState();
-        if (local && (await pushLedger(supabase, userId, 'sim', local, simTimestamp(local))))
-          track('sync:push', { kind });
-      }
-    });
     const onPlanWrite = () => scheduler.schedule('plan');
     const onSimWrite = () => scheduler.schedule('sim');
     window.addEventListener(DRAFT_UPDATED_EVENT, onPlanWrite);
