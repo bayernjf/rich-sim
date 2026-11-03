@@ -35,8 +35,11 @@ const FX_BASE = 'https://api.frankfurter.dev/v1';
 /** 最新汇率端点。 */
 const FX_API = `${FX_BASE}/latest`;
 
-/** 运行时 fetch 形状；便于测试注入 mock。 */
-export type FxFetcher = (url: string) => Promise<Response>;
+/** 运行时 fetch 形状；便于测试注入 mock。signal 用于上游超时（P2 修复）。 */
+export type FxFetcher = (url: string, init?: { signal?: AbortSignal }) => Promise<Response>;
+
+/** 上游请求超时：Frankfurter 挂起时不得拖死 SSR 请求（评审 2026-11-02 P2）。 */
+export const FX_FETCH_TIMEOUT_MS = 4000;
 
 /** 判断一个字符串是否为受支持币种。 */
 export function isSupportedCurrency(c: string): c is Currency {
@@ -100,6 +103,7 @@ export async function fetchFx(
   base: Currency,
   date?: string,
   fetchImpl: FxFetcher = fetch,
+  timeoutMs: number = FX_FETCH_TIMEOUT_MS,
 ): Promise<FxSnapshot> {
   const symbols = SUPPORTED_CURRENCIES.filter((c) => c !== base).join(',');
   const url = date
@@ -107,7 +111,7 @@ export async function fetchFx(
     : `${FX_API}?from=${base}&symbols=${symbols}`;
   let res: Response;
   try {
-    res = await fetchImpl(url);
+    res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
     throw new Error(`fx: network error fetching ${url}: ${String(err)}`);
   }
@@ -132,9 +136,10 @@ export async function resolveSnapshot(
   base: Currency,
   date?: string,
   fetchImpl?: FxFetcher,
+  timeoutMs?: number,
 ): Promise<FxSnapshot> {
   try {
-    return await fetchFx(base, date, fetchImpl);
+    return await fetchFx(base, date, fetchImpl, timeoutMs);
   } catch {
     return STATIC_FX_SNAPSHOT;
   }
