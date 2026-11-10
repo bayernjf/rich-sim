@@ -13,9 +13,11 @@
  * 3. **来源白名单而非回显 Origin。** 任何站点都能构造 beacon；回显 Origin
  *    等于把写入和查询能力都公开出去，所以对未知来源直接 403。
  *
- * 类型用手写的最小结构，没引 `@cloudflare/workers-types`：这个 worker 只有一个
- * 文件，为了几行类型往仓库里加一套依赖不划算。
+ * 类型用手写的最小结构，没引 `@cloudflare/workers-types`：worker 只有两个文件
+ * （本文件 + limits.ts 滥用护栏纯函数层），为了几行类型往仓库里加一套依赖不划算。
  */
+
+import { clampEventAt, dailyCapAllowance } from './limits';
 
 type D1Statement = {
   bind(...values: unknown[]): D1Statement;
@@ -80,22 +82,33 @@ async function collect(request: Request, env: Env): Promise<Response> {
     return json({ ok: false, error: 'events[] required' }, 400, request);
   }
 
+  const nowMs = Date.now();
   const rows: StoredRow[] = [];
   for (const item of payload.events.slice(0, MAX_BATCH)) {
     const record = item as { event?: unknown; at?: unknown };
     if (typeof record.event !== 'string' || !EVENT_NAME.test(record.event)) continue;
-    const usable =
-      typeof record.at === 'string' && !Number.isNaN(Date.parse(record.at))
-        ? record.at
-        : new Date().toISOString();
+    // 评审 P2：客户端 at 钳制在服务器 ±24h 内，防止伪造 day 桶绕过日上限。
+    const usable = clampEventAt(record.at, nowMs);
     rows.push({ ts: usable, day: usable.slice(0, 10), event: record.event });
   }
   if (rows.length === 0) return json({ ok: false, error: 'no valid events' }, 400, request);
 
-  const statement = env.DB.prepare('INSERT INTO events (ts, day, event) VALUES (?, ?, ?)');
-  await env.DB.batch(rows.map((row) => statement.bind(row.ts, row.day, row.event)));
+  // 评审 P2：日写入硬上限（按服务器日期计数，day 列有索引）。
+  // 超限整批 429 拒绝——不静默截断，调用方（至少一次投递）会在明天重试。
+  const today = new Date(nowMs).toISOString().slice(0, 10);
+  const usedRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM events WHERE day = ?')
+    .bind(today)
+    .all<{ n: number }>();
+  const allowance = dailyCapAllowance(usedRow.results[0]?.n ?? 0, rows.length);
+  if (allowance === 0) {
+    return json({ ok: false, error: 'daily write cap reached' }, 429, request);
+  }
+  const accepted = rows.slice(0, allowance);
 
-  return json({ ok: true, stored: rows.length }, 200, request);
+  const statement = env.DB.prepare('INSERT INTO events (ts, day, event) VALUES (?, ?, ?)');
+  await env.DB.batch(accepted.map((row) => statement.bind(row.ts, row.day, row.event)));
+
+  return json({ ok: true, stored: accepted.length }, 200, request);
 }
 
 async function summary(request: Request, env: Env): Promise<Response> {
